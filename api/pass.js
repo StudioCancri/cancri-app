@@ -98,44 +98,44 @@ module.exports = async (req, res) => {
     /* dossier d'images du modèle */
     const modelDir = path.join(process.cwd(), "pass-assets");
 
-    /* on construit le pass en mémoire */
-    const pass = new PKPass(
-      {},
-      {
-        wwdr: certDepuisEnv("PASS_WWDR"),
-        signerCert: certDepuisEnv("PASS_CERT"),
-        signerKey: certDepuisEnv("PASS_KEY"),
-        signerKeyPassphrase: process.env.PASS_KEY_PASSPHRASE || undefined,
-      },
-      {
-        formatVersion: 1,
-        passTypeIdentifier: process.env.PASS_TYPE_ID,
-        teamIdentifier: process.env.PASS_TEAM_ID,
-        organizationName: process.env.PASS_ORG || "Studio Cancri",
-        description: "Carte de fidélité — " + commerce.nom,
-        serialNumber: carte.jeton,
-        logoText: commerce.nom,
-        backgroundColor: "rgb(" + fondRgb.join(", ") + ")",
-        foregroundColor: "rgb(" + fgRgb.join(", ") + ")",
-        labelColor: "rgb(" + labelRgb.join(", ") + ")",
-        storeCard: {},
-      }
-    );
-
-    /* images fixes (logo/icon) depuis le repo */
+    /* on rassemble tous les buffers d'images */
+    const buffers = {};
     const imgs = ["icon.png", "icon@2x.png", "icon@3x.png", "logo.png", "logo@2x.png"];
     for (const f of imgs) {
-      const p = path.join(modelDir, f);
-      if (fs.existsSync(p)) pass.addBuffer(f, fs.readFileSync(p));
+      const ip = path.join(modelDir, f);
+      if (fs.existsSync(ip)) buffers[f] = fs.readFileSync(ip);
     }
 
     /* strip = grille dessinée à la volée */
     if (sharp) {
       const svg = Buffer.from(svgStrip(carte.tampons, commerce.objectif, fondRgb, labelRgb));
-      pass.addBuffer("strip.png", await sharp(svg).resize(375, 144).png().toBuffer());
-      pass.addBuffer("strip@2x.png", await sharp(svg).resize(750, 288).png().toBuffer());
-      pass.addBuffer("strip@3x.png", await sharp(svg).resize(1125, 432).png().toBuffer());
+      buffers["strip.png"] = await sharp(svg).resize(375, 144).png().toBuffer();
+      buffers["strip@2x.png"] = await sharp(svg).resize(750, 288).png().toBuffer();
+      buffers["strip@3x.png"] = await sharp(svg).resize(1125, 432).png().toBuffer();
     }
+
+    /* pass.json (le modèle) sous forme de buffer */
+    buffers["pass.json"] = Buffer.from(JSON.stringify({
+      formatVersion: 1,
+      passTypeIdentifier: process.env.PASS_TYPE_ID,
+      teamIdentifier: process.env.PASS_TEAM_ID,
+      organizationName: process.env.PASS_ORG || "Studio Cancri",
+      description: "Carte de fidélité — " + commerce.nom,
+      serialNumber: carte.jeton,
+      logoText: commerce.nom,
+      backgroundColor: "rgb(" + fondRgb.join(", ") + ")",
+      foregroundColor: "rgb(" + fgRgb.join(", ") + ")",
+      labelColor: "rgb(" + labelRgb.join(", ") + ")",
+      storeCard: {},
+    }));
+
+    /* construction du pass à partir des buffers */
+    const pass = new PKPass(buffers, {
+      wwdr: certDepuisEnv("PASS_WWDR"),
+      signerCert: certDepuisEnv("PASS_CERT"),
+      signerKey: certDepuisEnv("PASS_KEY"),
+      signerKeyPassphrase: process.env.PASS_KEY_PASSPHRASE || undefined,
+    });
 
     /* champs */
     pass.headerFields.push({ key: "solde", label: commerce.unite, value: carte.tampons + "/" + commerce.objectif });
