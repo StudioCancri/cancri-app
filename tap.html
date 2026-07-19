@@ -185,6 +185,29 @@
     return;
   }
 
+  /* garde-fou : un refresh dans le même onglet ne re-tamponne pas */
+  var GARDE = "cancri-tapfait-" + SLUG;
+  var dejaFait = false;
+  try { dejaFait = (Date.now() - parseInt(sessionStorage.getItem(GARDE) || "0", 10)) < 90000; } catch(e){}
+
+  if(dejaFait){
+    api({ action:"etat", jeton:j }).then(function(r){
+      if(r.raison === "carte_inconnue"){
+        location.replace("/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1");
+        return;
+      }
+      vue(
+        '<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">\u2713</span></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">'+ r.tampons +'/'+ r.objectif +'</div>'+
+        '<div class="soft show3">Tampon d\u00e9j\u00e0 compt\u00e9 \u2014 repose ton t\u00e9l\u00e9phone sur la puce \u00e0 ta prochaine visite \u2615</div>'+
+        dots(r.tampons, r.objectif)+
+        walletLink(".9s")
+      );
+    }).catch(function(){});
+    return;
+  }
+
   /* on tente le +1 */
   api({ action:"tap", jeton:j }).then(function(r){
 
@@ -223,6 +246,7 @@
     }
 
     /* SUCCÈS : +1 */
+    try { sessionStorage.setItem(GARDE, String(Date.now())); } catch(e){}
     vue(
       '<div class="disc pop"><div class="halo"></div><span class="plus">+1</span></div>'+
       '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
