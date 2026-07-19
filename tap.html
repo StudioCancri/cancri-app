@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Tampon…</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,500;1,9..144,600&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --espresso:#2A1D14;
+    --espresso-2:#40301F;
+    --crema:#F0DFC6;
+    --crema-soft:rgba(240,223,198,.6);
+    --sage:#7C9C8C;
+    --sage-deep:#5E8172;
+    --danger:#C4785B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;
+    background:linear-gradient(165deg,var(--espresso) 0%,var(--espresso-2) 100%);
+    color:var(--crema);
+    min-height:100dvh;
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .card{text-align:center;max-width:340px;width:100%;position:relative;z-index:2;}
+
+  /* ---- état chargement ---- */
+  .spinner{
+    width:52px;height:52px;margin:0 auto;
+    border:4px solid rgba(240,223,198,.2);
+    border-top-color:var(--crema);
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---- disque central (succès) ---- */
+  .disc{
+    width:132px;height:132px;margin:0 auto 26px;
+    border-radius:50%;
+    background:var(--crema);
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+    transform:scale(0);
+    box-shadow:0 20px 50px -12px rgba(0,0,0,.5);
+  }
+  .disc.pop{animation:discPop .6s cubic-bezier(.2,1.5,.4,1) forwards;}
+  @keyframes discPop{0%{transform:scale(0);}70%{transform:scale(1.1);}100%{transform:scale(1);}}
+  .disc .plus{
+    font-family:'Fraunces',serif;font-weight:600;
+    font-size:58px;color:var(--espresso);line-height:1;
+    opacity:0;
+  }
+  .disc.pop .plus{animation:fadeUp .4s ease .25s forwards;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+  .disc.full{background:var(--crema);}
+  .disc .gift{font-size:56px;opacity:0;}
+  .disc.pop .gift{animation:fadeUp .4s ease .25s forwards;}
+
+  /* halo qui pulse derrière */
+  .halo{
+    position:absolute;inset:-14px;border-radius:50%;
+    border:2px solid var(--crema);opacity:0;
+  }
+  .disc.pop .halo{animation:halo .8s ease .1s;}
+  @keyframes halo{0%{opacity:.5;transform:scale(.85);}100%{opacity:0;transform:scale(1.5);}}
+
+  .brand{
+    font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--crema-soft);margin-bottom:10px;
+    opacity:0;
+  }
+  .title{
+    font-family:'Fraunces',serif;font-style:italic;font-weight:600;
+    font-size:30px;line-height:1.15;margin-bottom:10px;
+    opacity:0;
+  }
+  .sub{
+    font-size:15px;color:var(--crema-soft);line-height:1.5;
+    opacity:0;
+  }
+  .sub b{color:var(--crema);font-weight:600;}
+  .show1{animation:fadeUp .5s ease .35s forwards;}
+  .show2{animation:fadeUp .5s ease .45s forwards;}
+  .show3{animation:fadeUp .5s ease .55s forwards;}
+
+  /* compteur de tampons en points */
+  .dots{
+    display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
+    margin-top:22px;max-width:220px;margin-left:auto;margin-right:auto;
+    opacity:0;
+  }
+  .dot{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--crema-soft);}
+  .dot.on{background:var(--crema);border-color:var(--crema);}
+
+  /* état plein */
+  .full-msg{
+    display:inline-block;margin-top:20px;padding:11px 18px;
+    border:1.5px dashed var(--crema);border-radius:12px;
+    font-size:14px;font-weight:600;color:var(--crema);
+    opacity:0;
+  }
+
+  /* erreur douce */
+  .soft{
+    font-size:14px;color:var(--crema-soft);margin-top:8px;
+    opacity:0;
+  }
+
+  .replay{
+    margin-top:30px;opacity:0;
+  }
+  .replay a{
+    color:var(--crema-soft);font-size:13px;font-weight:600;
+    text-decoration:underline;text-underline-offset:3px;
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    .disc,.disc .plus,.disc .gift{animation:none!important;transform:none!important;opacity:1!important;}
+    .brand,.title,.sub,.dots,.full-msg,.soft,.replay{animation:none!important;opacity:1!important;}
+    .spinner{animation:spin 1.2s linear infinite;}
+    .halo{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="card" id="card">
+  <div class="spinner" id="spinner"></div>
+</div>
+
+<script>
+(function(){
+  var API = "/api/carte";
+  var params = new URLSearchParams(location.search);
+  var SLUG = params.get("c") || "cafe-chartrons";
+  var CLE = "cancri-jeton-" + SLUG;
+  var card = document.getElementById("card");
+
+  function jeton(){ try { return localStorage.getItem(CLE); } catch(e){ return null; } }
+
+  function api(donnees){
+    return fetch(API, {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(donnees)
+    }).then(function(r){ return r.json(); });
+  }
+
+  function dots(n, total){
+    var h = '<div class="dots" id="dots">';
+    for(var i=0;i<total;i++){ h += '<span class="dot'+(i<n?' on':'')+'"></span>'; }
+    h += '</div>';
+    return h;
+  }
+
+  function vue(html){ card.innerHTML = html; }
+
+  /* pas encore de carte → direction inscription */
+  var j = jeton();
+  if(!j){
+    location.replace("/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1");
+    return;
+  }
+
+  /* on tente le +1 */
+  api({ action:"tap", jeton:j }).then(function(r){
+
+    if(r.raison === "carte_inconnue"){
+      location.replace("/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1");
+      return;
+    }
+
+    /* carte pleine */
+    if(r.pleine){
+      vue(
+        '<div class="disc full pop"><div class="halo"></div><div class="gift">🎁</div></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">Carte pleine !</div>'+
+        '<div class="sub show3"><b>'+ r.recompense +'</b><br>Montre l\'écran de ta carte au comptoir</div>'+
+        '<div class="replay show3" style="animation-delay:.7s"><a href="/carte.html?c='+encodeURIComponent(SLUG)+'">Voir ma carte</a></div>'
+      );
+      return;
+    }
+
+    /* refus (cooldown / limite) → message doux, pas d'échec anxiogène */
+    if(r.ok === false){
+      var msg = "Reviens tout à l'heure pour ton prochain tampon ☕";
+      if(r.raison === "cooldown") msg = "Petit instant… reviens dans quelques secondes ☕";
+      if(r.raison === "limite") msg = "Tu as déjà tamponné aujourd'hui — à bientôt !";
+      vue(
+        '<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">✓</span></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">'+ r.tampons +'/'+ r.objectif +'</div>'+
+        '<div class="soft show3">'+ msg +'</div>'+
+        dots(r.tampons, r.objectif)
+      );
+      var d = document.getElementById("dots"); if(d){ d.classList.add("show3"); d.style.animationDelay=".6s"; }
+      return;
+    }
+
+    /* SUCCÈS : +1 */
+    vue(
+      '<div class="disc pop"><div class="halo"></div><span class="plus">+1</span></div>'+
+      '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+      '<div class="title show2">Tampon ajouté ☕</div>'+
+      '<div class="sub show3">Plus que <b>'+ (r.objectif - r.tampons) +'</b> avant <b>'+ r.recompense +'</b></div>'+
+      dots(r.tampons, r.objectif)
+    );
+    var d2 = document.getElementById("dots"); if(d2){ d2.classList.add("show3"); d2.style.animationDelay=".6s"; }
+
+  }).catch(function(){
+    vue(
+      '<div class="disc pop"><span class="plus" style="font-size:40px">…</span></div>'+
+      '<div class="title show2" style="font-size:22px">Oups</div>'+
+      '<div class="soft show3">Connexion impossible. Réessaie dans un instant.</div>'
+    );
+  });
+})();
+</script>
+</body>
+</html>
