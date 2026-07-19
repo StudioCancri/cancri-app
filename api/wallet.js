@@ -168,6 +168,7 @@ function svgStrip(tampons, objectif, fondRgb, labelRgb) {
 module.exports = async (req, res) => {
   try {
     const url = new URL(req.url, "http://x");
+    console.log("wallet:", req.method, url.pathname);
     const parts = url.pathname.split("/").filter(Boolean); // ex: v1, devices, xxx, registrations, yyy, zzz
     // on retire un éventuel préfixe "api"
     if (parts[0] === "api") parts.shift();
@@ -182,10 +183,23 @@ module.exports = async (req, res) => {
       const serial = seg[5]; // = jeton de la carte
 
       if (req.method === "POST") {
-        let body = "";
-        await new Promise((r) => { req.on("data", (c) => body += c); req.on("end", r); });
         let pushToken = "";
-        try { pushToken = JSON.parse(body || "{}").pushToken || ""; } catch (e) {}
+        try {
+          if (req.body !== undefined && req.body !== null) {
+            const b = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body;
+            pushToken = (b && b.pushToken) || "";
+          } else {
+            const raw = await new Promise((resolve) => {
+              let data = "";
+              const t = setTimeout(() => resolve(data), 1500);
+              req.on("data", (c) => (data += c));
+              req.on("end", () => { clearTimeout(t); resolve(data); });
+              req.on("error", () => { clearTimeout(t); resolve(data); });
+            });
+            try { pushToken = JSON.parse(raw || "{}").pushToken || ""; } catch (e) {}
+          }
+        } catch (e) {}
+        console.log("wallet: enregistrement appareil, token présent:", pushToken ? "oui" : "NON");
         // upsert appareil
         const existe = await sb("appareils?device_id=eq." + encodeURIComponent(deviceId) + "&jeton=eq." + encodeURIComponent(serial) + "&select=id");
         if (existe && existe.length) {
