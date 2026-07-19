@@ -12,8 +12,52 @@
    ============================================================ */
 
 const { randomUUID } = require("crypto");
-let envoyerPush = null;
-try { envoyerPush = require("./wallet").envoyerPush; } catch (e) { envoyerPush = null; }
+const http2 = require("http2");
+
+function certDepuisEnv(nom) {
+  const b64 = (process.env[nom] || "").trim();
+  if (!b64) return null;
+  return Buffer.from(b64, "base64");
+}
+
+/* Envoi de la notif push Apple (méthode certificat) — local, pas d'import croisé */
+async function envoyerPush(jetonCarte) {
+  try {
+    const appareils = await sb("appareils?jeton=eq." + encodeURIComponent(jetonCarte) + "&select=push_token");
+    if (!appareils || !appareils.length) { console.log("push: aucun appareil"); return; }
+    const cert = certDepuisEnv("PASS_CERT");
+    const key = certDepuisEnv("PASS_KEY");
+    if (!cert || !key) { console.log("push: certificats manquants"); return; }
+    const passphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
+    const topic = process.env.PASS_TYPE_ID;
+
+    for (const a of appareils) {
+      await new Promise((resolve) => {
+        let client;
+        try {
+          client = http2.connect("https://api.push.apple.com:443", { cert: cert, key: key, passphrase: passphrase });
+        } catch (e) { console.log("push: connect err", e.message); return resolve(); }
+        client.on("error", (e) => { console.log("push: client err", e.message); try { client.close(); } catch (x) {} resolve(); });
+        const req = client.request({
+          ":method": "POST",
+          ":path": "/3/device/" + a.push_token,
+          "apns-topic": topic,
+          "apns-push-type": "background",
+          "apns-priority": "5",
+        });
+        let status = "";
+        req.on("response", (h) => { status = h[":status"]; });
+        req.on("data", () => {});
+        req.on("end", () => { console.log("push: envoyé, statut Apple", status); try { client.close(); } catch (x) {} resolve(); });
+        req.on("error", (e) => { console.log("push: req err", e.message); try { client.close(); } catch (x) {} resolve(); });
+        req.write(JSON.stringify({}));
+        req.end();
+      });
+    }
+  } catch (e) {
+    console.log("push: erreur globale", e.message);
+  }
+}
 
 /* on nettoie l'URL : slash final, /rest/v1 en trop, espaces… */
 function nettoyerUrl(u) {
