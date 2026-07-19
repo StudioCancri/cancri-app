@@ -126,7 +126,7 @@ module.exports = async (req, res) => {
       backgroundColor: "rgb(" + fondRgb.join(", ") + ")",
       foregroundColor: "rgb(" + fgRgb.join(", ") + ")",
       labelColor: "rgb(" + labelRgb.join(", ") + ")",
-      webServiceURL: (process.env.APP_URL || "") + "/api/wallet",
+      webServiceURL: (process.env.APP_URL || ""),
       authenticationToken: carte.jeton,
       storeCard: {},
     }));
