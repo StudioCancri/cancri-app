@@ -12,6 +12,8 @@
    ============================================================ */
 
 const { randomUUID } = require("crypto");
+let envoyerPush = null;
+try { envoyerPush = require("./wallet").envoyerPush; } catch (e) { envoyerPush = null; }
 
 /* on nettoie l'URL : slash final, /rest/v1 en trop, espaces… */
 function nettoyerUrl(u) {
@@ -200,6 +202,8 @@ module.exports = async (req, res) => {
         method: "POST",
         body: { carte_id: carte.id, valeur: 1 },
       });
+      /* mise à jour du pass Wallet (silencieux, on n'attend pas) */
+      if (envoyerPush) { try { await envoyerPush(carte.jeton); } catch (e) { console.error("push:", e.message); } }
       return res
         .status(200)
         .json(etat(maj[0], commerce, { gagne: 1 }));
@@ -224,6 +228,7 @@ module.exports = async (req, res) => {
           dernier_tap: new Date().toISOString(),
         },
       });
+      if (envoyerPush) { try { await envoyerPush(carte.jeton); } catch (e) { console.error("push:", e.message); } }
       return res
         .status(200)
         .json(etat(maj[0], commerce, { offert: true }));
