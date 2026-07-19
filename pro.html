@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MOME — Espace commerçant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --terracotta:#D45234;
+    --terracotta-deep:#B23E23;
+    --terracotta-soft:rgba(212,82,52,.10);
+    --cream:#FBF7F2;
+    --cream-2:#F4ECE2;
+    --ink:#2A2018;
+    --ink-soft:rgba(42,32,24,.60);
+    --ink-faint:rgba(42,32,24,.38);
+    --line:rgba(42,32,24,.12);
+    --sage:#7A8B6F;
+    --amber:#C68A2E;
+    --card:#FFFFFF;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    line-height:1.5;
+    min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ============ LOGIN ============ */
+  .login-wrap{
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:24px;position:relative;overflow:hidden;
+  }
+  .login-wrap::before{
+    content:"";position:absolute;top:-30%;right:-20%;width:70%;height:70%;
+    background:radial-gradient(circle,var(--terracotta-soft),transparent 70%);
+    pointer-events:none;
+  }
+  .login-card{
+    width:100%;max-width:400px;position:relative;z-index:2;
+  }
+  .brand-mark{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:40px;
+  }
+  .brand-mark .logo{
+    font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.02em;
+    color:var(--terracotta);
+  }
+  .brand-mark .tag{
+    font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);padding-bottom:5px;
+  }
+  .login-title{
+    font-family:'Fraunces',serif;font-weight:600;font-size:clamp(28px,6vw,34px);
+    line-height:1.15;letter-spacing:-.02em;margin-bottom:12px;
+  }
+  .login-sub{font-size:14.5px;color:var(--ink-soft);margin-bottom:32px;max-width:34ch;}
+  .field-label{
+    font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:8px;display:block;
+  }
+  .input{
+    width:100%;border:1.5px solid var(--line);border-radius:13px;
+    padding:15px 16px;font:inherit;font-size:15px;background:var(--card);color:var(--ink);
+    transition:border-color .15s ease;
+  }
+  .input:focus{outline:none;border-color:var(--terracotta);}
+  .btn{
+    width:100%;border:none;border-radius:13px;padding:16px;margin-top:14px;
+    background:var(--terracotta);color:#fff;
+    font:inherit;font-size:15px;font-weight:700;cursor:pointer;
+    transition:background .15s ease,transform .1s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover{background:var(--terracotta-deep);}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .login-msg{
+    margin-top:20px;padding:14px 16px;border-radius:12px;font-size:13.5px;
+    display:none;line-height:1.5;
+  }
+  .login-msg.ok{display:block;background:rgba(122,139,111,.12);color:#4d5c43;border:1px solid rgba(122,139,111,.3);}
+  .login-msg.err{display:block;background:var(--terracotta-soft);color:var(--terracotta-deep);border:1px solid rgba(212,82,52,.25);}
+  .login-foot{
+    margin-top:36px;font-size:12px;color:var(--ink-faint);line-height:1.6;
+  }
+
+  /* ============ APP ============ */
+  .app{display:none;max-width:760px;margin:0 auto;padding:0 20px 60px;}
+  .app.on{display:block;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 0 20px;position:sticky;top:0;z-index:20;
+    background:linear-gradient(var(--cream) 78%,transparent);
+  }
+  .topbar .who{display:flex;align-items:center;gap:12px;}
+  .topbar .avatar{
+    width:42px;height:42px;border-radius:13px;flex:none;
+    background:var(--terracotta);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;font-size:18px;
+  }
+  .topbar .name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:-.01em;line-height:1.1;}
+  .topbar .role{font-size:11.5px;color:var(--ink-soft);font-weight:600;}
+  .logout{
+    border:1px solid var(--line);background:var(--card);color:var(--ink-soft);
+    font:inherit;font-size:12.5px;font-weight:600;border-radius:10px;padding:9px 13px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:color .15s;
+  }
+  .logout:hover{color:var(--terracotta);border-color:var(--terracotta);}
+
+  .greeting{
+    font-family:'Fraunces',serif;font-weight:500;font-size:15px;font-style:italic;
+    color:var(--ink-soft);margin-bottom:22px;
+  }
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
+  @media(min-width:560px){.stats{grid-template-columns:repeat(4,1fr);}}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:18px 16px;position:relative;overflow:hidden;
+  }
+  .stat .n{
+    font-family:'Fraunces',serif;font-weight:600;font-size:34px;line-height:1;
+    letter-spacing:-.02em;margin-bottom:6px;font-variant-numeric:tabular-nums;
+  }
+  .stat .l{font-size:11.5px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
+  .stat.accent .n{color:var(--terracotta);}
+  .stat.warn .n{color:var(--amber);}
+  .stat .spark{position:absolute;right:12px;top:14px;font-size:15px;opacity:.5;}
+
+  .section-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    margin:34px 0 14px;
+  }
+  .section-head h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:20px;letter-spacing:-.01em;
+  }
+  .section-head .count{font-size:12.5px;color:var(--ink-soft);font-weight:600;}
+
+  .search{
+    width:100%;border:1.5px solid var(--line);border-radius:12px;
+    padding:12px 15px;font:inherit;font-size:14px;background:var(--card);color:var(--ink);
+    margin-bottom:14px;
+  }
+  .search:focus{outline:none;border-color:var(--terracotta);}
+
+  /* liste clients */
+  .clients{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  .client{
+    display:flex;align-items:center;gap:14px;padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .client:last-child{border-bottom:none;}
+  .client .ini{
+    width:38px;height:38px;border-radius:11px;flex:none;
+    background:var(--cream-2);color:var(--terracotta);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;
+  }
+  .client .info{flex:1;min-width:0;}
+  .client .cn{font-weight:600;font-size:14.5px;}
+  .client .cd{font-size:12px;color:var(--ink-soft);}
+  .client .prog{display:flex;align-items:center;gap:9px;flex:none;}
+  .client .bar{
+    width:64px;height:7px;border-radius:99px;background:var(--cream-2);overflow:hidden;
+  }
+  .client .bar span{display:block;height:100%;background:var(--terracotta);border-radius:99px;}
+  .client .frac{font-size:12.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;min-width:38px;text-align:right;}
+  .client.full .frac{color:var(--sage);}
+  .client.full .bar span{background:var(--sage);}
+
+  .empty{
+    text-align:center;padding:44px 20px;color:var(--ink-soft);font-size:14px;
+  }
+  .empty .big{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--ink);margin-bottom:6px;}
+
+  .loading{text-align:center;padding:60px 20px;color:var(--ink-faint);font-size:14px;}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <div class="brand-mark">
+      <span class="logo">MOME</span>
+      <span class="tag">Espace commerçant</span>
+    </div>
+    <h1 class="login-title">Votre comptoir,<br>côté chiffres.</h1>
+    <p class="login-sub">Suivez vos habitués, vos cartes remplies et qui revient. Connectez-vous avec votre email.</p>
+
+    <label class="field-label" for="email">Adresse email</label>
+    <input class="input" id="email" type="email" placeholder="vous@mome.fr" autocomplete="email" inputmode="email">
+    <button class="btn" id="sendBtn">Recevoir mon lien de connexion</button>
+
+    <div class="login-msg" id="loginMsg"></div>
+
+    <p class="login-foot">Pas de mot de passe à retenir. On vous envoie un lien sécurisé, valable quelques minutes, à usage unique.</p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app" id="appView">
+  <div class="topbar">
+    <div class="who">
+      <div class="avatar" id="avatar">M</div>
+      <div>
+        <div class="name" id="commerceName">MOME</div>
+        <div class="role" id="userRole">Propriétaire</div>
+      </div>
+    </div>
+    <button class="logout" id="logoutBtn">Déconnexion</button>
+  </div>
+
+  <div class="greeting" id="greeting">Bonjour.</div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="n" id="stActives">–</div><div class="l">Clients fidèles</div></div>
+    <div class="stat accent"><div class="n" id="stSemaine">–</div><div class="l">Passages cette semaine</div></div>
+    <div class="stat warn"><div class="n" id="stInactifs">–</div><div class="l">N'est pas revenu depuis 3 sem.</div></div>
+    <div class="stat"><div class="n" id="stPleines">–</div><div class="l">Cartes pleines à offrir</div></div>
+  </div>
+
+  <div class="section-head">
+    <h2>Vos clients</h2>
+    <span class="count" id="clientCount"></span>
+  </div>
+
+  <input class="search" id="search" type="text" placeholder="Rechercher un prénom…">
+
+  <div id="clientsZone">
+    <div class="loading">Chargement…</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ================= CONFIG ================= */
+  const SUPABASE_URL = "https://xiyqdwezpwhxdqlcgygl.supabase.co";
+ const SUPABASE_ANON = "sb_publishable_8w1Y55cfD6rGVHGJDSsGAw_0w6GiaNm";
+  /* ========================================== */
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const $ = (id) => document.getElementById(id);
+  let toutClients = [];
+
+  /* ---------- LOGIN ---------- */
+  async function envoyerLien(){
+    const email = ($("email").value || "").trim();
+    const msg = $("loginMsg");
+    if(!email || email.indexOf("@") < 1){
+      msg.className = "login-msg err";
+      msg.textContent = "Entrez une adresse email valide.";
+      return;
+    }
+    $("sendBtn").disabled = true;
+    $("sendBtn").textContent = "Envoi…";
+    const { error } = await sb.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: window.location.origin + "/pro.html" }
+    });
+    $("sendBtn").disabled = false;
+    $("sendBtn").textContent = "Recevoir mon lien de connexion";
+    if(error){
+      msg.className = "login-msg err";
+      msg.textContent = "Impossible d'envoyer le lien : " + error.message;
+    } else {
+      msg.className = "login-msg ok";
+      msg.textContent = "C'est envoyé ! Ouvrez votre boîte mail et cliquez sur le lien pour vous connecter.";
+    }
+  }
+  $("sendBtn").addEventListener("click", envoyerLien);
+  $("email").addEventListener("keydown", (e) => { if(e.key === "Enter") envoyerLien(); });
+
+  $("logoutBtn").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  /* ---------- CHARGEMENT DU DASHBOARD ---------- */
+  function initiales(prenom){
+    if(!prenom) return "?";
+    return prenom.trim().charAt(0).toUpperCase();
+  }
+
+  function heureDuJour(){
+    const h = new Date().getHours();
+    if(h < 12) return "Bonjour";
+    if(h < 18) return "Bon après-midi";
+    return "Bonsoir";
+  }
+
+  async function chargerDashboard(session){
+    $("loginView").style.display = "none";
+    $("appView").classList.add("on");
+
+    // le commerce du membre connecté (la RLS ne renvoie que le sien)
+    const { data: commerces, error: ec } = await sb.from("commerces").select("*");
+    if(ec || !commerces || !commerces.length){
+      $("clientsZone").innerHTML = '<div class="empty"><div class="big">Aucun commerce lié</div>Votre compte n\'est rattaché à aucun commerce. Contactez Studio Cancri.</div>';
+      return;
+    }
+    const commerce = commerces[0];
+    $("commerceName").textContent = commerce.nom;
+    $("avatar").textContent = commerce.nom.charAt(0).toUpperCase();
+    $("greeting").textContent = heureDuJour() + ", voici où en est " + commerce.nom + ".";
+
+    // les cartes de ce commerce
+    const { data: cartes } = await sb.from("cartes")
+      .select("id, prenom, tampons, dernier_tap, cree_le")
+      .eq("commerce_id", commerce.id)
+      .order("dernier_tap", { ascending: false });
+
+    const liste = cartes || [];
+    toutClients = liste;
+
+    // stats
+    const objectif = commerce.objectif;
+    const maintenant = Date.now();
+    const semaine = 7 * 24 * 3600 * 1000;
+    const troisSem = 21 * 24 * 3600 * 1000;
+
+    const actives = liste.length;
+    const passagesSemaine = liste.filter(c => c.dernier_tap && (maintenant - new Date(c.dernier_tap).getTime()) < semaine).length;
+    const inactifs = liste.filter(c => c.dernier_tap && (maintenant - new Date(c.dernier_tap).getTime()) > troisSem).length;
+    const pleines = liste.filter(c => c.tampons >= objectif).length;
+
+    $("stActives").textContent = actives;
+    $("stSemaine").textContent = passagesSemaine;
+    $("stInactifs").textContent = inactifs;
+    $("stPleines").textContent = pleines;
+
+    afficherClients(liste, objectif);
+  }
+
+  function afficherClients(liste, objectif){
+    $("clientCount").textContent = liste.length + (liste.length > 1 ? " clients" : " client");
+    if(!liste.length){
+      $("clientsZone").innerHTML = '<div class="empty"><div class="big">Pas encore de client</div>Dès que quelqu\'un scanne la puce, il apparaîtra ici.</div>';
+      return;
+    }
+    let html = '<div class="clients">';
+    for(const c of liste){
+      const plein = c.tampons >= objectif;
+      const pct = Math.min(100, Math.round((c.tampons / objectif) * 100));
+      html += '<div class="client' + (plein ? ' full' : '') + '">'+
+        '<div class="ini">' + initiales(c.prenom) + '</div>'+
+        '<div class="info">'+
+          '<div class="cn">' + (c.prenom || "Client") + '</div>'+
+          '<div class="cd">' + derniereVisite(c.dernier_tap) + '</div>'+
+        '</div>'+
+        '<div class="prog">'+
+          '<div class="bar"><span style="width:' + pct + '%"></span></div>'+
+          '<div class="frac">' + c.tampons + '/' + objectif + '</div>'+
+        '</div>'+
+      '</div>';
+    }
+    html += '</div>';
+    $("clientsZone").innerHTML = html;
+  }
+
+  function derniereVisite(d){
+    if(!d) return "Nouveau";
+    const jours = Math.floor((Date.now() - new Date(d).getTime()) / (24*3600*1000));
+    if(jours === 0) return "Vu aujourd'hui";
+    if(jours === 1) return "Vu hier";
+    if(jours < 7) return "Vu il y a " + jours + " jours";
+    if(jours < 14) return "Vu la semaine dernière";
+    return "Vu il y a " + Math.floor(jours/7) + " semaines";
+  }
+
+  /* recherche */
+  $("search").addEventListener("input", function(){
+    const q = this.value.trim().toLowerCase();
+    const filtres = q ? toutClients.filter(c => (c.prenom || "").toLowerCase().includes(q)) : toutClients;
+    // on relit l'objectif depuis le premier rendu — stocké sur le commerce, on le récupère via un attribut
+    afficherClients(filtres, window.__objectif || 10);
+  });
+
+  /* ---------- démarrage : session ? ---------- */
+  sb.auth.getSession().then(({ data }) => {
+    if(data.session){
+      // mémorise l'objectif pour la recherche
+      sb.from("commerces").select("objectif").then(({data:d}) => {
+        window.__objectif = (d && d[0]) ? d[0].objectif : 10;
+      });
+      chargerDashboard(data.session);
+    }
+  });
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if(session && event === "SIGNED_IN"){
+      sb.from("commerces").select("objectif").then(({data:d}) => {
+        window.__objectif = (d && d[0]) ? d[0].objectif : 10;
+      });
+      chargerDashboard(session);
+    }
+  });
+})();
+</script>
+</body>
+</html>
