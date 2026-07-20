@@ -432,6 +432,15 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     }
   }
   $("sendBtn").addEventListener("click", envoyerLien);
+  document.getElementById("otpBtn").addEventListener("click", async function(){
+    const code = (document.getElementById("otpCode").value || "").trim();
+    const msg = $("loginMsg");
+    if(code.length < 6){ msg.className = "login-msg err"; msg.textContent = "Entrez le code à 6 chiffres."; return; }
+    this.disabled = true; this.textContent = "Connexion…";
+    const { error } = await sb.auth.verifyOtp({ email: window.__emailOtp, token: code, type: "email" });
+    this.disabled = false; this.textContent = "Me connecter";
+    if(error){ msg.className = "login-msg err"; msg.textContent = "Code incorrect ou expiré. Réessayez."; }
+  });
   $("email").addEventListener("keydown", (e) => { if(e.key === "Enter") envoyerLien(); });
 
   $("logoutBtn").addEventListener("click", async () => {
