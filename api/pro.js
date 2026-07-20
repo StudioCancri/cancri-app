@@ -119,10 +119,10 @@ module.exports = async (req, res) => {
       const message = (body.message || "").toString().trim().slice(0, 120);
       if (!message) return res.status(200).json({ ok: false, raison: "message_vide" });
 
-      // quota : 2 campagnes / 7 jours glissants
-      const ilya7j = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya7j + "&select=id");
-      if (recentes && recentes.length >= 2) {
+      // quota : 20 campagnes / jour glissant (mode démo)
+      const ilya24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya24h + "&select=id");
+      if (recentes && recentes.length >= 20) {
         return res.status(200).json({ ok: false, raison: "quota", restants: 0 });
       }
 
@@ -148,7 +148,7 @@ module.exports = async (req, res) => {
         body: { commerce_id: commerceId, message: message, nb_clients: jetons.length },
       });
 
-      const restants = Math.max(0, 2 - ((recentes ? recentes.length : 0) + 1));
+      const restants = Math.max(0, 20 - ((recentes ? recentes.length : 0) + 1));
       return res.status(200).json({ ok: true, nb_clients: jetons.length, envoyes: envoyes, restants: restants });
     }
 
@@ -157,10 +157,10 @@ module.exports = async (req, res) => {
       const membre3 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
       if (!membre3 || !membre3.length) return res.status(403).json({ ok: false });
       const commerceId = membre3[0].commerce_id;
-      const ilya7j = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya7j + "&select=id");
+      const ilya24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya24h + "&select=id");
       const utilisees = recentes ? recentes.length : 0;
-      return res.status(200).json({ ok: true, restants: Math.max(0, 2 - utilisees), total: 2 });
+      return res.status(200).json({ ok: true, restants: Math.max(0, 20 - utilisees), total: 20 });
     }
 
 
