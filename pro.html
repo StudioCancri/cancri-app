@@ -1,210 +1,759 @@
-/* ============================================================
-   API CANCRI — /api/pro
-   Actions commerçant sécurisées (app pro.html).
-   Chaque requête est authentifiée par le token de session
-   Supabase de l'utilisateur, et on vérifie qu'il est bien
-   membre du commerce concerné avant toute écriture.
-
-   Actions : etat_carte, ajuster_tampons, valider_recompense
-   Après écriture → push Wallet automatique.
-   ============================================================ */
-
-const http2 = require("http2");
-
-function nettoyerUrl(u) {
-  return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
-}
-const SUPABASE_URL = nettoyerUrl(process.env.SUPABASE_URL);
-const SECRET = (process.env.SUPABASE_SECRET || "").trim();
-
-/* client Supabase avec la clé service (pour écrire), mais on
-   valide TOUJOURS les droits de l'utilisateur avant. */
-async function sb(chemin, options) {
-  options = options || {};
-  const headers = { apikey: SECRET, Authorization: "Bearer " + SECRET, "Content-Type": "application/json" };
-  if (options.method === "POST" || options.method === "PATCH") headers["Prefer"] = "return=representation";
-  const r = await fetch(SUPABASE_URL + "/rest/v1/" + chemin, {
-    method: options.method || "GET",
-    headers: headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
-  if (!r.ok) throw new Error("Supabase " + r.status + " : " + (await r.text()));
-  const t = await r.text();
-  return t ? JSON.parse(t) : null;
-}
-
-/* Vérifie le token de session et renvoie l'user_id, ou null */
-async function userDepuisToken(token) {
-  if (!token) return null;
-  const r = await fetch(SUPABASE_URL + "/auth/v1/user", {
-    headers: { apikey: SECRET, Authorization: "Bearer " + token },
-  });
-  if (!r.ok) return null;
-  const u = await r.json();
-  return u && u.id ? u.id : null;
-}
-
-/* Vérifie que l'user est membre du commerce de cette carte.
-   Renvoie { carte, commerce } si OK, sinon null. */
-async function verifierAcces(userId, carteId) {
-  const cartes = await sb("cartes?id=eq." + encodeURIComponent(carteId) + "&select=*");
-  if (!cartes || !cartes[0]) return null;
-  const carte = cartes[0];
-  const membre = await sb("membres?user_id=eq." + encodeURIComponent(userId) +
-    "&commerce_id=eq." + carte.commerce_id + "&select=role");
-  if (!membre || !membre.length) return null;
-  const commerces = await sb("commerces?id=eq." + carte.commerce_id + "&select=*");
-  return { carte: carte, commerce: commerces[0], role: membre[0].role };
-}
-
-function certDepuisEnv(nom) {
-  const b64 = (process.env[nom] || "").trim();
-  if (!b64) return null;
-  return Buffer.from(b64, "base64");
-}
-
-/* Envoi push Wallet (identique à carte.js) */
-async function envoyerPush(jetonCarte) {
-  try {
-    const appareils = await sb("appareils?jeton=eq." + encodeURIComponent(jetonCarte) + "&select=push_token");
-    if (!appareils || !appareils.length) return;
-    const cert = certDepuisEnv("PASS_CERT");
-    const key = certDepuisEnv("PASS_KEY");
-    if (!cert || !key) return;
-    const passphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
-    const topic = process.env.PASS_TYPE_ID;
-    for (const a of appareils) {
-      await new Promise((resolve) => {
-        let client;
-        try { client = http2.connect("https://api.push.apple.com:443", { cert, key, passphrase }); }
-        catch (e) { return resolve(); }
-        client.on("error", () => { try { client.close(); } catch (x) {} resolve(); });
-        const req = client.request({
-          ":method": "POST", ":path": "/3/device/" + a.push_token,
-          "apns-topic": topic, "apns-push-type": "background", "apns-priority": "5",
-        });
-        req.on("response", () => {});
-        req.on("end", () => { try { client.close(); } catch (x) {} resolve(); });
-        req.on("error", () => { try { client.close(); } catch (x) {} resolve(); });
-        req.write(JSON.stringify({})); req.end();
-      });
-    }
-  } catch (e) { console.log("pro push:", e.message); }
-}
-
-module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(200).json({ ok: true, info: "API pro" });
-
-  try {
-    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    const userId = await userDepuisToken(token);
-    if (!userId) return res.status(401).json({ ok: false, raison: "non_connecte" });
-
-    let body = req.body;
-    if (typeof body === "string") body = JSON.parse(body || "{}");
-    body = body || {};
-    const { action, carte_id } = body;
-
-    /* ---- ENVOYER UNE CAMPAGNE (notif à tous les clients) ---- */
-    if (action === "envoyer_campagne") {
-      // vérifier le membre + récupérer le commerce depuis le membre (pas via une carte)
-      const membre2 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
-      if (!membre2 || !membre2.length) return res.status(403).json({ ok: false, raison: "acces_refuse" });
-      const commerceId = membre2[0].commerce_id;
-
-      const message = (body.message || "").toString().trim().slice(0, 120);
-      if (!message) return res.status(200).json({ ok: false, raison: "message_vide" });
-
-      // quota : 2 campagnes / 7 jours glissants
-      const ilya7j = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya7j + "&select=id");
-      if (recentes && recentes.length >= 2) {
-        return res.status(200).json({ ok: false, raison: "quota", restants: 0 });
-      }
-
-      // 1. mettre à jour le message du commerce (les pass le liront)
-      await sb("commerces?id=eq." + commerceId, {
-        method: "PATCH",
-        body: { message_actuel: message, message_maj: new Date().toISOString() },
-      });
-
-      // 2. récupérer toutes les cartes du commerce
-      const cartesC = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
-      const jetons = (cartesC || []).map((c) => c.jeton);
-
-      // 3. push à tous (en série, best-effort)
-      let envoyes = 0;
-      for (const jt of jetons) {
-        try { await envoyerPush(jt); envoyes++; } catch (e) {}
-      }
-
-      // 4. journaliser la campagne
-      await sb("campagnes", {
-        method: "POST",
-        body: { commerce_id: commerceId, message: message, nb_clients: jetons.length },
-      });
-
-      const restants = Math.max(0, 2 - ((recentes ? recentes.length : 0) + 1));
-      return res.status(200).json({ ok: true, nb_clients: jetons.length, envoyes: envoyes, restants: restants });
-    }
-
-    /* ---- QUOTA RESTANT (pour afficher dans l'app) ---- */
-    if (action === "quota_campagne") {
-      const membre3 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
-      if (!membre3 || !membre3.length) return res.status(403).json({ ok: false });
-      const commerceId = membre3[0].commerce_id;
-      const ilya7j = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
-      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya7j + "&select=id");
-      const utilisees = recentes ? recentes.length : 0;
-      return res.status(200).json({ ok: true, restants: Math.max(0, 2 - utilisees), total: 2 });
-    }
-
-
-
-    const acces = await verifierAcces(userId, carte_id);
-    if (!acces) return res.status(403).json({ ok: false, raison: "acces_refuse" });
-    const { carte, commerce } = acces;
-
-    /* ---- AJUSTER TAMPONS (valeur absolue, bornée) ---- */
-    if (action === "ajuster_tampons") {
-      let val = parseInt(body.tampons, 10);
-      if (isNaN(val)) return res.status(200).json({ ok: false, raison: "valeur_invalide" });
-      val = Math.max(0, Math.min(commerce.objectif, val));
-      const maj = await sb("cartes?id=eq." + carte.id, {
-        method: "PATCH",
-        body: { tampons: val, dernier_tap: new Date().toISOString() },
-      });
-      await envoyerPush(carte.jeton);
-      return res.status(200).json({ ok: true, tampons: maj[0].tampons });
-    }
-
-    /* ---- VALIDER RÉCOMPENSE (carte pleine → remise à 0) ---- */
-    if (action === "valider_recompense") {
-      if (carte.tampons < commerce.objectif) {
-        return res.status(200).json({ ok: false, raison: "pas_pleine" });
-      }
-      const maj = await sb("cartes?id=eq." + carte.id, {
-        method: "PATCH",
-        body: { tampons: 0, dernier_tap: new Date().toISOString() },
-      });
-      await sb("taps", { method: "POST", body: { carte_id: carte.id, valeur: 0 } });
-      await envoyerPush(carte.jeton);
-      return res.status(200).json({ ok: true, tampons: 0, offert: true });
-    }
-
-    /* ---- HISTORIQUE / ÉTAT d'une carte ---- */
-    if (action === "historique") {
-      const taps = await sb("taps?carte_id=eq." + carte.id + "&select=valeur,cree_le&order=cree_le.desc&limit=20");
-      return res.status(200).json({ ok: true, carte: carte, taps: taps || [] });
-    }
-
-    return res.status(200).json({ ok: false, raison: "action_inconnue" });
-  } catch (e) {
-    console.error("pro error:", e.message || e);
-    return res.status(500).json({ ok: false, raison: "erreur_serveur" });
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MOME — Espace commerçant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --terracotta:#D45234;
+    --terracotta-deep:#B23E23;
+    --terracotta-soft:rgba(212,82,52,.10);
+    --cream:#FBF7F2;
+    --cream-2:#F4ECE2;
+    --ink:#2A2018;
+    --ink-soft:rgba(42,32,24,.60);
+    --ink-faint:rgba(42,32,24,.38);
+    --line:rgba(42,32,24,.12);
+    --sage:#7A8B6F;
+    --amber:#C68A2E;
+    --card:#FFFFFF;
   }
-};
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;
+    background:var(--cream);
+    color:var(--ink);
+    line-height:1.5;
+    min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ============ LOGIN ============ */
+  .login-wrap{
+    min-height:100dvh;display:flex;align-items:center;justify-content:center;
+    padding:24px;position:relative;overflow:hidden;
+  }
+  .login-wrap::before{
+    content:"";position:absolute;top:-30%;right:-20%;width:70%;height:70%;
+    background:radial-gradient(circle,var(--terracotta-soft),transparent 70%);
+    pointer-events:none;
+  }
+  .login-card{
+    width:100%;max-width:400px;position:relative;z-index:2;
+  }
+  .brand-mark{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:40px;
+  }
+  .brand-mark .logo{
+    font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.02em;
+    color:var(--terracotta);
+  }
+  .brand-mark .tag{
+    font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--ink-faint);padding-bottom:5px;
+  }
+  .login-title{
+    font-family:'Fraunces',serif;font-weight:600;font-size:clamp(28px,6vw,34px);
+    line-height:1.15;letter-spacing:-.02em;margin-bottom:12px;
+  }
+  .login-sub{font-size:14.5px;color:var(--ink-soft);margin-bottom:32px;max-width:34ch;}
+  .field-label{
+    font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--ink-soft);margin-bottom:8px;display:block;
+  }
+  .input{
+    width:100%;border:1.5px solid var(--line);border-radius:13px;
+    padding:15px 16px;font:inherit;font-size:15px;background:var(--card);color:var(--ink);
+    transition:border-color .15s ease;
+  }
+  .input:focus{outline:none;border-color:var(--terracotta);}
+  .btn{
+    width:100%;border:none;border-radius:13px;padding:16px;margin-top:14px;
+    background:var(--terracotta);color:#fff;
+    font:inherit;font-size:15px;font-weight:700;cursor:pointer;
+    transition:background .15s ease,transform .1s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:hover{background:var(--terracotta-deep);}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.5;cursor:default;}
+  .login-msg{
+    margin-top:20px;padding:14px 16px;border-radius:12px;font-size:13.5px;
+    display:none;line-height:1.5;
+  }
+  .login-msg.ok{display:block;background:rgba(122,139,111,.12);color:#4d5c43;border:1px solid rgba(122,139,111,.3);}
+  .login-msg.err{display:block;background:var(--terracotta-soft);color:var(--terracotta-deep);border:1px solid rgba(212,82,52,.25);}
+  .login-foot{
+    margin-top:36px;font-size:12px;color:var(--ink-faint);line-height:1.6;
+  }
+
+  /* ============ APP ============ */
+  .app{display:none;max-width:760px;margin:0 auto;padding:0 20px 60px;}
+  .app.on{display:block;}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 0 20px;position:sticky;top:0;z-index:20;
+    background:linear-gradient(var(--cream) 78%,transparent);
+  }
+  .topbar .who{display:flex;align-items:center;gap:12px;}
+  .topbar .avatar{
+    width:42px;height:42px;border-radius:13px;flex:none;
+    background:var(--terracotta);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;font-size:18px;
+  }
+  .topbar .name{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:-.01em;line-height:1.1;}
+  .topbar .role{font-size:11.5px;color:var(--ink-soft);font-weight:600;}
+  .logout{
+    border:1px solid var(--line);background:var(--card);color:var(--ink-soft);
+    font:inherit;font-size:12.5px;font-weight:600;border-radius:10px;padding:9px 13px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:color .15s;
+  }
+  .logout:hover{color:var(--terracotta);border-color:var(--terracotta);}
+
+  .greeting{
+    font-family:'Fraunces',serif;font-weight:500;font-size:15px;font-style:italic;
+    color:var(--ink-soft);margin-bottom:22px;
+  }
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px;}
+  @media(min-width:560px){.stats{grid-template-columns:repeat(4,1fr);}}
+  .stat{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:18px 16px;position:relative;overflow:hidden;
+  }
+  .stat .n{
+    font-family:'Fraunces',serif;font-weight:600;font-size:34px;line-height:1;
+    letter-spacing:-.02em;margin-bottom:6px;font-variant-numeric:tabular-nums;
+  }
+  .stat .l{font-size:11.5px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
+  .stat.accent .n{color:var(--terracotta);}
+  .stat.warn .n{color:var(--amber);}
+  .stat .spark{position:absolute;right:12px;top:14px;font-size:15px;opacity:.5;}
+
+  .section-head{
+    display:flex;align-items:baseline;justify-content:space-between;
+    margin:34px 0 14px;
+  }
+  .section-head h2{
+    font-family:'Fraunces',serif;font-weight:600;font-size:20px;letter-spacing:-.01em;
+  }
+  .section-head .count{font-size:12.5px;color:var(--ink-soft);font-weight:600;}
+
+  .search{
+    width:100%;border:1.5px solid var(--line);border-radius:12px;
+    padding:12px 15px;font:inherit;font-size:14px;background:var(--card);color:var(--ink);
+    margin-bottom:14px;
+  }
+  .search:focus{outline:none;border-color:var(--terracotta);}
+
+  /* liste clients */
+  .clients{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;}
+  .client{
+    display:flex;align-items:center;gap:14px;padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .client:last-child{border-bottom:none;}
+  .client .ini{
+    width:38px;height:38px;border-radius:11px;flex:none;
+    background:var(--cream-2);color:var(--terracotta);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;
+  }
+  .client .info{flex:1;min-width:0;}
+  .client .cn{font-weight:600;font-size:14.5px;}
+  .client .cd{font-size:12px;color:var(--ink-soft);}
+  .client .prog{display:flex;align-items:center;gap:9px;flex:none;}
+  .client .bar{
+    width:64px;height:7px;border-radius:99px;background:var(--cream-2);overflow:hidden;
+  }
+  .client .bar span{display:block;height:100%;background:var(--terracotta);border-radius:99px;}
+  .client .frac{font-size:12.5px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;min-width:38px;text-align:right;}
+  .client.full .frac{color:var(--sage);}
+  .client.full .bar span{background:var(--sage);}
+
+  .empty{
+    text-align:center;padding:44px 20px;color:var(--ink-soft);font-size:14px;
+  }
+  .empty .big{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--ink);margin-bottom:6px;}
+
+  .loading{text-align:center;padding:60px 20px;color:var(--ink-faint);font-size:14px;}
+
+
+  .client{cursor:pointer;transition:background .12s ease;-webkit-tap-highlight-color:transparent;}
+  .client:hover{background:var(--cream);}
+  .client:active{background:var(--cream-2);}
+
+
+  /* ---- campagne / notif ---- */
+  .campagne{
+    background:linear-gradient(150deg,var(--terracotta),var(--terracotta-deep));
+    border-radius:18px;padding:20px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;
+  }
+  .campagne::before{content:"";position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);}
+  .campagne .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;position:relative;}
+  .campagne .ct{font-family:'Fraunces',serif;font-weight:600;font-size:19px;}
+  .campagne .cq{font-size:11.5px;font-weight:600;background:rgba(255,255,255,.18);padding:5px 10px;border-radius:99px;}
+  .campagne .cs{font-size:13px;opacity:.9;margin-bottom:16px;position:relative;}
+  .campagne textarea{
+    width:100%;border:none;border-radius:12px;padding:14px;font:inherit;font-size:14.5px;
+    resize:none;min-height:70px;background:rgba(255,255,255,.95);color:var(--ink);position:relative;
+  }
+  .campagne textarea:focus{outline:2px solid rgba(255,255,255,.6);}
+  .campagne .cbar{display:flex;align-items:center;justify-content:space-between;margin-top:12px;position:relative;}
+  .campagne .cc{font-size:12px;opacity:.85;}
+  .campagne .csend{
+    border:none;background:#fff;color:var(--terracotta);font:inherit;font-size:14px;font-weight:700;
+    border-radius:11px;padding:12px 20px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .1s;
+  }
+  .campagne .csend:active{transform:scale(.97);}
+  .campagne .csend:disabled{opacity:.5;cursor:default;}
+  .campagne .cmsg{font-size:13px;margin-top:12px;position:relative;display:none;}
+  .campagne .cmsg.on{display:block;}
+  .quick{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;position:relative;}
+  .quick button{
+    border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;
+    font:inherit;font-size:12px;font-weight:600;border-radius:99px;padding:7px 12px;cursor:pointer;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .quick button:active{transform:scale(.96);}
+
+  /* ---- fiche client (panneau) ---- */
+  .sheet-bg{
+    position:fixed;inset:0;z-index:40;background:rgba(42,32,24,.4);
+    backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+    display:none;align-items:flex-end;justify-content:center;
+  }
+  .sheet-bg.on{display:flex;}
+  @media(min-width:560px){.sheet-bg.on{align-items:center;}}
+  .sheet{
+    width:100%;max-width:460px;background:var(--cream);
+    border-radius:24px 24px 0 0;padding:8px 22px 30px;
+    max-height:88vh;overflow-y:auto;
+    animation:sheetUp .3s cubic-bezier(.2,.9,.3,1);
+  }
+  @media(min-width:560px){.sheet{border-radius:22px;}}
+  @keyframes sheetUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+  .sheet-grab{width:38px;height:4px;border-radius:99px;background:var(--line);margin:8px auto 20px;}
+  .sheet-head{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+  .sheet-head .ini{
+    width:52px;height:52px;border-radius:15px;flex:none;
+    background:var(--terracotta);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Fraunces',serif;font-weight:600;font-size:22px;
+  }
+  .sheet-head .sn{font-family:'Fraunces',serif;font-weight:600;font-size:22px;letter-spacing:-.01em;}
+  .sheet-head .sd{font-size:12.5px;color:var(--ink-soft);}
+  .sheet-close{
+    margin-left:auto;border:none;background:var(--card);border:1px solid var(--line);
+    width:34px;height:34px;border-radius:10px;font-size:16px;color:var(--ink-soft);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+
+  /* jauge tampons dans la fiche */
+  .sheet-prog{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;}
+  .sheet-prog .top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;}
+  .sheet-prog .big{font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+  .sheet-prog .lab{font-size:12px;color:var(--ink-soft);font-weight:600;}
+  .sheet-prog .grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .sheet-prog .d{width:22px;height:22px;border-radius:50%;border:1.5px dashed var(--ink-faint);}
+  .sheet-prog .d.on{background:var(--terracotta);border:1.5px solid var(--terracotta);}
+  .sheet-prog .d.on.full{background:var(--sage);border-color:var(--sage);}
+
+  /* boutons +/- */
+  .adjust{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .adjust .abtn{
+    flex:1;border:1.5px solid var(--line);background:var(--card);color:var(--ink);
+    font:inherit;font-size:20px;font-weight:700;border-radius:13px;padding:14px;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:border-color .12s;
+  }
+  .adjust .abtn:hover{border-color:var(--terracotta);color:var(--terracotta);}
+  .adjust .abtn:active{transform:scale(.97);}
+  .adjust .abtn:disabled{opacity:.35;cursor:default;}
+  .adjust .aval{font-size:13px;color:var(--ink-soft);font-weight:600;min-width:90px;text-align:center;}
+
+  .reward-btn{
+    width:100%;border:none;border-radius:14px;padding:17px;
+    background:var(--sage);color:#fff;font:inherit;font-size:15px;font-weight:700;
+    cursor:pointer;-webkit-tap-highlight-color:transparent;transition:opacity .15s,transform .1s;
+    display:none;align-items:center;justify-content:center;gap:9px;
+  }
+  .reward-btn.on{display:flex;}
+  .reward-btn:active{transform:scale(.98);}
+  .sheet-note{font-size:12px;color:var(--ink-faint);text-align:center;margin-top:14px;line-height:1.5;}
+  .sheet-msg{margin-top:14px;padding:12px 14px;border-radius:11px;font-size:13px;display:none;text-align:center;}
+  .sheet-msg.ok{display:block;background:rgba(122,139,111,.13);color:#4d5c43;}
+  .sheet-msg.err{display:block;background:var(--terracotta-soft);color:var(--terracotta-deep);}
+
+  .hist{margin-top:20px;}
+  .hist h3{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:10px;}
+  .hist-row{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line);color:var(--ink-soft);}
+  .hist-row:last-child{border-bottom:none;}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div class="login-wrap" id="loginView">
+  <div class="login-card">
+    <div class="brand-mark">
+      <span class="logo">MOME</span>
+      <span class="tag">Espace commerçant</span>
+    </div>
+    <h1 class="login-title">Votre comptoir,<br>côté chiffres.</h1>
+    <p class="login-sub">Suivez vos habitués, vos cartes remplies et qui revient. Connectez-vous avec votre email.</p>
+
+    <label class="field-label" for="email">Adresse email</label>
+    <input class="input" id="email" type="email" placeholder="vous@mome.fr" autocomplete="email" inputmode="email">
+    <button class="btn" id="sendBtn">Recevoir mon lien de connexion</button>
+
+    <div class="login-msg" id="loginMsg"></div>
+
+    <p class="login-foot">Pas de mot de passe à retenir. On vous envoie un lien sécurisé, valable quelques minutes, à usage unique.</p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="app" id="appView">
+  <div class="topbar">
+    <div class="who">
+      <div class="avatar" id="avatar">M</div>
+      <div>
+        <div class="name" id="commerceName">MOME</div>
+        <div class="role" id="userRole">Propriétaire</div>
+      </div>
+    </div>
+    <button class="logout" id="logoutBtn">Déconnexion</button>
+  </div>
+
+  <div class="greeting" id="greeting">Bonjour.</div>
+
+  <div class="campagne" id="campagne">
+    <div class="ch">
+      <div class="ct">Envoyer une notif</div>
+      <div class="cq" id="quota">2 restantes</div>
+    </div>
+    <div class="cs">Un message sur l'écran verrouillé de tous vos clients fidèles.</div>
+    <textarea id="campMsg" maxlength="120" placeholder="Ex : Happy hour ce soir 17h-19h, 2ème boisson offerte ☕"></textarea>
+    <div class="quick" id="quickMsgs">
+      <button data-m="Happy hour ce soir 17h-19h : 2ème boisson à -50% ☕">Happy hour</button>
+      <button data-m="Nouvelle pâtisserie maison à découvrir aujourd'hui 🥐">Nouveauté</button>
+      <button data-m="Il pleut sur Bordeaux → cookie offert avec chaque café ☔">Jour de pluie</button>
+    </div>
+    <div class="cbar">
+      <div class="cc"><span id="campCount">0</span>/120</div>
+      <button class="csend" id="campSend">Envoyer à tous</button>
+    </div>
+    <div class="cmsg" id="campResult"></div>
+  </div>
+
+  <div class="stats" id="stats">
+    <div class="stat"><div class="n" id="stActives">–</div><div class="l">Clients fidèles</div></div>
+    <div class="stat accent"><div class="n" id="stSemaine">–</div><div class="l">Passages cette semaine</div></div>
+    <div class="stat warn"><div class="n" id="stInactifs">–</div><div class="l">N'est pas revenu depuis 3 sem.</div></div>
+    <div class="stat"><div class="n" id="stPleines">–</div><div class="l">Cartes pleines à offrir</div></div>
+  </div>
+
+  <div class="section-head">
+    <h2>Vos clients</h2>
+    <span class="count" id="clientCount"></span>
+  </div>
+
+  <input class="search" id="search" type="text" placeholder="Rechercher un prénom…">
+
+  <div id="clientsZone">
+    <div class="loading">Chargement…</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  /* ================= CONFIG ================= */
+  const SUPABASE_URL = "https://xiyqdwezpwhxdqlcgygl.supabase.co";
+  const SUPABASE_ANON = "COLLE_TA_CLE_PUBLISHABLE_ICI";
+  /* ========================================== */
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+  const $ = (id) => document.getElementById(id);
+  let toutClients = [];
+
+  /* ---------- LOGIN ---------- */
+  async function envoyerLien(){
+    const email = ($("email").value || "").trim();
+    const msg = $("loginMsg");
+    if(!email || email.indexOf("@") < 1){
+      msg.className = "login-msg err";
+      msg.textContent = "Entrez une adresse email valide.";
+      return;
+    }
+    $("sendBtn").disabled = true;
+    $("sendBtn").textContent = "Envoi…";
+    const { error } = await sb.auth.signInWithOtp({
+      email: email,
+      options: { emailRedirectTo: window.location.origin + "/pro.html" }
+    });
+    $("sendBtn").disabled = false;
+    $("sendBtn").textContent = "Recevoir mon lien de connexion";
+    if(error){
+      msg.className = "login-msg err";
+      msg.textContent = "Impossible d'envoyer le lien : " + error.message;
+    } else {
+      msg.className = "login-msg ok";
+      msg.textContent = "C'est envoyé ! Ouvrez votre boîte mail et cliquez sur le lien pour vous connecter.";
+    }
+  }
+  $("sendBtn").addEventListener("click", envoyerLien);
+  $("email").addEventListener("keydown", (e) => { if(e.key === "Enter") envoyerLien(); });
+
+  $("logoutBtn").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  /* ---------- CHARGEMENT DU DASHBOARD ---------- */
+  function initiales(prenom){
+    if(!prenom) return "?";
+    return prenom.trim().charAt(0).toUpperCase();
+  }
+
+  function heureDuJour(){
+    const h = new Date().getHours();
+    if(h < 12) return "Bonjour";
+    if(h < 18) return "Bon après-midi";
+    return "Bonsoir";
+  }
+
+  async function chargerDashboard(session){
+    $("loginView").style.display = "none";
+    $("appView").classList.add("on");
+
+    // le commerce du membre connecté (la RLS ne renvoie que le sien)
+    const { data: commerces, error: ec } = await sb.from("commerces").select("*");
+    if(ec || !commerces || !commerces.length){
+      $("clientsZone").innerHTML = '<div class="empty"><div class="big">Aucun commerce lié</div>Votre compte n\'est rattaché à aucun commerce. Contactez Studio Cancri.</div>';
+      return;
+    }
+    const commerce = commerces[0];
+    objectifCourant = commerce.objectif;
+    uniteCourante = commerce.unite;
+    window.__objectif = commerce.objectif;
+    sessionToken = session.access_token;
+    $("commerceName").textContent = commerce.nom;
+    $("avatar").textContent = commerce.nom.charAt(0).toUpperCase();
+    $("greeting").textContent = heureDuJour() + ", voici où en est " + commerce.nom + ".";
+
+    // les cartes de ce commerce
+    const { data: cartes } = await sb.from("cartes")
+      .select("id, prenom, tampons, dernier_tap, cree_le")
+      .eq("commerce_id", commerce.id)
+      .order("dernier_tap", { ascending: false });
+
+    const liste = cartes || [];
+    toutClients = liste;
+
+    // stats
+    const objectif = commerce.objectif;
+    const maintenant = Date.now();
+    const semaine = 7 * 24 * 3600 * 1000;
+    const troisSem = 21 * 24 * 3600 * 1000;
+
+    const actives = liste.length;
+    const passagesSemaine = liste.filter(c => c.dernier_tap && (maintenant - new Date(c.dernier_tap).getTime()) < semaine).length;
+    const inactifs = liste.filter(c => c.dernier_tap && (maintenant - new Date(c.dernier_tap).getTime()) > troisSem).length;
+    const pleines = liste.filter(c => c.tampons >= objectif).length;
+
+    $("stActives").textContent = actives;
+    $("stSemaine").textContent = passagesSemaine;
+    $("stInactifs").textContent = inactifs;
+    $("stPleines").textContent = pleines;
+
+    afficherClients(liste, objectif);
+    majQuota();
+  }
+
+  function afficherClients(liste, objectif){
+    $("clientCount").textContent = liste.length + (liste.length > 1 ? " clients" : " client");
+    if(!liste.length){
+      $("clientsZone").innerHTML = '<div class="empty"><div class="big">Pas encore de client</div>Dès que quelqu\'un scanne la puce, il apparaîtra ici.</div>';
+      return;
+    }
+    let html = '<div class="clients">';
+    for(const c of liste){
+      const plein = c.tampons >= objectif;
+      const pct = Math.min(100, Math.round((c.tampons / objectif) * 100));
+      html += '<div class="client' + (plein ? ' full' : '') + '" data-id="' + c.id + '">'+
+        '<div class="ini">' + initiales(c.prenom) + '</div>'+
+        '<div class="info">'+
+          '<div class="cn">' + (c.prenom || "Client") + '</div>'+
+          '<div class="cd">' + derniereVisite(c.dernier_tap) + '</div>'+
+        '</div>'+
+        '<div class="prog">'+
+          '<div class="bar"><span style="width:' + pct + '%"></span></div>'+
+          '<div class="frac">' + c.tampons + '/' + objectif + '</div>'+
+        '</div>'+
+      '</div>';
+    }
+    html += '</div>';
+    $("clientsZone").innerHTML = html;
+    $("clientsZone").querySelectorAll(".client").forEach(function(el){
+      el.addEventListener("click", function(){
+        const id = el.getAttribute("data-id");
+        const carte = toutClients.find(c => c.id === id);
+        if(carte) ouvrirFiche(carte);
+      });
+    });
+  }
+
+  function derniereVisite(d){
+    if(!d) return "Nouveau";
+    const jours = Math.floor((Date.now() - new Date(d).getTime()) / (24*3600*1000));
+    if(jours === 0) return "Vu aujourd'hui";
+    if(jours === 1) return "Vu hier";
+    if(jours < 7) return "Vu il y a " + jours + " jours";
+    if(jours < 14) return "Vu la semaine dernière";
+    return "Vu il y a " + Math.floor(jours/7) + " semaines";
+  }
+
+  /* recherche */
+  $("search").addEventListener("input", function(){
+    const q = this.value.trim().toLowerCase();
+    const filtres = q ? toutClients.filter(c => (c.prenom || "").toLowerCase().includes(q)) : toutClients;
+    // on relit l'objectif depuis le premier rendu — stocké sur le commerce, on le récupère via un attribut
+    afficherClients(filtres, window.__objectif || 10);
+  });
+
+
+  /* ---------- FICHE CLIENT ---------- */
+  const API_PRO = "/api/pro";
+  let carteOuverte = null;
+  let objectifCourant = 10;
+  let uniteCourante = "TAMPONS";
+  let sessionToken = null;
+
+  async function appelPro(payload){
+    const r = await fetch(API_PRO, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + sessionToken },
+      body: JSON.stringify(payload)
+    });
+    return r.json();
+  }
+
+  function dessinerJauge(tampons, objectif){
+    const plein = tampons >= objectif;
+    $("shFrac").textContent = tampons + "/" + objectif;
+    let g = "";
+    for(let i=0;i<objectif;i++){
+      g += '<div class="d' + (i<tampons ? ' on' : '') + (plein && i<tampons ? ' full' : '') + '"></div>';
+    }
+    $("shGrid").innerHTML = g;
+    $("shReward").classList.toggle("on", plein);
+    $("shMinus").disabled = tampons <= 0;
+    $("shPlus").disabled = tampons >= objectif;
+  }
+
+  function ouvrirFiche(carte){
+    carteOuverte = carte;
+    $("shIni").textContent = initiales(carte.prenom);
+    $("shName").textContent = carte.prenom || "Client";
+    $("shDate").textContent = derniereVisite(carte.dernier_tap);
+    $("shUnite").textContent = uniteCourante;
+    $("shMsg").className = "sheet-msg";
+    $("shMsg").textContent = "";
+    $("shHist").innerHTML = "";
+    dessinerJauge(carte.tampons, objectifCourant);
+    $("sheetBg").classList.add("on");
+    document.body.style.overflow = "hidden";
+
+    // historique
+    appelPro({ action:"historique", carte_id: carte.id }).then(function(r){
+      if(r.ok && r.taps && r.taps.length){
+        let html = '<h3>Dernières visites</h3>';
+        for(const t of r.taps.slice(0,8)){
+          const d = new Date(t.cree_le);
+          const libelle = t.valeur === 0 ? "Récompense offerte" : "+" + t.valeur + " tampon";
+          html += '<div class="hist-row"><span>' + libelle + '</span><span>' + d.toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + '</span></div>';
+        }
+        $("shHist").innerHTML = html;
+      }
+    });
+  }
+
+  function fermerFiche(){
+    $("sheetBg").classList.remove("on");
+    document.body.style.overflow = "";
+    carteOuverte = null;
+  }
+
+  function msgFiche(txt, ok){
+    const m = $("shMsg");
+    m.className = "sheet-msg " + (ok ? "ok" : "err");
+    m.textContent = txt;
+  }
+
+  async function ajuster(delta){
+    if(!carteOuverte) return;
+    const nouvelle = Math.max(0, Math.min(objectifCourant, carteOuverte.tampons + delta));
+    if(nouvelle === carteOuverte.tampons) return;
+    dessinerJauge(nouvelle, objectifCourant); // optimiste
+    const r = await appelPro({ action:"ajuster_tampons", carte_id: carteOuverte.id, tampons: nouvelle });
+    if(r.ok){
+      carteOuverte.tampons = r.tampons;
+      carteOuverte.dernier_tap = new Date().toISOString();
+      dessinerJauge(r.tampons, objectifCourant);
+      majClientDansListe(carteOuverte);
+    } else {
+      dessinerJauge(carteOuverte.tampons, objectifCourant); // rollback
+      msgFiche("Action impossible. Réessayez.", false);
+    }
+  }
+
+  async function validerRecompense(){
+    if(!carteOuverte) return;
+    $("shReward").disabled = true;
+    const r = await appelPro({ action:"valider_recompense", carte_id: carteOuverte.id });
+    $("shReward").disabled = false;
+    if(r.ok){
+      carteOuverte.tampons = 0;
+      carteOuverte.dernier_tap = new Date().toISOString();
+      dessinerJauge(0, objectifCourant);
+      majClientDansListe(carteOuverte);
+      msgFiche("Récompense offerte ✓ La carte repart à zéro.", true);
+    } else {
+      msgFiche(r.raison === "pas_pleine" ? "La carte n'est pas encore pleine." : "Action impossible.", false);
+    }
+  }
+
+  function majClientDansListe(carte){
+    const idx = toutClients.findIndex(c => c.id === carte.id);
+    if(idx >= 0){ toutClients[idx].tampons = carte.tampons; toutClients[idx].dernier_tap = carte.dernier_tap; }
+    const q = ($("search").value || "").trim().toLowerCase();
+    const filtres = q ? toutClients.filter(c => (c.prenom||"").toLowerCase().includes(q)) : toutClients;
+    afficherClients(filtres, objectifCourant);
+  }
+
+  $("shClose").addEventListener("click", fermerFiche);
+  $("sheetBg").addEventListener("click", (e) => { if(e.target === $("sheetBg")) fermerFiche(); });
+  $("shMinus").addEventListener("click", () => ajuster(-1));
+  $("shPlus").addEventListener("click", () => ajuster(1));
+  $("shReward").addEventListener("click", validerRecompense);
+
+
+  /* ---------- CAMPAGNE ---------- */
+  function majQuota(){
+    appelPro({ action:"quota_campagne" }).then(function(r){
+      if(r && r.ok){
+        $("quota").textContent = r.restants + (r.restants > 1 ? " restantes" : " restante");
+        if(r.restants <= 0){ $("campSend").disabled = true; }
+      }
+    }).catch(function(){});
+  }
+
+  $("campMsg").addEventListener("input", function(){
+    $("campCount").textContent = this.value.length;
+  });
+
+  document.getElementById("quickMsgs").addEventListener("click", function(e){
+    var b = e.target.closest("button");
+    if(!b) return;
+    $("campMsg").value = b.getAttribute("data-m");
+    $("campCount").textContent = $("campMsg").value.length;
+  });
+
+  $("campSend").addEventListener("click", async function(){
+    var msg = ($("campMsg").value || "").trim();
+    var res = $("campResult");
+    if(!msg){ res.className = "cmsg on"; res.textContent = "Écrivez un message d'abord."; return; }
+    $("campSend").disabled = true;
+    $("campSend").textContent = "Envoi…";
+    var r = await appelPro({ action:"envoyer_campagne", message: msg });
+    $("campSend").textContent = "Envoyer à tous";
+    if(r.ok){
+      res.className = "cmsg on";
+      res.textContent = "✓ Envoyé à " + r.nb_clients + " client" + (r.nb_clients>1?"s":"") + " ! Il reste " + r.restants + " envoi" + (r.restants>1?"s":"") + " cette semaine.";
+      $("campMsg").value = "";
+      $("campCount").textContent = "0";
+      $("quota").textContent = r.restants + (r.restants > 1 ? " restantes" : " restante");
+      if(r.restants <= 0){ $("campSend").disabled = true; } else { $("campSend").disabled = false; }
+    } else if(r.raison === "quota"){
+      res.className = "cmsg on";
+      res.textContent = "Limite atteinte : 2 notifs par semaine maximum. Réessayez dans quelques jours.";
+      $("campSend").disabled = true;
+    } else {
+      res.className = "cmsg on";
+      res.textContent = "Impossible d'envoyer. Réessayez.";
+      $("campSend").disabled = false;
+    }
+  });
+
+  /* ---------- démarrage : session ? ---------- */
+  sb.auth.getSession().then(({ data }) => {
+    if(data.session){
+      // mémorise l'objectif pour la recherche
+      sb.from("commerces").select("objectif").then(({data:d}) => {
+        window.__objectif = (d && d[0]) ? d[0].objectif : 10;
+      });
+      chargerDashboard(data.session);
+    }
+  });
+
+  sb.auth.onAuthStateChange((event, session) => {
+    if(session && event === "SIGNED_IN"){
+      sb.from("commerces").select("objectif").then(({data:d}) => {
+        window.__objectif = (d && d[0]) ? d[0].objectif : 10;
+      });
+      chargerDashboard(session);
+    }
+  });
+})();
+</script>
+
+<!-- ============ FICHE CLIENT ============ -->
+<div class="sheet-bg" id="sheetBg">
+  <div class="sheet" id="sheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <div class="ini" id="shIni">?</div>
+      <div>
+        <div class="sn" id="shName">Client</div>
+        <div class="sd" id="shDate">—</div>
+      </div>
+      <button class="sheet-close" id="shClose">✕</button>
+    </div>
+
+    <div class="sheet-prog">
+      <div class="top">
+        <div class="big" id="shFrac">0/10</div>
+        <div class="lab" id="shUnite">CAFÉS</div>
+      </div>
+      <div class="grid" id="shGrid"></div>
+    </div>
+
+    <div class="adjust">
+      <button class="abtn" id="shMinus">−</button>
+      <div class="aval">Ajuster les tampons</div>
+      <button class="abtn" id="shPlus">+</button>
+    </div>
+
+    <button class="reward-btn" id="shReward">🎁 Offrir la récompense</button>
+
+    <div class="sheet-msg" id="shMsg"></div>
+    <div class="sheet-note">Ajuster ou offrir met à jour la carte du client dans son téléphone automatiquement.</div>
+
+    <div class="hist" id="shHist"></div>
+  </div>
+</div>
+
+</body>
+</html>
