@@ -316,7 +316,11 @@
     <label class="field-label" for="email">Adresse email</label>
     <input class="input" id="email" type="email" placeholder="vous@mome.fr" autocomplete="email" inputmode="email">
     <button class="btn" id="sendBtn">Recevoir mon lien de connexion</button>
-
+<div id="otpZone" style="display:none;margin-top:14px;">
+      <label class="field-label" for="otpCode">Code reçu par email</label>
+      <input class="input" id="otpCode" type="text" inputmode="numeric" maxlength="6" placeholder="123456" autocomplete="one-time-code" style="text-align:center;letter-spacing:.3em;font-size:20px;font-weight:700;">
+      <button class="btn" id="otpBtn">Me connecter</button>
+    </div>
     <div class="login-msg" id="loginMsg"></div>
 
     <p class="login-foot">Pas de mot de passe à retenir. On vous envoie un lien sécurisé, valable quelques minutes, à usage unique.</p>
