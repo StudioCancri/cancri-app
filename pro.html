@@ -417,8 +417,9 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     $("sendBtn").textContent = "Envoi…";
     const { error } = await sb.auth.signInWithOtp({
       email: email,
-      options: { emailRedirectTo: window.location.origin + "/pro.html" }
+      options: { shouldCreateUser: false }
     });
+    window.__emailOtp = email;
     $("sendBtn").disabled = false;
     $("sendBtn").textContent = "Recevoir mon lien de connexion";
     if(error){
