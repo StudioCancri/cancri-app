@@ -435,7 +435,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   document.getElementById("otpBtn").addEventListener("click", async function(){
     const code = (document.getElementById("otpCode").value || "").trim();
     const msg = $("loginMsg");
-    if(code.length < 6){ msg.className = "login-msg err"; msg.textContent = "Entrez le code à 6 chiffres."; return; }
+   if(code.length < 4){ msg.className = "login-msg err"; msg.textContent = "Entrez le code reçu par email."; return; }
     this.disabled = true; this.textContent = "Connexion…";
     const { error } = await sb.auth.verifyOtp({ email: window.__emailOtp, token: code, type: "email" });
     this.disabled = false; this.textContent = "Me connecter";
