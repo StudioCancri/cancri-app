@@ -145,6 +145,9 @@ module.exports = async (req, res) => {
       { key: "membre", label: "MEMBRE", value: carte.prenom || "Client" },
       { key: "reward", label: "RÉCOMPENSE", value: commerce.recompense }
     );
+    if (commerce.message_actuel && commerce.message_actuel.trim()) {
+      pass.backFields.push({ key: "actu", label: "À ne pas manquer", value: commerce.message_actuel, changeMessage: "%@" });
+    }
     pass.backFields.push(
       { key: "regle", label: "Comment ça marche", value: "Posez votre téléphone sur la pastille au comptoir : +1 tampon. À " + commerce.objectif + ", votre récompense vous attend." },
       { key: "studio", label: "Propulsé par", value: "Studio Cancri" }
