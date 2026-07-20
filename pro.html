@@ -427,7 +427,8 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
       msg.textContent = "Impossible d'envoyer le lien : " + error.message;
     } else {
       msg.className = "login-msg ok";
-      msg.textContent = "C'est envoyé ! Ouvrez votre boîte mail et cliquez sur le lien pour vous connecter.";
+      msg.textContent = "C'est envoyé ! Entrez le code à 6 chiffres reçu par email.";
+      document.getElementById("otpZone").style.display = "block";
     }
   }
   $("sendBtn").addEventListener("click", envoyerLien);
