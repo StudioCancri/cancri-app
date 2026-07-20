@@ -755,7 +755,7 @@
       if(r.restants <= 0){ $("campSend").disabled = true; } else { $("campSend").disabled = false; }
     } else if(r.raison === "quota"){
       res.className = "cmsg on";
-      res.textContent = "Limite atteinte : 2 notifs par semaine maximum. Réessayez dans quelques jours.";
+      res.textContent = "Limite du jour atteinte (20 notifs). Réessayez demain.";
       $("campSend").disabled = true;
     } else {
       res.className = "cmsg on";
