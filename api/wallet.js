@@ -52,31 +52,60 @@ function certDepuisEnv(nom) {
    ============================================================ */
 async function envoyerPush(jeton) {
   const appareils = await sb("appareils?jeton=eq." + encodeURIComponent(jeton) + "&select=push_token");
-  if (!appareils || !appareils.length) return;
+  if (!appareils || !appareils.length) {
+    console.log("push: aucun appareil enregistré pour ce jeton");
+    return;
+  }
 
   const cert = certDepuisEnv("PASS_CERT");
   const key = certDepuisEnv("PASS_KEY");
   const passphrase = process.env.PASS_KEY_PASSPHRASE || undefined;
 
   for (const a of appareils) {
+    if (!a.push_token) continue;
     await new Promise((resolve) => {
+      let fini = false;
+      const done = (msg) => {
+        if (fini) return;
+        fini = true;
+        if (msg) console.log("push:", msg);
+        try { client.close(); } catch (e) {}
+        resolve();
+      };
+
       const client = http2.connect("https://api.push.apple.com:443", {
         cert: cert,
         key: key,
         passphrase: passphrase,
       });
-      client.on("error", () => { try { client.close(); } catch (e) {} resolve(); });
+
+      // filet de sécurité : on ne bloque jamais plus de 8 s
+      const minuteur = setTimeout(() => done("timeout APNs (8s)"), 8000);
+
+      client.on("error", (e) => { clearTimeout(minuteur); done("connexion APNs échouée : " + (e.message || e)); });
+
+      const body = JSON.stringify({});
       const req = client.request({
         ":method": "POST",
         ":path": "/3/device/" + a.push_token,
         "apns-topic": process.env.PASS_TYPE_ID,
         "apns-push-type": "background",
         "apns-priority": "5",
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(body),
       });
-      req.on("response", () => {});
-      req.on("end", () => { try { client.close(); } catch (e) {} resolve(); });
-      req.on("error", () => { try { client.close(); } catch (e) {} resolve(); });
-      req.write(JSON.stringify({}));
+
+      let statut = 0;
+      let reponse = "";
+      req.on("response", (h) => { statut = h[":status"]; });
+      req.on("data", (c) => { reponse += c; });
+      req.on("end", () => {
+        clearTimeout(minuteur);
+        done("APNs statut " + statut + (statut === 200 ? " ✅ envoyé" : " ⚠️ " + reponse));
+      });
+      req.on("error", (e) => { clearTimeout(minuteur); done("requête APNs échouée : " + (e.message || e)); });
+
+      req.write(body);
       req.end();
     });
   }
@@ -135,6 +164,9 @@ async function construirePass(jeton) {
     { key: "membre", label: "MEMBRE", value: carte.prenom || "Client" },
     { key: "reward", label: "RÉCOMPENSE", value: commerce.recompense }
   );
+  if (commerce.message_actuel && commerce.message_actuel.trim()) {
+    pass.backFields.push({ key: "actu", label: "À ne pas manquer", value: commerce.message_actuel, changeMessage: "%@" });
+  }
   pass.backFields.push(
     { key: "regle", label: "Comment ça marche", value: "Posez votre téléphone sur la pastille au comptoir : +1 tampon. À " + commerce.objectif + ", votre récompense vous attend." },
     { key: "studio", label: "Propulsé par", value: "Studio Cancri" }
