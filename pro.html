@@ -315,15 +315,17 @@
 
     <label class="field-label" for="email">Adresse email</label>
     <input class="input" id="email" type="email" placeholder="vous@mome.fr" autocomplete="email" inputmode="email">
-    <button class="btn" id="sendBtn">Recevoir mon lien de connexion</button>
-<div id="otpZone" style="display:none;margin-top:14px;">
+    <button class="btn" id="sendBtn">Recevoir mon code de connexion</button>
+
+    <div id="otpZone" style="display:none;margin-top:14px;">
       <label class="field-label" for="otpCode">Code reçu par email</label>
-     <input class="input" id="otpCode" type="text" inputmode="numeric" maxlength="10" placeholder="Code reçu" autocomplete="one-time-code" style="text-align:center;letter-spacing:.3em;font-size:20px;font-weight:700;">
+      <input class="input" id="otpCode" type="text" inputmode="numeric" maxlength="10" placeholder="Code reçu" autocomplete="one-time-code" style="text-align:center;letter-spacing:.3em;font-size:20px;font-weight:700;">
       <button class="btn" id="otpBtn">Me connecter</button>
     </div>
+
     <div class="login-msg" id="loginMsg"></div>
 
-    <p class="login-foot">Pas de mot de passe à retenir. On vous envoie un lien sécurisé, valable quelques minutes, à usage unique.</p>
+    <p class="login-foot">Pas de mot de passe à retenir. On vous envoie un code sécurisé par email, valable quelques minutes.</p>
   </div>
 </div>
 
@@ -380,6 +382,42 @@
   </div>
 </div>
 
+<!-- ============ FICHE CLIENT ============ -->
+<div class="sheet-bg" id="sheetBg">
+  <div class="sheet" id="sheet">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <div class="ini" id="shIni">?</div>
+      <div>
+        <div class="sn" id="shName">Client</div>
+        <div class="sd" id="shDate">—</div>
+      </div>
+      <button class="sheet-close" id="shClose">✕</button>
+    </div>
+
+    <div class="sheet-prog">
+      <div class="top">
+        <div class="big" id="shFrac">0/10</div>
+        <div class="lab" id="shUnite">CAFÉS</div>
+      </div>
+      <div class="grid" id="shGrid"></div>
+    </div>
+
+    <div class="adjust">
+      <button class="abtn" id="shMinus">−</button>
+      <div class="aval">Ajuster les tampons</div>
+      <button class="abtn" id="shPlus">+</button>
+    </div>
+
+    <button class="reward-btn" id="shReward">🎁 Offrir la récompense</button>
+
+    <div class="sheet-msg" id="shMsg"></div>
+    <div class="sheet-note">Ajuster ou offrir met à jour la carte du client dans son téléphone automatiquement.</div>
+
+    <div class="hist" id="shHist"></div>
+  </div>
+</div>
+
 <script>
 (function(){
   /* ================= CONFIG ================= */
@@ -387,20 +425,10 @@
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeXFkd2V6cHdoeGRxbGNneWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjk1ODIsImV4cCI6MjA5OTg0NTU4Mn0.5xnz2HyLCRdA29vzE8sc8Hyr415Rtb0nxaXMEI7-tMI";
   /* ========================================== */
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: { flowType: "implicit", detectSessionInUrl: true }
   });
 
-  /* affiche les erreurs renvoyées par le lien magique */
-  (function(){
-    const hp = new URLSearchParams((location.hash || "").replace(/^#/, ""));
-    const err = hp.get("error_description") || hp.get("error");
-    if(err){
-      const m = document.getElementById("loginMsg");
-      if(m){ m.className = "login-msg err"; m.textContent = "Connexion impossible : " + decodeURIComponent(err).replace(/\+/g, " "); }
-      history.replaceState(null, "", location.pathname);
-    }
-  })();
   const $ = (id) => document.getElementById(id);
   let toutClients = [];
   const API_PRO = "/api/pro";
@@ -426,22 +454,23 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     });
     window.__emailOtp = email;
     $("sendBtn").disabled = false;
-    $("sendBtn").textContent = "Recevoir mon lien de connexion";
+    $("sendBtn").textContent = "Recevoir mon code de connexion";
     if(error){
       msg.className = "login-msg err";
-      msg.textContent = "Impossible d'envoyer le lien : " + error.message;
+      msg.textContent = "Impossible d'envoyer le code : " + error.message;
     } else {
       msg.className = "login-msg ok";
-      msg.textContent = "C'est envoyé ! Entrez le code à 6 chiffres reçu par email.";
+      msg.textContent = "C'est envoyé ! Entrez le code reçu par email.";
       document.getElementById("otpZone").style.display = "block";
     }
   }
   $("sendBtn").addEventListener("click", envoyerLien);
+
   document.getElementById("otpBtn").addEventListener("click", async function(){
     const code = (document.getElementById("otpCode").value || "").trim();
     const msg = $("loginMsg");
-   if(code.length < 4){ msg.className = "login-msg err"; msg.textContent = "Entrez le code reçu par email."; return; }
-   this.disabled = true; this.textContent = "Connexion…";
+    if(code.length < 4){ msg.className = "login-msg err"; msg.textContent = "Entrez le code reçu par email."; return; }
+    this.disabled = true; this.textContent = "Connexion…";
     const emailOtp = window.__emailOtp || ($("email").value || "").trim();
     const { data, error } = await sb.auth.verifyOtp({ email: emailOtp, token: code, type: "email" });
     this.disabled = false; this.textContent = "Me connecter";
@@ -578,7 +607,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   });
 
 
- /* ---------- FICHE CLIENT ---------- */
+  /* ---------- FICHE CLIENT ---------- */
   async function appelPro(payload){
     const r = await fetch(API_PRO, {
       method: "POST",
@@ -756,42 +785,6 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   });
 })();
 </script>
-
-<!-- ============ FICHE CLIENT ============ -->
-<div class="sheet-bg" id="sheetBg">
-  <div class="sheet" id="sheet">
-    <div class="sheet-grab"></div>
-    <div class="sheet-head">
-      <div class="ini" id="shIni">?</div>
-      <div>
-        <div class="sn" id="shName">Client</div>
-        <div class="sd" id="shDate">—</div>
-      </div>
-      <button class="sheet-close" id="shClose">✕</button>
-    </div>
-
-    <div class="sheet-prog">
-      <div class="top">
-        <div class="big" id="shFrac">0/10</div>
-        <div class="lab" id="shUnite">CAFÉS</div>
-      </div>
-      <div class="grid" id="shGrid"></div>
-    </div>
-
-    <div class="adjust">
-      <button class="abtn" id="shMinus">−</button>
-      <div class="aval">Ajuster les tampons</div>
-      <button class="abtn" id="shPlus">+</button>
-    </div>
-
-    <button class="reward-btn" id="shReward">🎁 Offrir la récompense</button>
-
-    <div class="sheet-msg" id="shMsg"></div>
-    <div class="sheet-note">Ajuster ou offrir met à jour la carte du client dans son téléphone automatiquement.</div>
-
-    <div class="hist" id="shHist"></div>
-  </div>
-</div>
 
 </body>
 </html>
