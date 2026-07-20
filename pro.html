@@ -436,10 +436,22 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     const code = (document.getElementById("otpCode").value || "").trim();
     const msg = $("loginMsg");
    if(code.length < 4){ msg.className = "login-msg err"; msg.textContent = "Entrez le code reçu par email."; return; }
-    this.disabled = true; this.textContent = "Connexion…";
-    const { error } = await sb.auth.verifyOtp({ email: window.__emailOtp, token: code, type: "email" });
+   this.disabled = true; this.textContent = "Connexion…";
+    const emailOtp = window.__emailOtp || ($("email").value || "").trim();
+    const { data, error } = await sb.auth.verifyOtp({ email: emailOtp, token: code, type: "email" });
     this.disabled = false; this.textContent = "Me connecter";
-    if(error){ msg.className = "login-msg err"; msg.textContent = "Code incorrect ou expiré. Réessayez."; }
+    if(error){
+      msg.className = "login-msg err";
+      msg.textContent = "Code refusé : " + error.message;
+      return;
+    }
+    if(data && data.session){
+      chargerDashboard(data.session);
+    } else {
+      const s = await sb.auth.getSession();
+      if(s.data && s.data.session){ chargerDashboard(s.data.session); }
+      else { msg.className = "login-msg err"; msg.textContent = "Session non créée — recharge la page et réessaie."; }
+    }
   });
   $("email").addEventListener("keydown", (e) => { if(e.key === "Enter") envoyerLien(); });
 
