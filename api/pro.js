@@ -109,6 +109,62 @@ module.exports = async (req, res) => {
     body = body || {};
     const { action, carte_id } = body;
 
+    /* ---- ENVOYER UNE CAMPAGNE (notif à tous les clients) ---- */
+    if (action === "envoyer_campagne") {
+      // vérifier le membre + récupérer le commerce depuis le membre (pas via une carte)
+      const membre2 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!membre2 || !membre2.length) return res.status(403).json({ ok: false, raison: "acces_refuse" });
+      const commerceId = membre2[0].commerce_id;
+
+      const message = (body.message || "").toString().trim().slice(0, 120);
+      if (!message) return res.status(200).json({ ok: false, raison: "message_vide" });
+
+      // quota : 2 campagnes / 7 jours glissants
+      const ilya7j = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya7j + "&select=id");
+      if (recentes && recentes.length >= 2) {
+        return res.status(200).json({ ok: false, raison: "quota", restants: 0 });
+      }
+
+      // 1. mettre à jour le message du commerce (les pass le liront)
+      await sb("commerces?id=eq." + commerceId, {
+        method: "PATCH",
+        body: { message_actuel: message, message_maj: new Date().toISOString() },
+      });
+
+      // 2. récupérer toutes les cartes du commerce
+      const cartesC = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
+      const jetons = (cartesC || []).map((c) => c.jeton);
+
+      // 3. push à tous (en série, best-effort)
+      let envoyes = 0;
+      for (const jt of jetons) {
+        try { await envoyerPush(jt); envoyes++; } catch (e) {}
+      }
+
+      // 4. journaliser la campagne
+      await sb("campagnes", {
+        method: "POST",
+        body: { commerce_id: commerceId, message: message, nb_clients: jetons.length },
+      });
+
+      const restants = Math.max(0, 2 - ((recentes ? recentes.length : 0) + 1));
+      return res.status(200).json({ ok: true, nb_clients: jetons.length, envoyes: envoyes, restants: restants });
+    }
+
+    /* ---- QUOTA RESTANT (pour afficher dans l'app) ---- */
+    if (action === "quota_campagne") {
+      const membre3 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      if (!membre3 || !membre3.length) return res.status(403).json({ ok: false });
+      const commerceId = membre3[0].commerce_id;
+      const ilya7j = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+      const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya7j + "&select=id");
+      const utilisees = recentes ? recentes.length : 0;
+      return res.status(200).json({ ok: true, restants: Math.max(0, 2 - utilisees), total: 2 });
+    }
+
+
+
     const acces = await verifierAcces(userId, carte_id);
     if (!acces) return res.status(403).json({ ok: false, raison: "acces_refuse" });
     const { carte, commerce } = acces;
