@@ -403,6 +403,11 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   })();
   const $ = (id) => document.getElementById(id);
   let toutClients = [];
+  const API_PRO = "/api/pro";
+  let carteOuverte = null;
+  let objectifCourant = 10;
+  let uniteCourante = "TAMPONS";
+  let sessionToken = null;
 
   /* ---------- LOGIN ---------- */
   async function envoyerLien(){
