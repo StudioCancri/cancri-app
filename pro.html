@@ -578,13 +578,7 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
   });
 
 
-  /* ---------- FICHE CLIENT ---------- */
-  const API_PRO = "/api/pro";
-  let carteOuverte = null;
-  let objectifCourant = 10;
-  let uniteCourante = "TAMPONS";
-  let sessionToken = null;
-
+ /* ---------- FICHE CLIENT ---------- */
   async function appelPro(payload){
     const r = await fetch(API_PRO, {
       method: "POST",
