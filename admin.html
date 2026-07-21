@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Studio Cancri — Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#0E1113;
+    --bg-2:#161A1D;
+    --panel:#1B2024;
+    --panel-2:#20262B;
+    --line:rgba(255,255,255,.08);
+    --line-2:rgba(255,255,255,.14);
+    --text:#E8EDF0;
+    --text-soft:rgba(232,237,240,.60);
+    --text-faint:rgba(232,237,240,.36);
+    --gold:#E0A96D;
+    --gold-deep:#C88B4A;
+    --green:#6FBF8E;
+    --amber:#E0B450;
+    --red:#E07B6D;
+    --blue:#7BA7D9;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:'Instrument Sans',system-ui,sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.5;min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+
+  /* ---------- LOGIN ---------- */
+  .login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .login-box{width:100%;max-width:380px;}
+  .login-mark{font-family:'Fraunces',serif;font-weight:600;font-size:26px;letter-spacing:-.02em;margin-bottom:4px;}
+  .login-mark span{color:var(--gold);}
+  .login-tag{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--text-faint);margin-bottom:36px;}
+  .login-h{font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.02em;margin-bottom:8px;}
+  .login-sub{font-size:14px;color:var(--text-soft);margin-bottom:28px;}
+  .lbl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px;display:block;}
+  .inp{width:100%;border:1px solid var(--line-2);border-radius:11px;padding:14px 15px;font:inherit;font-size:15px;background:var(--bg-2);color:var(--text);transition:border-color .15s;}
+  .inp:focus{outline:none;border-color:var(--gold);}
+  .btn{width:100%;border:none;border-radius:11px;padding:15px;margin-top:12px;background:var(--gold);color:#1a1200;font:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
+  .btn:hover{background:var(--gold-deep);}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.5;}
+  .msg{margin-top:18px;padding:13px 15px;border-radius:10px;font-size:13px;display:none;line-height:1.5;}
+  .msg.ok{display:block;background:rgba(111,191,142,.12);color:var(--green);border:1px solid rgba(111,191,142,.25);}
+  .msg.err{display:block;background:rgba(224,123,109,.12);color:var(--red);border:1px solid rgba(224,123,109,.25);}
+  #otpZone{display:none;margin-top:12px;}
+  #otpCode{text-align:center;letter-spacing:.3em;font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+
+  /* ---------- APP ---------- */
+  .app{display:none;max-width:1100px;margin:0 auto;padding:0 24px 60px;}
+  .app.on{display:block;}
+
+  .top{display:flex;align-items:center;justify-content:space-between;padding:24px 0 22px;border-bottom:1px solid var(--line);margin-bottom:28px;}
+  .top .brand{font-family:'Fraunces',serif;font-weight:600;font-size:20px;letter-spacing:-.01em;}
+  .top .brand span{color:var(--gold);}
+  .top .right{display:flex;align-items:center;gap:14px;}
+  .top .out{border:1px solid var(--line-2);background:transparent;color:var(--text-soft);font:inherit;font-size:12.5px;font-weight:600;border-radius:9px;padding:8px 13px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .top .out:hover{color:var(--gold);border-color:var(--gold);}
+
+  /* bandeau stats */
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:32px;}
+  @media(min-width:680px){.kpis{grid-template-columns:repeat(4,1fr);}}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;}
+  .kpi .k-l{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-faint);margin-bottom:10px;}
+  .kpi .k-v{font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+  .kpi.mrr{background:linear-gradient(150deg,rgba(224,169,109,.16),rgba(224,169,109,.04));border-color:rgba(224,169,109,.28);}
+  .kpi.mrr .k-v{color:var(--gold);}
+  .kpi .k-sub{font-size:11.5px;color:var(--text-faint);margin-top:6px;}
+
+  .section-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .section-h h2{font-family:'Fraunces',serif;font-weight:600;font-size:19px;letter-spacing:-.01em;}
+  .addbtn{border:1px solid var(--gold);background:rgba(224,169,109,.1);color:var(--gold);font:inherit;font-size:13px;font-weight:700;border-radius:9px;padding:9px 15px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .15s;}
+  .addbtn:hover{background:rgba(224,169,109,.18);}
+
+  /* tableau commerces */
+  .table{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
+  .thead{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 40px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);}
+  .trow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 40px;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);align-items:center;cursor:pointer;transition:background .12s;}
+  .trow:last-child{border-bottom:none;}
+  .trow:hover{background:var(--panel-2);}
+  .c-nom{font-weight:600;font-size:14.5px;}
+  .c-slug{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--text-faint);margin-top:1px;}
+  .c-num{font-family:'JetBrains Mono',monospace;font-size:14px;}
+  .c-num .u{font-size:11px;color:var(--text-faint);}
+  .arrow{color:var(--text-faint);font-size:18px;text-align:right;}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:4px 9px;border-radius:99px;white-space:nowrap;}
+  .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .b-actif{background:rgba(111,191,142,.14);color:var(--green);}
+  .b-prospect{background:rgba(123,167,217,.14);color:var(--blue);}
+  .b-contact{background:rgba(123,167,217,.14);color:var(--blue);}
+  .b-contrat{background:rgba(224,180,80,.14);color:var(--amber);}
+  .b-config{background:rgba(224,180,80,.14);color:var(--amber);}
+  .b-en_ligne{background:rgba(111,191,142,.14);color:var(--green);}
+  .b-pause{background:rgba(232,237,240,.1);color:var(--text-soft);}
+  .b-arrete{background:rgba(224,123,109,.14);color:var(--red);}
+
+  .flag{display:inline-block;font-size:11px;font-weight:700;background:var(--red);color:#fff;border-radius:6px;padding:2px 7px;margin-left:8px;}
+
+  .empty{padding:50px 20px;text-align:center;color:var(--text-soft);}
+  .empty .big{font-family:'Fraunces',serif;font-style:italic;font-size:18px;color:var(--text);margin-bottom:6px;}
+  .loading{padding:60px;text-align:center;color:var(--text-faint);}
+
+  /* modale création */
+  .modal-bg{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.on{display:flex;}
+  .modal{width:100%;max-width:440px;background:var(--bg-2);border:1px solid var(--line-2);border-radius:18px;padding:26px;max-height:90vh;overflow-y:auto;}
+  .modal h3{font-family:'Fraunces',serif;font-weight:600;font-size:20px;margin-bottom:4px;}
+  .modal .m-sub{font-size:13px;color:var(--text-soft);margin-bottom:22px;}
+  .modal .fg{margin-bottom:14px;}
+  .modal .btn-row{display:flex;gap:10px;margin-top:8px;}
+  .modal .btn-row .btn{margin-top:0;}
+  .modal .cancel{background:transparent;border:1px solid var(--line-2);color:var(--text-soft);width:auto;padding:15px 20px;}
+  .modal .cancel:hover{background:var(--panel);}
+
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login" id="loginView">
+  <div class="login-box">
+    <div class="login-mark">Studio <span>Cancri</span></div>
+    <div class="login-tag">Cockpit</div>
+    <h1 class="login-h">Votre poste de pilotage.</h1>
+    <p class="login-sub">Tous vos commerces, contrats et projets, à un seul endroit. Réservé à l'équipe.</p>
+    <label class="lbl" for="email">Email</label>
+    <input class="inp" id="email" type="email" placeholder="vous@studiocancri.fr" autocomplete="email">
+    <button class="btn" id="sendBtn">Recevoir mon code</button>
+    <div id="otpZone">
+      <label class="lbl" for="otpCode" style="margin-top:14px;">Code reçu par email</label>
+      <input class="inp" id="otpCode" type="text" inputmode="numeric" maxlength="10" placeholder="Code" autocomplete="one-time-code">
+      <button class="btn" id="otpBtn">Entrer</button>
+    </div>
+    <div class="msg" id="loginMsg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appView">
+  <div class="top">
+    <div class="brand">Studio <span>Cancri</span> · Cockpit</div>
+    <div class="right">
+      <button class="out" id="logoutBtn">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="kpis" id="kpis">
+    <div class="kpi mrr"><div class="k-l">Revenu mensuel</div><div class="k-v mono" id="kMrr">–</div><div class="k-sub">commerces actifs</div></div>
+    <div class="kpi"><div class="k-l">Commerces</div><div class="k-v mono" id="kTotal">–</div><div class="k-sub" id="kActifs">–</div></div>
+    <div class="kpi"><div class="k-l">Cartes clients</div><div class="k-v mono" id="kCartes">–</div><div class="k-sub">tous commerces</div></div>
+    <div class="kpi"><div class="k-l">À traiter</div><div class="k-v mono" id="kDemandes">–</div><div class="k-sub">demandes ouvertes</div></div>
+  </div>
+
+  <div class="section-h">
+    <h2>Portefeuille</h2>
+    <button class="addbtn" id="newBtn">+ Nouveau commerce</button>
+  </div>
+
+  <div id="tableZone">
+    <div class="loading">Chargement…</div>
+  </div>
+</div>
+
+<!-- MODALE NOUVEAU COMMERCE -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>Nouveau commerce</h3>
+    <div class="m-sub">Crée une fiche. Tu pourras tout compléter ensuite.</div>
+    <div class="fg"><label class="lbl">Nom du commerce</label><input class="inp" id="nNom" placeholder="Le Fournil"></div>
+    <div class="fg"><label class="lbl">Contact (nom)</label><input class="inp" id="nContact" placeholder="Prénom Nom"></div>
+    <div class="fg"><label class="lbl">Email / téléphone</label><input class="inp" id="nEmail" placeholder="contact@…"></div>
+    <div class="fg"><label class="lbl">Statut de départ</label>
+      <select class="inp" id="nStatut">
+        <option value="prospect">Prospect</option>
+        <option value="contact">Premier contact</option>
+        <option value="contrat">Contrat en cours</option>
+        <option value="config">En configuration</option>
+        <option value="actif">Actif</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="btn cancel" id="nCancel">Annuler</button>
+      <button class="btn" id="nCreate">Créer la fiche</button>
+    </div>
+    <div class="msg" id="nMsg"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SUPABASE_URL = "https://xiyqdwezpwhxdqlcgygl.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeXFkd2V6cHdoeGRxbGNneWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjk1ODIsImV4cCI6MjA5OTg0NTU4Mn0.5xnz2HyLCRdA29vzE8sc8Hyr415Rtb0nxaXMEI7-tMI";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { flowType: "implicit", detectSessionInUrl: true } });
+  const $ = (id) => document.getElementById(id);
+  const API = "/api/admin";
+  let token = null;
+
+  async function call(payload){
+    const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+token }, body:JSON.stringify(payload) });
+    return r.json();
+  }
+
+  const LABELS = { prospect:"Prospect", contact:"Contact", contrat:"Contrat", config:"Config", en_ligne:"En ligne", actif:"Actif", pause:"Pause", arrete:"Arrêté" };
+
+  /* ---- LOGIN ---- */
+  async function envoyer(){
+    const email = ($("email").value||"").trim();
+    const msg = $("loginMsg");
+    if(!email || email.indexOf("@")<1){ msg.className="msg err"; msg.textContent="Entre un email valide."; return; }
+    $("sendBtn").disabled=true; $("sendBtn").textContent="Envoi…";
+    const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:false } });
+    window.__email=email;
+    $("sendBtn").disabled=false; $("sendBtn").textContent="Recevoir mon code";
+    if(error){ msg.className="msg err"; msg.textContent="Erreur : "+error.message; }
+    else { msg.className="msg ok"; msg.textContent="Code envoyé. Regarde tes emails."; $("otpZone").style.display="block"; }
+  }
+  $("sendBtn").addEventListener("click", envoyer);
+  $("email").addEventListener("keydown",(e)=>{ if(e.key==="Enter") envoyer(); });
+
+  $("otpBtn").addEventListener("click", async function(){
+    const code=($("otpCode").value||"").trim();
+    const msg=$("loginMsg");
+    if(code.length<4){ msg.className="msg err"; msg.textContent="Entre le code reçu."; return; }
+    this.disabled=true; this.textContent="…";
+    const { data, error } = await sb.auth.verifyOtp({ email: window.__email||($("email").value||"").trim(), token:code, type:"email" });
+    this.disabled=false; this.textContent="Entrer";
+    if(error){ msg.className="msg err"; msg.textContent="Code refusé : "+error.message; return; }
+    if(data && data.session){ demarrer(data.session); }
+  });
+  $("otpCode").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("otpBtn").click(); });
+
+  $("logoutBtn").addEventListener("click", async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+  /* ---- DÉMARRAGE ---- */
+  async function demarrer(session){
+    token = session.access_token;
+    const r = await call({ action:"vue_ensemble" });
+    if(r.raison === "pas_admin"){
+      $("loginMsg").className="msg err";
+      $("loginMsg").textContent="Ce compte n'a pas accès au cockpit.";
+      await sb.auth.signOut();
+      return;
+    }
+    if(!r.ok){ $("tableZone").innerHTML='<div class="empty">Erreur de chargement.</div>'; }
+    $("loginView").style.display="none";
+    $("appView").classList.add("on");
+    render(r);
+  }
+
+  function render(r){
+    const s = r.stats;
+    $("kMrr").textContent = s.mrr + " €";
+    $("kTotal").textContent = s.total;
+    $("kActifs").textContent = s.actifs + " actif" + (s.actifs>1?"s":"");
+    $("kCartes").textContent = s.cartes;
+    const totalDem = r.commerces.reduce((a,c)=>a+c.demandes_ouvertes,0);
+    $("kDemandes").textContent = totalDem;
+
+    if(!r.commerces.length){
+      $("tableZone").innerHTML='<div class="empty"><div class="big">Aucun commerce pour l\'instant</div>Clique sur « Nouveau commerce » pour créer ta première fiche.</div>';
+      return;
+    }
+    let h='<div class="table"><div class="thead"><div>Commerce</div><div>Statut</div><div>Cartes</div><div>Actifs 7j</div><div></div></div>';
+    for(const c of r.commerces){
+      const st = c.statut || 'actif';
+      const flag = c.demandes_ouvertes>0 ? '<span class="flag">'+c.demandes_ouvertes+'</span>' : '';
+      h += '<div class="trow" data-id="'+c.id+'">'+
+        '<div><div class="c-nom">'+c.nom+flag+'</div><div class="c-slug">'+c.slug+'</div></div>'+
+        '<div><span class="badge b-'+st+'">'+(LABELS[st]||st)+'</span></div>'+
+        '<div class="c-num">'+c.nb_cartes+'</div>'+
+        '<div class="c-num">'+c.actifs_semaine+'</div>'+
+        '<div class="arrow">›</div>'+
+      '</div>';
+    }
+    h+='</div>';
+    $("tableZone").innerHTML=h;
+    $("tableZone").querySelectorAll(".trow").forEach(function(el){
+      el.addEventListener("click", function(){
+        // étape B : ouvrir la fiche détail. Pour l'instant, on prépare.
+        const id = el.getAttribute("data-id");
+        location.href = "/admin.html#commerce=" + id; // placeholder étape B
+        alert("Fiche détail du commerce — arrive à l'étape B 👌");
+      });
+    });
+  }
+
+  /* ---- MODALE NOUVEAU COMMERCE ---- */
+  $("newBtn").addEventListener("click", ()=> $("modalBg").classList.add("on"));
+  $("nCancel").addEventListener("click", ()=> $("modalBg").classList.remove("on"));
+  $("modalBg").addEventListener("click",(e)=>{ if(e.target===$("modalBg")) $("modalBg").classList.remove("on"); });
+  $("nCreate").addEventListener("click", async function(){
+    const nom=($("nNom").value||"").trim();
+    const msg=$("nMsg");
+    if(!nom){ msg.className="msg err"; msg.textContent="Le nom est requis."; return; }
+    this.disabled=true; this.textContent="Création…";
+    const r = await call({
+      action:"creer_commerce", nom:nom,
+      contact_nom:($("nContact").value||"").trim(),
+      contact_email:($("nEmail").value||"").trim(),
+      statut:$("nStatut").value
+    });
+    this.disabled=false; this.textContent="Créer la fiche";
+    if(r.ok){
+      $("modalBg").classList.remove("on");
+      $("nNom").value=""; $("nContact").value=""; $("nEmail").value=""; msg.className="msg";
+      const rr = await call({ action:"vue_ensemble" });
+      render(rr);
+    } else {
+      msg.className="msg err"; msg.textContent="Erreur : "+(r.raison||"réessaie");
+    }
+  });
+
+  /* session existante ? */
+  sb.auth.getSession().then(({data})=>{ if(data.session){ demarrer(data.session); } });
+})();
+</script>
+</body>
+</html>
