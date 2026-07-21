@@ -125,11 +125,14 @@ async function construirePass(jeton) {
   const labelRgb = rgb(commerce.couleur_label, [240, 223, 198]);
   const fgRgb = rgb(commerce.couleur_texte, [251, 249, 244]);
 
-  const modelDir = path.join(process.cwd(), "pass-assets");
+  const dossierCommerce = path.join(process.cwd(), "pass-assets", commerce.slug || "");
+  const dossierDefaut = path.join(process.cwd(), "pass-assets");
   const buffers = {};
   for (const f of ["icon.png", "icon@2x.png", "icon@3x.png", "logo.png", "logo@2x.png"]) {
-    const ip = path.join(modelDir, f);
-    if (fs.existsSync(ip)) buffers[f] = fs.readFileSync(ip);
+    const propre = path.join(dossierCommerce, f);
+    const defaut = path.join(dossierDefaut, f);
+    if (fs.existsSync(propre)) buffers[f] = fs.readFileSync(propre);
+    else if (fs.existsSync(defaut)) buffers[f] = fs.readFileSync(defaut);
   }
   if (sharp) {
     const svg = Buffer.from(svgStrip(carte.tampons, commerce.objectif, fondRgb, labelRgb));
