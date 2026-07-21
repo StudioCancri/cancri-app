@@ -95,15 +95,18 @@ module.exports = async (req, res) => {
     const labelRgb = rgbArray(commerce.couleur_label, [240, 223, 198]);
     const fgRgb = rgbArray(commerce.couleur_texte, [251, 249, 244]);
 
-    /* dossier d'images du modèle */
-    const modelDir = path.join(process.cwd(), "pass-assets");
+    /* dossier d'images : pass-assets/<slug>/ sinon pass-assets/ (fallback) */
+    const dossierCommerce = path.join(process.cwd(), "pass-assets", commerce.slug || "");
+    const dossierDefaut = path.join(process.cwd(), "pass-assets");
 
     /* on rassemble tous les buffers d'images */
     const buffers = {};
     const imgs = ["icon.png", "icon@2x.png", "icon@3x.png", "logo.png", "logo@2x.png"];
     for (const f of imgs) {
-      const ip = path.join(modelDir, f);
-      if (fs.existsSync(ip)) buffers[f] = fs.readFileSync(ip);
+      const propre = path.join(dossierCommerce, f);
+      const defaut = path.join(dossierDefaut, f);
+      if (fs.existsSync(propre)) buffers[f] = fs.readFileSync(propre);
+      else if (fs.existsSync(defaut)) buffers[f] = fs.readFileSync(defaut);
     }
 
     /* strip = grille dessinée à la volée */
