@@ -151,6 +151,11 @@ async function construirePass(jeton) {
     webServiceURL: (process.env.APP_URL || ""),
     authenticationToken: carte.jeton,
     storeCard: {},
+    locations: (commerce.latitude && commerce.longitude) ? [{
+      latitude: commerce.latitude,
+      longitude: commerce.longitude,
+      relevantText: commerce.texte_geoloc || "Vous êtes tout près !"
+    }] : undefined,
   }));
 
   const pass = new PKPass(buffers, {
