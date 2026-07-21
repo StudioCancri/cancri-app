@@ -150,6 +150,9 @@ module.exports = async (req, res) => {
       { key: "membre", label: "MEMBRE", value: carte.prenom || "Client" },
       { key: "reward", label: "RÉCOMPENSE", value: commerce.recompense }
     );
+    if (carte.message_relance && carte.message_relance.trim()) {
+      pass.backFields.push({ key: "relance", label: "Un petit rappel", value: carte.message_relance, changeMessage: "%@" });
+    }
     if (commerce.message_actuel && commerce.message_actuel.trim()) {
       pass.backFields.push({ key: "actu", label: "À ne pas manquer", value: commerce.message_actuel, changeMessage: "%@" });
     }
