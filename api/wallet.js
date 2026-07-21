@@ -141,7 +141,7 @@ async function construirePass(jeton) {
     formatVersion: 1,
     passTypeIdentifier: process.env.PASS_TYPE_ID,
     teamIdentifier: process.env.PASS_TEAM_ID,
-    organizationName: process.env.PASS_ORG || "Studio Cancri",
+    organizationName: commerce.nom,
     description: "Carte de fidélité — " + commerce.nom,
     serialNumber: carte.jeton,
     logoText: commerce.nom,
