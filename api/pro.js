@@ -202,6 +202,24 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, carte: carte, taps: taps || [] });
     }
 
+    /* ---- RÉGLAGES DE RELANCE ---- */
+    if (action === "get_relances") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=message_relance,relances_actives");
+      return res.status(200).json({ ok: true, message: c[0].message_relance || "", actives: c[0].relances_actives !== false });
+    }
+    if (action === "set_relances") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const msg = (body.message || "").toString().trim().slice(0, 120);
+      await sb("commerces?id=eq." + m[0].commerce_id, {
+        method: "PATCH",
+        body: { message_relance: msg, relances_actives: body.actives !== false },
+      });
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(200).json({ ok: false, raison: "action_inconnue" });
   } catch (e) {
     console.error("pro error:", e.message || e);
