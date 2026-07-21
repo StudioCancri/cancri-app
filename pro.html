@@ -226,6 +226,36 @@
   }
   .quick button:active{transform:scale(.96);}
 
+
+  /* ---- relances auto ---- */
+  .relances{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:18px;margin-bottom:14px;
+  }
+  .relances .rh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .relances .rt{font-family:'Fraunces',serif;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px;}
+  .relances .rs{font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;line-height:1.5;}
+  .relances textarea{
+    width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px;font:inherit;
+    font-size:14px;resize:none;min-height:60px;background:var(--cream);color:var(--ink);
+  }
+  .relances textarea:focus{outline:none;border-color:var(--terracotta);}
+  .relances .rbar{display:flex;align-items:center;justify-content:space-between;margin-top:10px;}
+  .relances .rsave{
+    border:none;background:var(--ink);color:#fff;font:inherit;font-size:13px;font-weight:700;
+    border-radius:10px;padding:10px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  .relances .rsave:active{transform:scale(.97);}
+  .relances .rsave:disabled{opacity:.5;}
+  .switch{position:relative;width:44px;height:26px;flex:none;cursor:pointer;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .slider{position:absolute;inset:0;background:var(--line);border-radius:99px;transition:.2s;}
+  .switch .slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;}
+  .switch input:checked + .slider{background:var(--sage);}
+  .switch input:checked + .slider:before{transform:translateX(18px);}
+  .relances .rmsg{font-size:12.5px;margin-top:8px;display:none;}
+  .relances .rmsg.on{display:block;color:#4d5c43;}
+
   /* ---- fiche client (panneau) ---- */
   .sheet-bg{
     position:fixed;inset:0;z-index:40;background:rgba(42,32,24,.4);
@@ -368,6 +398,20 @@
     <div class="stat accent"><div class="n" id="stSemaine">–</div><div class="l">Passages cette semaine</div></div>
     <div class="stat warn"><div class="n" id="stInactifs">–</div><div class="l">N'est pas revenu depuis 3 sem.</div></div>
     <div class="stat"><div class="n" id="stPleines">–</div><div class="l">Cartes pleines à offrir</div></div>
+  </div>
+
+
+  <div class="relances" id="relances">
+    <div class="rh">
+      <div class="rt">🔔 Relances automatiques</div>
+      <label class="switch"><input type="checkbox" id="relToggle" checked><span class="slider"></span></label>
+    </div>
+    <div class="rs">Un client qui n'est pas revenu depuis 21 jours reçoit automatiquement ce message sur sa carte. Une seule fois, sans que vous ayez rien à faire.</div>
+    <textarea id="relMsg" maxlength="120" placeholder="Votre message de relance…"></textarea>
+    <div class="rbar">
+      <span class="rmsg" id="relResult">Enregistré ✓</span>
+      <button class="rsave" id="relSave">Enregistrer</button>
+    </div>
   </div>
 
   <div class="section-head">
@@ -553,6 +597,7 @@
 
     afficherClients(liste, objectif);
     majQuota();
+    chargerRelances();
   }
 
   function afficherClients(liste, objectif){
@@ -761,6 +806,30 @@
       res.className = "cmsg on";
       res.textContent = "Impossible d'envoyer. Réessayez.";
       $("campSend").disabled = false;
+    }
+  });
+
+
+  /* ---------- RELANCES ---------- */
+  function chargerRelances(){
+    appelPro({ action:"get_relances" }).then(function(r){
+      if(r && r.ok){
+        $("relMsg").value = r.message || "";
+        $("relToggle").checked = r.actives !== false;
+      }
+    }).catch(function(){});
+  }
+  $("relSave").addEventListener("click", async function(){
+    this.disabled = true; this.textContent = "…";
+    var r = await appelPro({
+      action:"set_relances",
+      message: ($("relMsg").value || "").trim(),
+      actives: $("relToggle").checked
+    });
+    this.disabled = false; this.textContent = "Enregistrer";
+    if(r && r.ok){
+      var m = $("relResult"); m.classList.add("on");
+      setTimeout(function(){ m.classList.remove("on"); }, 2000);
     }
   });
 
