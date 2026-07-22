@@ -1,14 +1,432 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="refresh" content="0; url=/carte.html?c=mome">
-<title>Studio Cancri — Fidélité</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Studio Cancri — La carte de fidélité qui vit dans le téléphone</title>
+<meta name="description" content="Studio Cancri installe une carte de fidélité numérique dans les commerces bordelais. Vos clients posent leur téléphone au comptoir, leur carte se remplit toute seule.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-  body{font-family:system-ui,sans-serif;background:#E7ECEA;color:#232A2C;
-  display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}
+  :root{
+    --papier:#EEEEEE;
+    --papier-2:#E3E3E3;
+    --prune:#000000;
+    --prune-2:#141414;
+    --encre:#000000;
+    --encre-soft:rgba(0,0,0,.64);
+    --encre-faint:rgba(0,0,0,.42);
+    --rose:#08CB00;
+    --rose-deep:#06A800;
+    --rose-pale:rgba(8,203,0,.13);
+    --jade:#067A00;
+    --line:rgba(0,0,0,.13);
+    --line-dark:rgba(255,255,255,.14);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;}
+  body{
+    font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;
+    background:var(--papier);color:var(--encre);
+    line-height:1.55;-webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+  .disp{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;letter-spacing:-.035em;line-height:.98;}
+  .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--jade);}
+
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--rose);outline-offset:3px;border-radius:4px;}
+
+  /* ---------- NAV ---------- */
+  nav{position:sticky;top:0;z-index:40;background:rgba(238,238,238,.88);backdrop-filter:blur(12px);
+      -webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);}
+  nav .in{display:flex;align-items:center;justify-content:space-between;padding:15px 0;}
+  .mark{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15.5px;letter-spacing:-.01em;text-decoration:none;}
+  .mark .star{width:22px;height:22px;flex:none;}
+  .nav-cta{background:var(--encre);color:var(--papier);text-decoration:none;font-size:13.5px;font-weight:600;
+           padding:10px 17px;border-radius:100px;transition:background .18s;}
+  .nav-cta:hover{background:var(--rose);color:#000;}
+
+  /* ---------- HERO ---------- */
+  .hero{padding:76px 0 84px;position:relative;}
+  .hero::before{
+    content:"";position:absolute;top:-140px;right:-160px;width:520px;height:520px;border-radius:50%;
+    background:radial-gradient(circle,var(--rose-pale),transparent 68%);pointer-events:none;
+  }
+  .hero-grid{display:grid;grid-template-columns:1fr;gap:52px;align-items:center;position:relative;}
+  @media(min-width:900px){.hero-grid{grid-template-columns:1.08fr .92fr;gap:64px;}}
+  .hero h1{font-size:clamp(38px,7.2vw,64px);margin:16px 0 20px;}
+  .hero h1 em{font-style:normal;background:var(--rose);color:#000;padding:0 .1em .04em;border-radius:8px;box-decoration-break:clone;-webkit-box-decoration-break:clone;}
+  .hero p.lede{font-size:clamp(16px,2.1vw,18.5px);color:var(--encre-soft);max-width:44ch;margin-bottom:32px;}
+  .hero-actions{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+  .btn-1{background:var(--rose);color:#000;text-decoration:none;font-size:15px;font-weight:700;
+         padding:15px 26px;border-radius:100px;transition:background .18s,transform .12s;display:inline-block;}
+  .btn-1:hover{background:var(--rose-deep);}
+  .btn-1:active{transform:scale(.98);}
+  .btn-2{color:var(--encre-soft);text-decoration:none;font-size:14.5px;font-weight:600;padding:15px 6px;
+         border-bottom:1.5px solid var(--line);transition:color .18s,border-color .18s;}
+  .btn-2:hover{color:var(--jade);border-color:var(--rose);}
+
+  /* ---------- CARTE DÉMO ---------- */
+  .demo{position:relative;}
+  .demo-card{
+    background:#fff;border-radius:22px;padding:24px 24px 22px;
+    box-shadow:0 32px 60px -28px rgba(0,0,0,.35),0 3px 10px rgba(0,0,0,.08);
+    border:1px solid rgba(0,0,0,.08);
+  }
+  .dc-top{display:flex;align-items:center;gap:11px;margin-bottom:22px;}
+  .dc-logo{width:34px;height:34px;border-radius:50%;background:var(--rose);color:#000;flex:none;
+           display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .dc-nom{font-weight:700;font-size:15px;letter-spacing:-.01em;}
+  .dc-sub{font-size:11.5px;color:var(--encre-faint);}
+  .dc-kind{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--encre-faint);}
+  .dc-count{display:flex;align-items:flex-end;gap:6px;margin-bottom:3px;}
+  .dc-n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:46px;line-height:.9;letter-spacing:-.04em;}
+  .dc-max{font-size:17px;font-weight:600;color:var(--encre-faint);padding-bottom:4px;}
+  .dc-lab{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--encre-faint);margin-bottom:18px;}
+  .dc-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+  .dot{aspect-ratio:1;border-radius:50%;border:1.5px dashed rgba(0,0,0,.20);
+       display:flex;align-items:center;justify-content:center;font-size:15px;}
+  .dot.on{background:var(--rose);border:1.5px solid var(--rose);color:#000;}
+  .dot.pop{animation:pop .5s cubic-bezier(.2,1.6,.4,1);}
+  @keyframes pop{0%{transform:scale(.3);}68%{transform:scale(1.16);}100%{transform:scale(1);}}
+  .dc-fields{display:flex;justify-content:space-between;gap:12px;padding-top:16px;border-top:1px solid var(--line);}
+  .dc-fields .l{font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--encre-faint);margin-bottom:2px;}
+  .dc-fields .v{font-size:13px;font-weight:600;}
+  .dc-fields div:last-child{text-align:right;}
+  .dc-win{display:none;text-align:center;padding:4px 0 6px;}
+  .dc-win .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px;color:var(--jade);letter-spacing:-.02em;}
+  .dc-win .sml{font-size:12.5px;color:var(--encre-soft);margin-top:3px;}
+  .demo-card.plein .dc-grid{display:none;}
+  .demo-card.plein .dc-win{display:block;}
+
+  .tap-btn{
+    display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin-top:16px;
+    background:var(--encre);color:var(--papier);border:none;border-radius:14px;padding:15px;
+    font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;transition:background .18s,transform .1s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tap-btn:hover{background:var(--prune-2);}
+  .tap-btn:active{transform:scale(.985);}
+  .tap-hint{text-align:center;font-size:12px;color:var(--encre-faint);margin-top:11px;}
+  .puck{width:15px;height:15px;border-radius:50%;border:2px solid currentColor;position:relative;flex:none;}
+  .puck::after{content:"";position:absolute;inset:3px;border-radius:50%;background:currentColor;}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:84px 0;}
+  .sec-h{max-width:52ch;margin-bottom:44px;}
+  .sec-h h2{font-size:clamp(28px,4.4vw,40px);margin:14px 0 14px;}
+  .sec-h p{font-size:16.5px;color:var(--encre-soft);}
+
+  /* étapes */
+  .steps{display:grid;grid-template-columns:1fr;gap:30px;}
+  @media(min-width:760px){.steps{grid-template-columns:repeat(3,1fr);gap:36px;}}
+  .step{padding-top:24px;border-top:2px solid var(--encre);}
+  .step .prog{display:flex;gap:5px;margin-bottom:16px;}
+  .step .prog i{width:8px;height:8px;border-radius:50%;background:rgba(0,0,0,.16);display:block;}
+  .step .prog i.on{background:var(--rose);}
+  .step h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:19px;letter-spacing:-.02em;margin-bottom:9px;}
+  .step p{font-size:14.5px;color:var(--encre-soft);}
+
+  /* bloc sombre commerçant */
+  .dark{background:var(--prune);color:var(--papier);border-radius:30px;padding:64px 0;}
+  .dark .sec-h p{color:rgba(238,238,238,.62);}
+  .dark .eyebrow{color:var(--rose);}
+  .feats{display:grid;grid-template-columns:1fr;gap:1px;background:var(--line-dark);border-radius:18px;overflow:hidden;}
+  @media(min-width:700px){.feats{grid-template-columns:1fr 1fr;}}
+  .feat{background:var(--prune);padding:28px 26px;}
+  .feat h4{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.015em;margin-bottom:8px;}
+  .feat p{font-size:14px;color:rgba(238,238,238,.60);}
+  .feat .tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+             color:var(--rose);margin-bottom:12px;}
+
+  /* pour qui */
+  .pills{display:flex;flex-wrap:wrap;gap:11px;}
+  .pill{border:1.5px solid var(--line);border-radius:100px;padding:11px 19px;font-size:14.5px;font-weight:600;}
+  .note{margin-top:26px;font-size:14px;color:var(--encre-soft);max-width:56ch;}
+
+  /* prix */
+  .price-box{background:#fff;border:1px solid var(--line);border-radius:24px;padding:40px 34px;
+             display:grid;grid-template-columns:1fr;gap:32px;align-items:center;}
+  @media(min-width:760px){.price-box{grid-template-columns:1fr 1px 1fr;gap:44px;}}
+  .price-sep{background:var(--line);width:1px;height:100%;display:none;}
+  @media(min-width:760px){.price-sep{display:block;}}
+  .price-n{display:flex;align-items:flex-start;gap:5px;}
+  .price-n .amount{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:62px;line-height:.9;letter-spacing:-.045em;}
+  .price-n .cur{font-size:24px;font-weight:700;padding-top:5px;}
+  .price-per{font-size:14.5px;color:var(--encre-soft);margin-top:10px;}
+  .price-gift{display:inline-block;background:var(--rose-pale);color:var(--jade);font-size:13px;font-weight:700;
+              padding:7px 14px;border-radius:100px;margin-top:16px;}
+  .incl{list-style:none;display:grid;gap:11px;}
+  .incl li{display:flex;gap:11px;font-size:14.5px;align-items:flex-start;}
+  .incl li::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--rose);flex:none;margin-top:8px;}
+
+  /* contact */
+  .contact{text-align:center;padding:92px 0 100px;}
+  .contact h2{font-size:clamp(30px,5.4vw,50px);margin-bottom:18px;}
+  .contact p{font-size:17px;color:var(--encre-soft);max-width:46ch;margin:0 auto 32px;}
+  .contact .btn-1{font-size:16px;padding:17px 32px;}
+  .contact .sub{font-size:13.5px;color:var(--encre-faint);margin-top:20px;}
+
+  footer{border-top:1px solid var(--line);padding:30px 0 44px;}
+  footer .in{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+             font-size:13px;color:var(--encre-faint);}
+  footer a{color:var(--encre-soft);text-decoration:none;}
+  footer a:hover{color:var(--jade);}
+
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.3,1);}
+  .reveal.seen{opacity:1;transform:none;}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;}
+    .reveal{opacity:1;transform:none;}
+    html{scroll-behavior:auto;}
+  }
 </style>
 </head>
-<body>✦ Redirection…</body>
+<body>
+
+<nav>
+  <div class="wrap in">
+    <a class="mark" href="#top">
+      <svg class="star" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 1.5l2.6 6.6L21.5 11l-6.9 2.9L12 20.5l-2.6-6.6L2.5 11l6.9-2.9L12 1.5z" fill="#08CB00"/>
+      </svg>
+      Studio Cancri
+    </a>
+    <a class="nav-cta" href="#contact">Prendre contact</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Fidélité — Bordeaux</div>
+      <h1 class="disp">Vos habitués méritent mieux qu'un <em>bout de carton</em>.</h1>
+      <p class="lede">On installe chez vous une carte de fidélité qui vit dans le téléphone de vos clients. Ils posent leur téléphone sur la pastille au comptoir : leur carte se remplit toute seule.</p>
+      <div class="hero-actions">
+        <a class="btn-1" href="#contact">Voir ce que ça donne chez vous</a>
+        <a class="btn-2" href="#comment">Comment ça marche</a>
+      </div>
+    </div>
+
+    <div class="demo">
+      <div class="demo-card" id="card">
+        <div class="dc-top">
+          <div class="dc-logo">☕</div>
+          <div>
+            <div class="dc-nom">Votre commerce</div>
+            <div class="dc-sub">Carte de fidélité</div>
+          </div>
+          <div class="dc-kind">Démo</div>
+        </div>
+
+        <div class="dc-count"><span class="dc-n" id="dcN">1</span><span class="dc-max">/10</span></div>
+        <div class="dc-lab">Cafés</div>
+
+        <div class="dc-grid" id="grid"></div>
+
+        <div class="dc-win">
+          <div class="big">Boisson offerte</div>
+          <div class="sml">Le client montre sa carte au comptoir.</div>
+        </div>
+
+        <div class="dc-fields">
+          <div><div class="l">Membre</div><div class="v">Camille</div></div>
+          <div><div class="l">Récompense</div><div class="v">10ᵉ offerte</div></div>
+        </div>
+      </div>
+
+      <button class="tap-btn" id="tapBtn"><span class="puck"></span> Poser le téléphone</button>
+      <div class="tap-hint" id="hint">Appuyez pour voir un passage au comptoir.</div>
+    </div>
+  </div>
+</header>
+
+<!-- COMMENT -->
+<section id="comment">
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="eyebrow">Côté client</div>
+      <h2 class="disp">Trois secondes au comptoir, rien à installer.</h2>
+      <p>Pas d'application à télécharger, pas de compte à créer. La carte se range à côté de la carte bancaire, dans le téléphone.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step reveal">
+        <div class="prog"><i class="on"></i><i></i><i></i></div>
+        <h3>Il pose son téléphone</h3>
+        <p>Une pastille discrète sur le comptoir. Le client l'effleure avec son téléphone, comme un paiement sans contact.</p>
+      </div>
+      <div class="step reveal">
+        <div class="prog"><i class="on"></i><i class="on"></i><i></i></div>
+        <h3>Sa carte se remplit</h3>
+        <p>Un tampon de plus, tout de suite. La carte se met à jour dans son téléphone sans qu'il ouvre quoi que ce soit.</p>
+      </div>
+      <div class="step reveal">
+        <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        <h3>Il revient la chercher</h3>
+        <p>À la carte pleine, vous offrez la récompense. Vous validez d'un geste, la carte repart à zéro.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMMERÇANT -->
+<section>
+  <div class="wrap">
+    <div class="dark">
+      <div class="wrap">
+        <div class="sec-h reveal">
+          <div class="eyebrow">Côté comptoir</div>
+          <h2 class="disp">Vous savez enfin qui revient.</h2>
+          <p>Un espace en ligne, ouvert sur le téléphone ou l'ordinateur de la caisse. Vos clients, votre programme, vos messages.</p>
+        </div>
+
+        <div class="feats reveal">
+          <div class="feat">
+            <span class="tag">Vos clients</span>
+            <h4>La liste de vos habitués</h4>
+            <p>Qui est venu cette semaine, qui approche de sa récompense, qui n'est pas repassé depuis un moment.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">Messages</span>
+            <h4>Une offre sur leur écran verrouillé</h4>
+            <p>« Happy hour ce soir » part sur la carte de tous vos clients. Ils le voient sans ouvrir leur téléphone.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">Automatique</span>
+            <h4>Les absents reviennent seuls</h4>
+            <p>Un client qui n'est pas repassé depuis trois semaines reçoit votre petit mot. Vous n'avez rien à faire.</p>
+          </div>
+          <div class="feat">
+            <span class="tag">Quartier</span>
+            <h4>Un rappel quand il passe devant</h4>
+            <p>Sa carte s'affiche sur son écran quand il est à quelques pas de chez vous.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- POUR QUI -->
+<section>
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="eyebrow">Pour qui</div>
+      <h2 class="disp">Les commerces où l'on revient souvent.</h2>
+      <p>Le principe marche quand une visite vaut un tampon, quel que soit le montant.</p>
+    </div>
+    <div class="pills reveal">
+      <span class="pill">Cafés</span>
+      <span class="pill">Pâtisseries</span>
+      <span class="pill">Boulangeries</span>
+      <span class="pill">Coiffeurs</span>
+      <span class="pill">Barbiers</span>
+      <span class="pill">Instituts</span>
+      <span class="pill">Fleuristes</span>
+      <span class="pill">Cavistes</span>
+    </div>
+    <p class="note reveal">Si votre addition change du tout au tout d'un client à l'autre, dites-le-nous : on regardera ensemble si la carte a du sens chez vous, quitte à vous dire non.</p>
+  </div>
+</section>
+
+<!-- PRIX -->
+<section>
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="eyebrow">Le prix</div>
+      <h2 class="disp">Un seul tarif, tout compris.</h2>
+    </div>
+    <div class="price-box reveal">
+      <div>
+        <div class="price-n"><span class="amount disp">39</span><span class="cur">€</span></div>
+        <div class="price-per">par mois, pour votre commerce.</div>
+        <div class="price-gift">Le premier mois est offert</div>
+      </div>
+      <div class="price-sep"></div>
+      <ul class="incl">
+        <li>La carte dessinée à vos couleurs, par nos soins.</li>
+        <li>Les pastilles à poser sur le comptoir.</li>
+        <li>Votre espace en ligne et vos messages.</li>
+        <li>L'installation sur place et la prise en main avec l'équipe.</li>
+        <li>Les clients inscrits restent les vôtres.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div class="wrap">
+    <h2 class="disp reveal">On passe vous montrer ?</h2>
+    <p class="reveal">Dites-nous ce que vous vendez et ce que vous aimeriez offrir. On vous prépare votre carte, et vous la voyez avant de décider.</p>
+    <a class="btn-1 reveal" href="mailto:contact@studiocancri.fr?subject=Ma%20carte%20de%20fid%C3%A9lit%C3%A9">Nous écrire</a>
+    <div class="sub reveal">Bordeaux et alentours · Réponse sous 24 h</div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap in">
+    <div>Studio Cancri — fidélité pour commerces de quartier</div>
+    <div><a href="mailto:contact@studiocancri.fr">contact@studiocancri.fr</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var TOTAL = 10, n = 1;
+  var grid = document.getElementById("grid");
+  var card = document.getElementById("card");
+  var btn = document.getElementById("tapBtn");
+  var hint = document.getElementById("hint");
+
+  function dessiner(pop){
+    var h = "";
+    for(var i=0;i<TOTAL;i++){
+      var on = i < n;
+      h += '<div class="dot'+(on?' on':'')+(pop && i===n-1?' pop':'')+'">'+(on?'☕':'')+'</div>';
+    }
+    grid.innerHTML = h;
+    document.getElementById("dcN").textContent = n;
+    card.classList.toggle("plein", n >= TOTAL);
+  }
+
+  btn.addEventListener("click", function(){
+    if(n >= TOTAL){
+      n = 1;
+      hint.textContent = "Nouvelle carte — le tampon de bienvenue est déjà offert.";
+      dessiner(true);
+      return;
+    }
+    n++;
+    dessiner(true);
+    if(n >= TOTAL){
+      hint.textContent = "Carte pleine. Appuyez encore pour repartir à zéro.";
+    } else if(n === TOTAL - 1){
+      hint.textContent = "Plus qu'un passage avant la récompense.";
+    } else {
+      hint.textContent = "Encore " + (TOTAL - n) + " passages avant la récompense.";
+    }
+  });
+
+  dessiner(false);
+
+  if("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if(e.isIntersecting){ e.target.classList.add("seen"); io.unobserve(e.target); }
+      });
+    }, { threshold:.14, rootMargin:"0px 0px -40px 0px" });
+    document.querySelectorAll(".reveal").forEach(function(el){ io.observe(el); });
+  } else {
+    document.querySelectorAll(".reveal").forEach(function(el){ el.classList.add("seen"); });
+  }
+})();
+</script>
+</body>
 </html>
