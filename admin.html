@@ -123,6 +123,72 @@
   .modal .cancel{background:transparent;border:1px solid var(--line-2);color:var(--text-soft);width:auto;padding:15px 20px;}
   .modal .cancel:hover{background:var(--panel);}
 
+
+  /* ---------- FICHE COMMERCE ---------- */
+  .detail{display:none;}
+  .detail.on{display:block;}
+  .app.detail-mode .liste-zone{display:none;}
+
+  .back{border:none;background:transparent;color:var(--text-soft);font:inherit;font-size:13px;font-weight:600;
+        cursor:pointer;padding:0;margin-bottom:18px;display:flex;align-items:center;gap:7px;}
+  .back:hover{color:var(--gold);}
+
+  .d-head{display:flex;align-items:flex-start;gap:16px;margin-bottom:26px;flex-wrap:wrap;}
+  .d-head .d-titre{flex:1;min-width:200px;}
+  .d-head h1{font-family:'Fraunces',serif;font-weight:600;font-size:28px;letter-spacing:-.02em;line-height:1.1;}
+  .d-head .d-slug{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-faint);margin-top:4px;}
+  .d-head select{background:var(--panel);border:1px solid var(--line-2);color:var(--text);border-radius:10px;
+                 padding:10px 13px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+  .d-head select:focus{outline:none;border-color:var(--gold);}
+
+  .d-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:26px;}
+  .d-stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;}
+  .d-stat .v{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;line-height:1;}
+  .d-stat .l{font-size:11px;color:var(--text-faint);margin-top:6px;font-weight:600;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;}
+  .card h3{font-family:'Fraunces',serif;font-weight:600;font-size:16px;margin-bottom:3px;}
+  .card .c-sub{font-size:12.5px;color:var(--text-faint);margin-bottom:18px;}
+  .grid2{display:grid;grid-template-columns:1fr;gap:13px;}
+  @media(min-width:620px){.grid2{grid-template-columns:1fr 1fr;}}
+  .fld label{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);
+             margin-bottom:6px;display:block;}
+  .fld input,.fld textarea,.fld select{width:100%;border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;
+    font:inherit;font-size:14px;background:var(--bg-2);color:var(--text);}
+  .fld textarea{resize:vertical;min-height:70px;}
+  .fld input:focus,.fld textarea:focus,.fld select:focus{outline:none;border-color:var(--gold);}
+  .fld.full{grid-column:1/-1;}
+  .save{border:none;background:var(--gold);color:#1a1200;font:inherit;font-size:13.5px;font-weight:700;
+        border-radius:10px;padding:11px 20px;cursor:pointer;margin-top:16px;}
+  .save:active{transform:scale(.98);}
+  .save:disabled{opacity:.5;}
+  .saved{font-size:12.5px;color:var(--green);margin-left:12px;opacity:0;transition:opacity .2s;}
+  .saved.on{opacity:1;}
+
+  /* demandes */
+  .dem-add{display:flex;gap:9px;margin-bottom:14px;}
+  .dem-add input{flex:1;border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;font:inherit;
+                 font-size:14px;background:var(--bg-2);color:var(--text);}
+  .dem-add input:focus{outline:none;border-color:var(--gold);}
+  .dem-add button{border:1px solid var(--gold);background:rgba(224,169,109,.1);color:var(--gold);font:inherit;
+                  font-size:13px;font-weight:700;border-radius:10px;padding:0 16px;cursor:pointer;}
+  .dem{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .dem:last-child{border-bottom:none;}
+  .dem .tick{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line-2);flex:none;cursor:pointer;
+             display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;}
+  .dem .tick:hover{border-color:var(--green);}
+  .dem.fait .tick{background:var(--green);border-color:var(--green);color:#0E1113;}
+  .dem .txt{flex:1;font-size:14px;}
+  .dem.fait .txt{color:var(--text-faint);text-decoration:line-through;}
+  .dem .date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint);}
+
+  /* clients récents */
+  .mini{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px;}
+  .mini:last-child{border-bottom:none;}
+  .mini .m-n{flex:1;}
+  .mini .m-t{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--gold);}
+  .mini .m-d{font-size:11.5px;color:var(--text-faint);}
+
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
 </style>
 </head>
@@ -163,13 +229,112 @@
     <div class="kpi"><div class="k-l">À traiter</div><div class="k-v mono" id="kDemandes">–</div><div class="k-sub">demandes ouvertes</div></div>
   </div>
 
-  <div class="section-h">
-    <h2>Portefeuille</h2>
-    <button class="addbtn" id="newBtn">+ Nouveau commerce</button>
+  <div class="liste-zone" id="listeZone">
+    <div class="section-h">
+      <h2>Portefeuille</h2>
+      <button class="addbtn" id="newBtn">+ Nouveau commerce</button>
+    </div>
+
+    <div id="tableZone">
+      <div class="loading">Chargement…</div>
+    </div>
   </div>
 
-  <div id="tableZone">
-    <div class="loading">Chargement…</div>
+  <!-- ---------- FICHE DÉTAIL ---------- -->
+  <div class="detail" id="detailView">
+    <button class="back" id="backBtn">‹ Retour au portefeuille</button>
+
+    <div class="d-head">
+      <div class="d-titre">
+        <h1 id="dNom">—</h1>
+        <div class="d-slug" id="dSlug">—</div>
+      </div>
+      <select id="dStatut">
+        <option value="prospect">Prospect</option>
+        <option value="contact">Premier contact</option>
+        <option value="contrat">Contrat en cours</option>
+        <option value="config">En configuration</option>
+        <option value="en_ligne">En ligne</option>
+        <option value="actif">Actif</option>
+        <option value="pause">En pause</option>
+        <option value="arrete">Arrêté</option>
+      </select>
+    </div>
+
+    <div class="d-stats">
+      <div class="d-stat"><div class="v mono" id="dCartes">–</div><div class="l">Cartes clients</div></div>
+      <div class="d-stat"><div class="v mono" id="dActifs">–</div><div class="l">Actifs cette semaine</div></div>
+      <div class="d-stat"><div class="v mono" id="dPleines">–</div><div class="l">Cartes pleines</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Contact & informations</h3>
+      <div class="c-sub">Qui contacter, où, et ce qu'il faut retenir.</div>
+      <div class="grid2">
+        <div class="fld"><label>Nom du commerce</label><input id="fNom"></div>
+        <div class="fld"><label>Personne à contacter</label><input id="fContact"></div>
+        <div class="fld"><label>Email</label><input id="fEmail" type="email"></div>
+        <div class="fld"><label>Téléphone</label><input id="fTel"></div>
+        <div class="fld full"><label>Adresse</label><input id="fAdresse"></div>
+        <div class="fld full"><label>Notes internes</label><textarea id="fNotes" placeholder="Ce que tu dois te rappeler sur ce client…"></textarea></div>
+      </div>
+      <button class="save" id="saveInfos">Enregistrer</button><span class="saved" id="savedInfos">Enregistré</span>
+    </div>
+
+    <div class="card">
+      <h3>Programme de fidélité</h3>
+      <div class="c-sub">Ce que voient ses clients sur leur carte.</div>
+      <div class="grid2">
+        <div class="fld"><label>Unité (ex : CAFÉS)</label><input id="fUnite"></div>
+        <div class="fld"><label>Objectif (4 à 12)</label><input id="fObjectif" type="number" min="4" max="12"></div>
+        <div class="fld full"><label>Récompense</label><input id="fRecompense"></div>
+        <div class="fld"><label>Code staff</label><input id="fCode" maxlength="4"></div>
+        <div class="fld"><label>Couleur de fond</label><input id="fFond" placeholder="rgb(255, 255, 255)"></div>
+        <div class="fld"><label>Couleur du texte</label><input id="fTexte" placeholder="rgb(212, 82, 52)"></div>
+        <div class="fld"><label>Couleur des labels</label><input id="fLabel" placeholder="rgb(212, 82, 52)"></div>
+      </div>
+      <button class="save" id="saveFid">Enregistrer</button><span class="saved" id="savedFid">Enregistré</span>
+    </div>
+
+    <div class="card">
+      <h3>Contrat</h3>
+      <div class="c-sub">Dates, montant et renouvellement.</div>
+      <div class="grid2">
+        <div class="fld"><label>Signature</label><input id="kSignature" type="date"></div>
+        <div class="fld"><label>Début</label><input id="kDebut" type="date"></div>
+        <div class="fld"><label>Fin</label><input id="kFin" type="date"></div>
+        <div class="fld"><label>Montant mensuel (€)</label><input id="kMontant" type="number" step="1"></div>
+        <div class="fld"><label>Statut</label>
+          <select id="kStatut">
+            <option value="brouillon">Brouillon</option>
+            <option value="actif">Actif</option>
+            <option value="expire">Expiré</option>
+            <option value="resilie">Résilié</option>
+          </select>
+        </div>
+        <div class="fld"><label>Renouvellement auto</label>
+          <select id="kRenouv"><option value="oui">Oui</option><option value="non">Non</option></select>
+        </div>
+        <div class="fld full"><label>Conditions particulières</label><textarea id="kConditions"></textarea></div>
+      </div>
+      <button class="save" id="saveContrat">Enregistrer</button><span class="saved" id="savedContrat">Enregistré</span>
+    </div>
+
+    <div class="card">
+      <h3>Demandes & suivi</h3>
+      <div class="c-sub">Ce qu'il t'a demandé, ce qu'il reste à faire.</div>
+      <div class="dem-add">
+        <input id="demTexte" placeholder="Ex : veut changer sa récompense">
+        <button id="demAdd">Ajouter</button>
+      </div>
+      <div id="demZone"></div>
+    </div>
+
+    <div class="card">
+      <h3>Derniers clients</h3>
+      <div class="c-sub">Les 10 passages les plus récents.</div>
+      <div id="miniZone"></div>
+    </div>
   </div>
 </div>
 
@@ -288,12 +453,179 @@
     $("tableZone").innerHTML=h;
     $("tableZone").querySelectorAll(".trow").forEach(function(el){
       el.addEventListener("click", function(){
-        // étape B : ouvrir la fiche détail. Pour l'instant, on prépare.
-        const id = el.getAttribute("data-id");
-        location.href = "/admin.html#commerce=" + id; // placeholder étape B
-        alert("Fiche détail du commerce — arrive à l'étape B 👌");
+        ouvrirFiche(el.getAttribute("data-id"));
       });
     });
+  }
+
+
+  /* ---------- FICHE DÉTAIL ---------- */
+  let commerceOuvert = null;
+  let contratOuvert = null;
+
+  function flash(id){
+    const el = $(id); el.classList.add("on");
+    setTimeout(()=> el.classList.remove("on"), 1800);
+  }
+  function jour(d){
+    if(!d) return "—";
+    const j = Math.floor((Date.now() - new Date(d).getTime())/(24*3600*1000));
+    if(j===0) return "aujourd'hui";
+    if(j===1) return "hier";
+    if(j<7) return "il y a "+j+" j";
+    return "il y a "+Math.floor(j/7)+" sem";
+  }
+
+  async function ouvrirFiche(id){
+    const r = await call({ action:"detail_commerce", commerce_id:id });
+    if(!r.ok) return;
+    commerceOuvert = r.commerce;
+    const c = r.commerce;
+
+    $("appView").classList.add("detail-mode");
+    $("detailView").classList.add("on");
+    window.scrollTo(0,0);
+
+    $("dNom").textContent = c.nom;
+    $("dSlug").textContent = c.slug;
+    $("dStatut").value = c.statut || "actif";
+
+    /* stats */
+    const cartes = r.cartes || [];
+    const sem = 7*24*3600*1000, now = Date.now();
+    $("dCartes").textContent = cartes.length;
+    $("dActifs").textContent = cartes.filter(x=>x.dernier_tap && (now-new Date(x.dernier_tap).getTime())<sem).length;
+    $("dPleines").textContent = cartes.filter(x=>x.tampons >= c.objectif).length;
+
+    /* infos */
+    $("fNom").value = c.nom||""; $("fContact").value = c.contact_nom||"";
+    $("fEmail").value = c.contact_email||""; $("fTel").value = c.contact_tel||"";
+    $("fAdresse").value = c.adresse||""; $("fNotes").value = c.notes_admin||"";
+
+    /* fidélité */
+    $("fUnite").value = c.unite||""; $("fObjectif").value = c.objectif||10;
+    $("fRecompense").value = c.recompense||""; $("fCode").value = c.code_staff||"";
+    $("fFond").value = c.couleur_fond||""; $("fTexte").value = c.couleur_texte||""; $("fLabel").value = c.couleur_label||"";
+
+    /* contrat (le plus récent) */
+    const k = (r.contrats && r.contrats[0]) ? r.contrats[0] : null;
+    contratOuvert = k ? k.id : null;
+    $("kSignature").value = k && k.date_signature ? k.date_signature : "";
+    $("kDebut").value = k && k.date_debut ? k.date_debut : "";
+    $("kFin").value = k && k.date_fin ? k.date_fin : "";
+    $("kMontant").value = k ? k.montant_mensuel : 39;
+    $("kStatut").value = k ? k.statut : "brouillon";
+    $("kRenouv").value = (k && k.renouvellement_auto === false) ? "non" : "oui";
+    $("kConditions").value = k ? (k.conditions||"") : "";
+
+    renderDemandes(r.demandes || []);
+    renderMini(cartes.slice(0,10), c.objectif);
+  }
+
+  function fermerFiche(){
+    $("detailView").classList.remove("on");
+    $("appView").classList.remove("detail-mode");
+    commerceOuvert = null;
+    window.scrollTo(0,0);
+  }
+  $("backBtn").addEventListener("click", async function(){
+    fermerFiche();
+    const rr = await call({ action:"vue_ensemble" });
+    render(rr);
+  });
+
+  /* statut pipeline */
+  $("dStatut").addEventListener("change", async function(){
+    if(!commerceOuvert) return;
+    await call({ action:"maj_commerce", commerce_id:commerceOuvert.id, statut:this.value });
+    commerceOuvert.statut = this.value;
+  });
+
+  /* enregistrer infos */
+  $("saveInfos").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    this.disabled=true;
+    const r = await call({ action:"maj_commerce", commerce_id:commerceOuvert.id,
+      nom:$("fNom").value.trim(), contact_nom:$("fContact").value.trim(),
+      contact_email:$("fEmail").value.trim(), contact_tel:$("fTel").value.trim(),
+      adresse:$("fAdresse").value.trim(), notes_admin:$("fNotes").value });
+    this.disabled=false;
+    if(r.ok){ $("dNom").textContent = $("fNom").value.trim(); flash("savedInfos"); }
+  });
+
+  /* enregistrer fidélité */
+  $("saveFid").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    this.disabled=true;
+    const obj = Math.max(4, Math.min(12, parseInt($("fObjectif").value,10) || 10));
+    const r = await call({ action:"maj_commerce", commerce_id:commerceOuvert.id,
+      unite:$("fUnite").value.trim(), objectif:obj, recompense:$("fRecompense").value.trim(),
+      code_staff:$("fCode").value.trim(), couleur_fond:$("fFond").value.trim(),
+      couleur_texte:$("fTexte").value.trim(), couleur_label:$("fLabel").value.trim() });
+    this.disabled=false;
+    if(r.ok){ $("fObjectif").value = obj; flash("savedFid"); }
+  });
+
+  /* enregistrer contrat */
+  $("saveContrat").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    this.disabled=true;
+    const r = await call({ action:"save_contrat", commerce_id:commerceOuvert.id, contrat_id:contratOuvert,
+      date_signature:$("kSignature").value||null, date_debut:$("kDebut").value||null, date_fin:$("kFin").value||null,
+      montant_mensuel: parseFloat($("kMontant").value)||0, statut:$("kStatut").value,
+      renouvellement_auto: $("kRenouv").value === "oui", conditions:$("kConditions").value });
+    this.disabled=false;
+    if(r.ok){ contratOuvert = r.contrat.id; flash("savedContrat"); }
+  });
+
+  /* demandes */
+  function renderDemandes(list){
+    if(!list.length){ $("demZone").innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:6px 0;">Rien en attente.</div>'; return; }
+    let h2 = "";
+    for(const d of list){
+      const fait = d.statut === "fait";
+      h2 += '<div class="dem'+(fait?" fait":"")+'" data-id="'+d.id+'">'+
+        '<div class="tick">✓</div>'+
+        '<div class="txt">'+d.texte+'</div>'+
+        '<div class="date">'+ new Date(d.cree_le).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) +'</div>'+
+      '</div>';
+    }
+    $("demZone").innerHTML = h2;
+    $("demZone").querySelectorAll(".dem").forEach(function(el){
+      el.querySelector(".tick").addEventListener("click", async function(){
+        const id = el.getAttribute("data-id");
+        const fait = el.classList.contains("fait");
+        el.classList.toggle("fait");
+        await call({ action:"maj_demande", demande_id:id, statut: fait ? "a_faire" : "fait" });
+      });
+    });
+  }
+  $("demAdd").addEventListener("click", async function(){
+    const t = ($("demTexte").value||"").trim();
+    if(!t || !commerceOuvert) return;
+    this.disabled=true;
+    const r = await call({ action:"add_demande", commerce_id:commerceOuvert.id, texte:t });
+    this.disabled=false;
+    if(r.ok){
+      $("demTexte").value="";
+      const rr = await call({ action:"detail_commerce", commerce_id:commerceOuvert.id });
+      renderDemandes(rr.demandes||[]);
+    }
+  });
+  $("demTexte").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("demAdd").click(); });
+
+  /* mini liste clients */
+  function renderMini(list, objectif){
+    if(!list.length){ $("miniZone").innerHTML = '<div style="font-size:13px;color:var(--text-faint);padding:6px 0;">Aucun client pour l\'instant.</div>'; return; }
+    let h3 = "";
+    for(const c of list){
+      h3 += '<div class="mini">'+
+        '<div class="m-n">'+(c.prenom||"Client")+'</div>'+
+        '<div class="m-t">'+c.tampons+'/'+objectif+'</div>'+
+        '<div class="m-d">'+jour(c.dernier_tap)+'</div>'+
+      '</div>';
+    }
+    $("miniZone").innerHTML = h3;
   }
 
   /* ---- MODALE NOUVEAU COMMERCE ---- */
