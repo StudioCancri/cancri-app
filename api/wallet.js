@@ -265,6 +265,7 @@ module.exports = async (req, res) => {
       const rows = await sb("appareils?device_id=eq." + encodeURIComponent(deviceId) + "&select=jeton");
       if (!rows || !rows.length) return res.status(204).end();
       const jetons = rows.map((r) => r.jeton);
+      console.log("[wallet] iPhone verifie ses cartes :", jetons.length, "serial(s) annonce(s)");
       return res.status(200).json({
         serialNumbers: jetons,
         lastUpdated: String(Math.floor(Date.now() / 1000)),
@@ -274,15 +275,21 @@ module.exports = async (req, res) => {
     /* --- TÉLÉCHARGEMENT DU PASS À JOUR : GET /v1/passes/{ptid}/{serial} --- */
     if (seg[1] === "passes" && seg[3] && req.method === "GET") {
       const serial = seg[3];
+      console.log("[wallet] iPhone demande le pass", serial.slice(0, 8) + "…");
       const built = await construirePass(serial);
-      if (!built) return res.status(404).end();
+      if (!built) { console.log("[wallet] pass introuvable pour ce serial → 404"); return res.status(404).end(); }
       res.setHeader("Content-Type", "application/vnd.apple.pkpass");
       res.setHeader("Last-Modified", new Date().toUTCString());
+      console.log("[wallet] pass renvoyé → la carte devrait se mettre à jour");
       return res.status(200).send(built.pass.getAsBuffer());
     }
 
-    /* --- LOG APPLE : POST /v1/log --- */
+    /* --- LOG APPLE : POST /v1/log — l'iPhone nous raconte ses erreurs --- */
     if (seg[1] === "log") {
+      let b = req.body;
+      if (typeof b === "string") { try { b = JSON.parse(b); } catch (e) { b = { brut: req.body }; } }
+      const messages = (b && b.logs) ? b.logs : [b];
+      for (const m of messages) console.log("[wallet][iPhone dit] :", typeof m === "string" ? m : JSON.stringify(m));
       return res.status(200).end();
     }
 
