@@ -1,113 +1,321 @@
-/* ============================================================
-   API CANCRI — /api/moncompte
-   Portail client : retrouver ses cartes de fidélité avec son
-   email, quel que soit le téléphone.
-
-   Actions :
-   - mes_cartes  : toutes les cartes liées à l'email vérifié
-   - rattacher   : lie des cartes (jetons locaux) à cet email
-   ============================================================ */
-
-function nettoyerUrl(u) {
-  return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
-}
-const SUPABASE_URL = nettoyerUrl(process.env.SUPABASE_URL);
-const SECRET = (process.env.SUPABASE_SECRET || "").trim();
-
-async function sb(chemin, options) {
-  options = options || {};
-  const headers = { apikey: SECRET, Authorization: "Bearer " + SECRET, "Content-Type": "application/json" };
-  if (options.method === "POST" || options.method === "PATCH") headers["Prefer"] = "return=representation";
-  const r = await fetch(SUPABASE_URL + "/rest/v1/" + chemin, {
-    method: options.method || "GET",
-    headers: headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
-  if (!r.ok) throw new Error("Supabase " + r.status + " : " + (await r.text()));
-  const t = await r.text();
-  return t ? JSON.parse(t) : null;
-}
-
-/* renvoie l'email vérifié du porteur du token, ou null */
-async function emailDepuisToken(token) {
-  if (!token) return null;
-  const r = await fetch(SUPABASE_URL + "/auth/v1/user", {
-    headers: { apikey: SECRET, Authorization: "Bearer " + token },
-  });
-  if (!r.ok) return null;
-  const u = await r.json();
-  return u && u.email ? u.email.toLowerCase().trim() : null;
-}
-
-module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  if (req.method === "OPTIONS") return res.status(200).end();
-  if (req.method !== "POST") return res.status(200).json({ ok: true, info: "API mon compte" });
-
-  try {
-    const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-    const email = await emailDepuisToken(token);
-    if (!email) return res.status(401).json({ ok: false, raison: "non_connecte" });
-
-    let body = req.body;
-    if (typeof body === "string") body = JSON.parse(body || "{}");
-    body = body || {};
-    const action = body.action;
-
-    /* ---- RATTACHER des cartes trouvées sur cet appareil ---- */
-    if (action === "rattacher") {
-      const jetons = Array.isArray(body.jetons) ? body.jetons.slice(0, 20) : [];
-      let ajoutees = 0;
-      for (const j of jetons) {
-        if (!j || typeof j !== "string") continue;
-        const c = await sb("cartes?jeton=eq." + encodeURIComponent(j) + "&select=id,email");
-        if (!c || !c[0]) continue;
-        /* on ne vole pas la carte de quelqu'un d'autre */
-        if (c[0].email && c[0].email.toLowerCase().trim() !== email) continue;
-        if (c[0].email && c[0].email.toLowerCase().trim() === email) continue;
-        await sb("cartes?id=eq." + c[0].id, { method: "PATCH", body: { email: email } });
-        ajoutees++;
-      }
-      return res.status(200).json({ ok: true, ajoutees: ajoutees });
-    }
-
-    /* ---- MES CARTES ---- */
-    if (action === "mes_cartes") {
-      const cartes = await sb(
-        "cartes?email=eq." + encodeURIComponent(email) +
-        "&select=id,jeton,prenom,tampons,dernier_tap,commerce_id&order=dernier_tap.desc"
-      );
-      const liste = [];
-      for (const c of (cartes || [])) {
-        const com = await sb("commerces?id=eq." + c.commerce_id +
-          "&select=nom,slug,unite,objectif,recompense,couleur_fond,couleur_texte,couleur_label,adresse,message_actuel");
-        if (!com || !com[0]) continue;
-        const m = com[0];
-        liste.push({
-          jeton: c.jeton,
-          prenom: c.prenom,
-          tampons: c.tampons,
-          dernier_tap: c.dernier_tap,
-          commerce: m.nom,
-          slug: m.slug,
-          unite: m.unite,
-          objectif: m.objectif,
-          recompense: m.recompense,
-          adresse: m.adresse || "",
-          message: m.message_actuel || "",
-          fond: m.couleur_fond || "rgb(255,255,255)",
-          texte: m.couleur_texte || "rgb(0,0,0)",
-          label: m.couleur_label || "rgb(0,0,0)",
-        });
-      }
-      return res.status(200).json({ ok: true, email: email, cartes: liste });
-    }
-
-    return res.status(200).json({ ok: false, raison: "action_inconnue" });
-  } catch (e) {
-    console.error("moncompte error:", e.message || e);
-    return res.status(500).json({ ok: false, raison: "erreur_serveur", message: e.message });
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mes cartes de fidélité</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --gris:#EEEEEE;
+    --gris-2:#E2E2E2;
+    --noir:#000000;
+    --noir-soft:rgba(0,0,0,.62);
+    --noir-faint:rgba(0,0,0,.38);
+    --vert:#08CB00;
+    --vert-deep:#067A00;
+    --line:rgba(0,0,0,.12);
   }
-};
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;
+    background:var(--gris);color:var(--noir);line-height:1.55;min-height:100dvh;
+    -webkit-font-smoothing:antialiased;
+  }
+  .disp{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;letter-spacing:-.035em;line-height:1;}
+  .wrap{max-width:520px;margin:0 auto;padding:0 22px;}
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--vert-deep);outline-offset:3px;border-radius:6px;}
+
+  /* ---------- barre ---------- */
+  .bar{display:flex;align-items:center;justify-content:space-between;padding:18px 0;}
+  .bar .mk{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;text-decoration:none;}
+  .bar .mk svg{width:18px;height:18px;}
+  .bar .out{border:1px solid var(--line);background:transparent;color:var(--noir-soft);font:inherit;
+            font-size:12.5px;font-weight:600;border-radius:100px;padding:8px 14px;cursor:pointer;}
+  .bar .out:hover{border-color:var(--noir);color:var(--noir);}
+
+  /* ---------- connexion ---------- */
+  .login{padding:20px 0 60px;}
+  .stack{position:relative;height:132px;margin:22px 0 40px;}
+  .ghost{
+    position:absolute;left:50%;width:190px;height:112px;border-radius:14px;border:1.5px solid var(--line);
+    background:#fff;transform-origin:50% 100%;
+  }
+  .ghost:nth-child(1){transform:translateX(-50%) rotate(-8deg) translateY(6px);opacity:.5;}
+  .ghost:nth-child(2){transform:translateX(-50%) rotate(4deg) translateY(2px);opacity:.75;}
+  .ghost:nth-child(3){transform:translateX(-50%) rotate(-1deg);
+    box-shadow:0 14px 30px -14px rgba(0,0,0,.35);}
+  .ghost .g-dots{display:flex;gap:6px;padding:14px;flex-wrap:wrap;width:100%;}
+  .ghost .g-dots i{width:13px;height:13px;border-radius:50%;background:var(--gris-2);display:block;}
+  .ghost .g-dots i.on{background:var(--vert);}
+
+  .login h1{font-size:clamp(28px,7vw,36px);margin-bottom:12px;}
+  .login p.sub{font-size:15.5px;color:var(--noir-soft);margin-bottom:28px;}
+  .lbl{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--noir-soft);
+       margin-bottom:8px;display:block;}
+  .inp{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:15px 16px;font:inherit;
+       font-size:16px;background:#fff;color:var(--noir);}
+  .inp:focus{outline:none;border-color:var(--vert-deep);}
+  .btn{width:100%;border:none;border-radius:13px;padding:16px;margin-top:12px;background:var(--vert);
+       color:#000;font:inherit;font-size:15.5px;font-weight:700;cursor:pointer;
+       transition:background .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
+  .btn:hover{background:var(--vert-deep);color:#fff;}
+  .btn:active{transform:scale(.985);}
+  .btn:disabled{opacity:.5;}
+  #otpZone{display:none;margin-top:16px;}
+  #otpCode{text-align:center;letter-spacing:.34em;font-size:21px;font-weight:700;}
+  .msg{margin-top:18px;padding:14px 16px;border-radius:12px;font-size:13.5px;display:none;line-height:1.5;}
+  .msg.ok{display:block;background:rgba(8,203,0,.12);color:var(--vert-deep);border:1px solid rgba(8,203,0,.3);}
+  .msg.err{display:block;background:rgba(0,0,0,.05);color:var(--noir);border:1px solid var(--line);}
+  .foot-note{margin-top:30px;font-size:12.5px;color:var(--noir-faint);line-height:1.6;}
+
+  /* ---------- mes cartes ---------- */
+  .cartes{display:none;padding-bottom:70px;}
+  .cartes.on{display:block;}
+  .hello{margin:8px 0 26px;}
+  .hello h2{font-size:clamp(24px,6vw,30px);margin-bottom:5px;}
+  .hello p{font-size:14px;color:var(--noir-soft);}
+
+  .carte{
+    border-radius:20px;padding:20px 20px 18px;margin-bottom:16px;
+    box-shadow:0 20px 40px -20px rgba(0,0,0,.30),0 2px 6px rgba(0,0,0,.06);
+    opacity:0;transform:translateY(22px) scale(.985);
+    animation:monte .55s cubic-bezier(.2,.8,.3,1) forwards;
+  }
+  @keyframes monte{to{opacity:1;transform:none;}}
+  .c-top{display:flex;align-items:center;gap:11px;margin-bottom:18px;}
+  .c-ini{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;
+         justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px;}
+  .c-nom{font-weight:700;font-size:16px;letter-spacing:-.01em;}
+  .c-adr{font-size:11.5px;opacity:.6;}
+  .c-num{display:flex;align-items:flex-end;gap:5px;}
+  .c-n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:40px;line-height:.9;letter-spacing:-.04em;}
+  .c-max{font-size:16px;font-weight:600;opacity:.55;padding-bottom:3px;}
+  .c-unite{font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;opacity:.6;margin:5px 0 16px;}
+  .c-grid{display:grid;gap:8px;margin-bottom:16px;}
+  .c-dot{aspect-ratio:1;border-radius:50%;}
+  .c-dot.off{border:1.5px dashed;background:transparent;opacity:.5;}
+  .c-plein{text-align:center;padding:14px 10px;border:1.5px dashed;border-radius:14px;margin-bottom:16px;}
+  .c-plein .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;letter-spacing:-.02em;}
+  .c-plein .sml{font-size:12px;opacity:.7;margin-top:2px;}
+  .c-msg{font-size:12.5px;padding:10px 12px;border-radius:10px;margin-bottom:14px;opacity:.9;}
+  .c-bas{display:flex;align-items:center;justify-content:space-between;gap:12px;
+         padding-top:14px;border-top:1px solid rgba(128,128,128,.25);}
+  .c-rec{font-size:12.5px;font-weight:600;}
+  .c-rec span{display:block;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;opacity:.55;}
+  .c-wallet{display:inline-flex;align-items:center;gap:7px;text-decoration:none;border-radius:11px;
+            padding:11px 15px;font-size:12.5px;font-weight:700;flex:none;
+            background:#000;color:#fff;transition:opacity .15s;}
+  .c-wallet:hover{opacity:.82;}
+  .c-wallet svg{width:15px;height:15px;}
+
+  .vide{text-align:center;padding:44px 20px;background:#fff;border:1px solid var(--line);border-radius:18px;}
+  .vide .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;margin-bottom:8px;letter-spacing:-.02em;}
+  .vide p{font-size:14px;color:var(--noir-soft);max-width:34ch;margin:0 auto;}
+
+  .aide{margin-top:26px;font-size:12.5px;color:var(--noir-faint);text-align:center;line-height:1.6;}
+
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important;}
+    .carte{opacity:1;transform:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="bar">
+    <a class="mk" href="/">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 1.5l2.6 6.6L21.5 11l-6.9 2.9L12 20.5l-2.6-6.6L2.5 11l6.9-2.9L12 1.5z" fill="#08CB00"/></svg>
+      Studio Cancri
+    </a>
+    <button class="out" id="outBtn" style="display:none">Se déconnecter</button>
+  </div>
+
+  <!-- CONNEXION -->
+  <div class="login" id="loginView">
+    <div class="stack" aria-hidden="true">
+      <div class="ghost"><div class="g-dots"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div></div>
+      <div class="ghost"><div class="g-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+      <div class="ghost"><div class="g-dots"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div></div>
+    </div>
+
+    <h1 class="disp">Vos cartes vous suivent.</h1>
+    <p class="sub">Nouveau téléphone, carte supprimée par erreur ? Entrez l'email donné au comptoir : on vous rend toutes vos cartes.</p>
+
+    <label class="lbl" for="email">Votre email</label>
+    <input class="inp" id="email" type="email" placeholder="vous@exemple.fr" autocomplete="email" inputmode="email">
+    <button class="btn" id="sendBtn">Recevoir mon code</button>
+
+    <div id="otpZone">
+      <label class="lbl" for="otpCode" style="margin-top:14px;">Le code reçu par email</label>
+      <input class="inp" id="otpCode" type="text" inputmode="numeric" maxlength="10" placeholder="Code" autocomplete="one-time-code">
+      <button class="btn" id="otpBtn">Voir mes cartes</button>
+    </div>
+
+    <div class="msg" id="loginMsg"></div>
+    <p class="foot-note">Aucun mot de passe : un code à usage unique, valable quelques minutes. Vos cartes restent celles des commerces où vous les avez prises.</p>
+  </div>
+
+  <!-- MES CARTES -->
+  <div class="cartes" id="cartesView">
+    <div class="hello">
+      <h2 class="disp" id="helloTitre">Vos cartes</h2>
+      <p id="helloSub"></p>
+    </div>
+    <div id="listeZone"></div>
+    <p class="aide">Une carte manquante ? Elle apparaîtra ici dès que le commerce aura votre email.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SUPABASE_URL = "https://xiyqdwezpwhxdqlcgygl.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeXFkd2V6cHdoeGRxbGNneWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjk1ODIsImV4cCI6MjA5OTg0NTU4Mn0.5xnz2HyLCRdA29vzE8sc8Hyr415Rtb0nxaXMEI7-tMI";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth:{ flowType:"implicit", detectSessionInUrl:true } });
+  const $ = (id)=>document.getElementById(id);
+  const API = "/api/moncompte";
+  let token = null;
+
+  async function call(payload){
+    const r = await fetch(API, { method:"POST",
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+token },
+      body:JSON.stringify(payload) });
+    return r.json();
+  }
+
+  /* jetons de cartes déjà présents sur cet appareil */
+  function jetonsLocaux(){
+    const out = [];
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k && k.indexOf("cancri-jeton-") === 0){
+          const v = localStorage.getItem(k);
+          if(v) out.push(v);
+        }
+      }
+    }catch(e){}
+    return out;
+  }
+
+  /* ---------- connexion ---------- */
+  async function envoyer(){
+    const email = ($("email").value||"").trim();
+    const msg = $("loginMsg");
+    if(!email || email.indexOf("@") < 1){
+      msg.className = "msg err"; msg.textContent = "Entrez une adresse email valide."; return;
+    }
+    $("sendBtn").disabled = true; $("sendBtn").textContent = "Envoi…";
+    const { error } = await sb.auth.signInWithOtp({ email: email, options:{ shouldCreateUser:true } });
+    window.__email = email;
+    $("sendBtn").disabled = false; $("sendBtn").textContent = "Recevoir mon code";
+    if(error){
+      msg.className = "msg err"; msg.textContent = "Envoi impossible : " + error.message;
+    } else {
+      msg.className = "msg ok"; msg.textContent = "Code envoyé. Ouvrez votre boîte mail.";
+      $("otpZone").style.display = "block";
+      $("otpCode").focus();
+    }
+  }
+  $("sendBtn").addEventListener("click", envoyer);
+  $("email").addEventListener("keydown",(e)=>{ if(e.key==="Enter") envoyer(); });
+
+  $("otpBtn").addEventListener("click", async function(){
+    const code = ($("otpCode").value||"").trim();
+    const msg = $("loginMsg");
+    if(code.length < 4){ msg.className="msg err"; msg.textContent="Entrez le code reçu."; return; }
+    this.disabled = true; this.textContent = "Un instant…";
+    const { data, error } = await sb.auth.verifyOtp({
+      email: window.__email || ($("email").value||"").trim(), token: code, type:"email" });
+    this.disabled = false; this.textContent = "Voir mes cartes";
+    if(error){ msg.className="msg err"; msg.textContent="Code refusé : " + error.message; return; }
+    if(data && data.session) demarrer(data.session);
+  });
+  $("otpCode").addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("otpBtn").click(); });
+
+  $("outBtn").addEventListener("click", async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+  /* ---------- affichage ---------- */
+  function rgbSoft(str, a){
+    const m = (str||"").match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+    if(!m) return "rgba(0,0,0,"+a+")";
+    return "rgba("+m[1]+","+m[2]+","+m[3]+","+a+")";
+  }
+  function jour(d){
+    if(!d) return "";
+    const j = Math.floor((Date.now()-new Date(d).getTime())/(24*3600*1000));
+    if(j===0) return "Vu aujourd'hui";
+    if(j===1) return "Vu hier";
+    if(j<7) return "Vu il y a " + j + " jours";
+    if(j<14) return "Vu la semaine dernière";
+    return "Vu il y a " + Math.floor(j/7) + " semaines";
+  }
+
+  async function demarrer(session){
+    token = session.access_token;
+
+    /* on rattache d'abord les cartes présentes sur cet appareil */
+    const locaux = jetonsLocaux();
+    if(locaux.length){ try{ await call({ action:"rattacher", jetons: locaux }); }catch(e){} }
+
+    const r = await call({ action:"mes_cartes" });
+    $("loginView").style.display = "none";
+    $("cartesView").classList.add("on");
+    $("outBtn").style.display = "inline-block";
+
+    if(!r.ok){ $("listeZone").innerHTML = '<div class="vide"><div class="big">Chargement impossible</div><p>Rechargez la page dans un instant.</p></div>'; return; }
+
+    const n = r.cartes.length;
+    $("helloSub").textContent = r.email;
+    if(!n){
+      $("helloTitre").textContent = "Aucune carte pour l'instant";
+      $("listeZone").innerHTML = '<div class="vide"><div class="big">Rien à cette adresse</div>'+
+        '<p>Vos cartes apparaîtront ici si vous avez donné cet email au commerce. Sinon, demandez-le au comptoir lors de votre prochain passage.</p></div>';
+      return;
+    }
+    $("helloTitre").textContent = n > 1 ? "Vos " + n + " cartes" : "Votre carte";
+
+    let h = "";
+    r.cartes.forEach(function(c, i){
+      const plein = c.tampons >= c.objectif;
+      const cols = c.objectif <= 6 ? c.objectif : Math.ceil(c.objectif/2);
+      let dots = "";
+      for(let k=0;k<c.objectif;k++){
+        dots += k < c.tampons
+          ? '<div class="c-dot" style="background:'+c.label+'"></div>'
+          : '<div class="c-dot off" style="border-color:'+rgbSoft(c.label,.55)+'"></div>';
+      }
+      h += '<div class="carte" style="background:'+c.fond+';color:'+c.texte+';animation-delay:'+(i*0.07)+'s">'+
+        '<div class="c-top">'+
+          '<div class="c-ini" style="background:'+c.label+';color:'+c.fond+'">'+(c.commerce||"?").charAt(0).toUpperCase()+'</div>'+
+          '<div><div class="c-nom">'+c.commerce+'</div>'+
+          '<div class="c-adr">'+(c.adresse || jour(c.dernier_tap))+'</div></div>'+
+        '</div>'+
+        (c.message ? '<div class="c-msg" style="background:'+rgbSoft(c.label,.14)+'">'+c.message+'</div>' : '')+
+        '<div class="c-num"><div class="c-n">'+c.tampons+'</div><div class="c-max">/'+c.objectif+'</div></div>'+
+        '<div class="c-unite">'+c.unite+'</div>'+
+        (plein
+          ? '<div class="c-plein" style="border-color:'+rgbSoft(c.label,.6)+'"><div class="big">'+c.recompense+'</div><div class="sml">Montrez cette carte au comptoir.</div></div>'
+          : '<div class="c-grid" style="grid-template-columns:repeat('+cols+',1fr)">'+dots+'</div>')+
+        '<div class="c-bas">'+
+          '<div class="c-rec"><span>Récompense</span>'+c.recompense+'</div>'+
+          '<a class="c-wallet" href="/api/pass?jeton='+encodeURIComponent(c.jeton)+'">'+
+            '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h12A2.5 2.5 0 0 1 20.5 7v10a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 17V7Zm2.5-.5A.5.5 0 0 0 5.5 7v10a.5.5 0 0 0 .5.5h12a.5.5 0 0 0 .5-.5v-10a.5.5 0 0 0-.5-.5H6Z"/></svg>'+
+            'Dans Wallet</a>'+
+        '</div>'+
+      '</div>';
+    });
+    $("listeZone").innerHTML = h;
+  }
+
+  sb.auth.getSession().then(({data})=>{ if(data.session) demarrer(data.session); });
+})();
+</script>
+</body>
+</html>
