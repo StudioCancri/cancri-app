@@ -176,6 +176,28 @@
   footer a{color:var(--encre-soft);text-decoration:none;}
   footer a:hover{color:var(--jade);}
 
+
+  .nav-links{display:flex;align-items:center;gap:6px;}
+  .nav-link{color:var(--encre-soft);text-decoration:none;font-size:13.5px;font-weight:600;
+            padding:9px 13px;border-radius:100px;transition:color .18s,background .18s;}
+  .nav-link:hover{color:#000;background:rgba(0,0,0,.06);}
+  @media(max-width:620px){.nav-link.hide-s{display:none;}}
+
+  .acces{border-top:1px solid var(--line);padding:56px 0;}
+  .acces .in{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:700px){.acces .in{grid-template-columns:1fr 1fr;}}
+  .acces a{
+    display:flex;align-items:center;gap:16px;text-decoration:none;
+    background:#fff;border:1px solid var(--line);border-radius:16px;padding:22px 24px;
+    transition:border-color .18s,transform .12s;
+  }
+  .acces a:hover{border-color:var(--rose);transform:translateY(-2px);}
+  .acces .ic{width:42px;height:42px;border-radius:12px;flex:none;background:var(--rose);color:#000;
+             display:flex;align-items:center;justify-content:center;font-size:19px;}
+  .acces .t{font-weight:700;font-size:15.5px;letter-spacing:-.01em;margin-bottom:2px;}
+  .acces .s{font-size:13px;color:var(--encre-soft);}
+  .acces .go{margin-left:auto;font-size:20px;color:var(--encre-faint);}
+
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.3,1);}
   .reveal.seen{opacity:1;transform:none;}
 
@@ -196,7 +218,11 @@
       </svg>
       Studio Cancri
     </a>
-    <a class="nav-cta" href="#contact">Prendre contact</a>
+    <div class="nav-links">
+      <a class="nav-link hide-s" href="/moncompte.html">Ma carte</a>
+      <a class="nav-link" href="/pro.html">Espace commerçant</a>
+      <a class="nav-cta" href="#contact">Prendre contact</a>
+    </div>
   </div>
 </nav>
 
@@ -367,6 +393,27 @@
     <p class="reveal">Dites-nous ce que vous vendez et ce que vous aimeriez offrir. On vous prépare votre carte, et vous la voyez avant de décider.</p>
     <a class="btn-1 reveal" href="mailto:contact@studiocancri.fr?subject=Ma%20carte%20de%20fid%C3%A9lit%C3%A9">Nous écrire</a>
     <div class="sub reveal">Bordeaux et alentours · Réponse sous 24 h</div>
+  </div>
+</section>
+
+<section class="acces">
+  <div class="wrap in">
+    <a href="/pro.html">
+      <div class="ic">▦</div>
+      <div>
+        <div class="t">Espace commerçant</div>
+        <div class="s">Vos clients, vos messages, votre programme.</div>
+      </div>
+      <div class="go">›</div>
+    </a>
+    <a href="/moncompte.html">
+      <div class="ic">☕</div>
+      <div>
+        <div class="t">Retrouver ma carte</div>
+        <div class="s">Toutes vos cartes de fidélité, avec votre email.</div>
+      </div>
+      <div class="go">›</div>
+    </a>
   </div>
 </section>
 
