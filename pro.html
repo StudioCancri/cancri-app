@@ -949,9 +949,13 @@
       afficherClients(filtres, r.objectif);
     } else {
       msg.className = "prog-msg err";
-      msg.textContent = (r && r.raison === "reserve_proprio")
-        ? "Seul le propriétaire peut modifier le programme."
-        : "Impossible d'enregistrer. Réessayez.";
+      const raisons = {
+        reserve_proprio: "Seul le propriétaire peut modifier le programme.",
+        recompense_vide: "Indiquez ce que vous offrez.",
+        non_connecte: "Session expirée — reconnectez-vous.",
+        erreur_serveur: "Erreur serveur — réessayez dans un instant."
+      };
+      msg.textContent = raisons[r && r.raison] || ("Impossible d'enregistrer" + (r && r.raison ? " (" + r.raison + ")" : "") + ".");
     }
   });
 
