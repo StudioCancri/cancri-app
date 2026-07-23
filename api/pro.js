@@ -12,6 +12,43 @@
 const http2 = require("http2");
 const { capacites, abonnement } = require("./plans");
 
+/* ============================================================
+   SEGMENTS DE CLIENTS
+   Un segment = une règle simple appliquée aux cartes d'un commerce.
+   Ajouter un segment ici suffit : l'API et l'app le reprennent.
+   ============================================================ */
+const JOURS_ABSENCE = 21;
+const JOURS_NOUVEAU = 30;
+
+const SEGMENTS = {
+  tous: {
+    nom: "Tous mes clients",
+    test: () => true,
+  },
+  proches: {
+    nom: "Proches de la récompense",
+    test: (c, obj) => c.tampons < obj && (obj - c.tampons) <= 2,
+  },
+  pleines: {
+    nom: "Carte pleine à offrir",
+    test: (c, obj) => c.tampons >= obj,
+  },
+  absents: {
+    nom: "Pas revenus depuis " + JOURS_ABSENCE + " jours",
+    test: (c) => c.dernier_tap && (Date.now() - new Date(c.dernier_tap).getTime()) > JOURS_ABSENCE * 24 * 3600 * 1000,
+  },
+  nouveaux: {
+    nom: "Nouveaux ce mois-ci",
+    test: (c) => c.cree_le && (Date.now() - new Date(c.cree_le).getTime()) < JOURS_NOUVEAU * 24 * 3600 * 1000,
+  },
+};
+
+function filtrerSegment(cartes, code, objectif) {
+  const seg = SEGMENTS[code] || SEGMENTS.tous;
+  return (cartes || []).filter((c) => seg.test(c, objectif));
+}
+
+
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
 }
@@ -142,17 +179,31 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: false, raison: "quota", restants: 0 });
       }
 
-      // 1. mettre à jour le message du commerce (les pass le liront)
+      /* quel segment vise-t-on ? */
+      let segment = (body.segment || "tous").toString();
+      if (!SEGMENTS[segment]) segment = "tous";
+      if (segment !== "tous" && !capC.segments) {
+        return res.status(200).json({ ok: false, raison: "ciblage_hors_forfait" });
+      }
+
+      /* 1. trace du dernier message envoyé (pour le cockpit) */
       await sb("commerces?id=eq." + commerceId, {
         method: "PATCH",
         body: { message_actuel: message, message_maj: new Date().toISOString() },
       });
 
-      // 2. récupérer toutes les cartes du commerce
-      const cartesC = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
-      const jetons = (cartesC || []).map((c) => c.jeton);
+      /* 2. les cartes concernées par le segment */
+      const toutesCartes = await sb("cartes?commerce_id=eq." + commerceId +
+        "&select=id,jeton,tampons,dernier_tap,cree_le");
+      const ciblees = filtrerSegment(toutesCartes, segment, comC[0].objectif);
+      const jetons = ciblees.map((c) => c.jeton);
 
-      // 3. push à tous (en série, best-effort)
+      /* 3. le message est écrit SUR CHAQUE CARTE visée — c'est ce qui rend le ciblage possible */
+      for (const c of ciblees) {
+        await sb("cartes?id=eq." + c.id, { method: "PATCH", body: { message_perso: message } });
+      }
+
+      /* 4. on prévient les iPhones concernés */
       let envoyes = 0;
       for (const jt of jetons) {
         try { await envoyerPush(jt); envoyes++; } catch (e) {}
@@ -161,7 +212,7 @@ module.exports = async (req, res) => {
       // 4. journaliser la campagne
       await sb("campagnes", {
         method: "POST",
-        body: { commerce_id: commerceId, message: message, nb_clients: jetons.length },
+        body: { commerce_id: commerceId, message: message, nb_clients: jetons.length, segment: segment },
       });
 
       const restants = Math.max(0, maxJour - ((recentes ? recentes.length : 0) + 1));
@@ -183,6 +234,22 @@ module.exports = async (req, res) => {
     }
 
 
+
+    /* ---- SEGMENTS : combien de clients dans chaque catégorie ---- */
+    if (action === "segments") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const com = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
+      const cap = capacites(com[0]);
+      const cartes = await sb("cartes?commerce_id=eq." + m[0].commerce_id + "&select=id,tampons,dernier_tap,cree_le");
+      const obj = com[0].objectif;
+      const liste = Object.keys(SEGMENTS).map((code) => ({
+        code: code,
+        nom: SEGMENTS[code].nom,
+        nombre: filtrerSegment(cartes, code, obj).length,
+      }));
+      return res.status(200).json({ ok: true, cible_possible: cap.segments === true, segments: liste });
+    }
 
     /* ---- MON FORFAIT : ce que le commerce a le droit de faire ---- */
     if (action === "mon_forfait") {
