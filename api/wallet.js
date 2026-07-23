@@ -167,11 +167,13 @@ async function construirePass(jeton) {
     { key: "membre", label: "MEMBRE", value: carte.prenom || "Client" },
     { key: "reward", label: "RÉCOMPENSE", value: commerce.recompense }
   );
-  if (carte.message_relance && carte.message_relance.trim()) {
-      pass.backFields.push({ key: "relance", label: "Un petit rappel", value: carte.message_relance, changeMessage: "%@" });
-    }
-    if (commerce.message_actuel && commerce.message_actuel.trim()) {
-    pass.backFields.push({ key: "actu", label: "À ne pas manquer", value: commerce.message_actuel, changeMessage: "%@" });
+
+  /* message affiché au dos : celui de la carte prime, sinon celui du commerce */
+  const messageCarte = (carte.message_perso && carte.message_perso.trim())
+    ? carte.message_perso.trim()
+    : ((commerce.message_actuel && commerce.message_actuel.trim()) ? commerce.message_actuel.trim() : "");
+  if (messageCarte) {
+    pass.backFields.push({ key: "actu", label: "À ne pas manquer", value: messageCarte, changeMessage: "%@" });
   }
   pass.backFields.push(
     { key: "regle", label: "Comment ça marche", value: "Posez votre téléphone sur la pastille au comptoir : +1 tampon. À " + commerce.objectif + ", votre récompense vous attend." },
