@@ -11,6 +11,7 @@
    ============================================================ */
 
 const http2 = require("http2");
+const { capacites } = require("./plans");
 
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
@@ -83,7 +84,9 @@ module.exports = async (req, res) => {
     const seuilRelance = new Date(maintenant - JOURS_AVANT_NOUVELLE_RELANCE * 24 * 3600 * 1000).toISOString();
 
     // commerces avec relances activées
-    const commerces = await sb("commerces?relances_actives=eq.true&select=id,nom,message_relance,message_actuel");
+    const tous = await sb("commerces?relances_actives=eq.true&select=*");
+    /* seuls les forfaits qui incluent les relances sont traités */
+    const commerces = (tous || []).filter((c) => capacites(c).relances === true);
     if (!commerces || !commerces.length) {
       return res.status(200).json({ ok: true, info: "aucun commerce à relancer", total: 0 });
     }
