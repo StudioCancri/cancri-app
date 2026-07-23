@@ -132,11 +132,6 @@ module.exports = async (req, res) => {
       webServiceURL: (process.env.APP_URL || ""),
       authenticationToken: carte.jeton,
       storeCard: {},
-      locations: (commerce.latitude && commerce.longitude) ? [{
-        latitude: commerce.latitude,
-        longitude: commerce.longitude,
-        relevantText: commerce.texte_geoloc || "Vous êtes tout près !"
-      }] : undefined,
     }));
 
     /* construction du pass à partir des buffers */
