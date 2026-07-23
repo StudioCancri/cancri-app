@@ -198,6 +198,49 @@
   .acces .s{font-size:13px;color:var(--encre-soft);}
   .acces .go{margin-left:auto;font-size:20px;color:var(--encre-faint);}
 
+
+  /* ---- forfaits ---- */
+  .plans{display:grid;grid-template-columns:1fr;gap:18px;}
+  @media(min-width:760px){.plans{grid-template-columns:1fr 1fr;}}
+  .plan{background:#fff;border:1px solid var(--line);border-radius:22px;padding:32px 28px 30px;
+        display:flex;flex-direction:column;position:relative;}
+  .plan.mis{border:2px solid var(--rose);}
+  .plan .flag{position:absolute;top:-13px;left:28px;background:var(--rose);color:#000;
+              font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+              padding:6px 12px;border-radius:100px;}
+  .plan h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;
+           letter-spacing:-.03em;margin-bottom:5px;}
+  .plan .pour{font-size:14px;color:var(--encre-soft);margin-bottom:22px;min-height:42px;}
+  .plan .tarif{display:flex;align-items:flex-start;gap:4px;margin-bottom:4px;}
+  .plan .tarif .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:52px;
+                  line-height:.9;letter-spacing:-.045em;}
+  .plan .tarif .cur{font-size:21px;font-weight:700;padding-top:4px;}
+  .plan .par{font-size:13.5px;color:var(--encre-soft);margin-bottom:24px;}
+  .plan ul{list-style:none;display:grid;gap:10px;margin-bottom:26px;flex:1;}
+  .plan li{display:flex;gap:10px;font-size:14.5px;align-items:flex-start;line-height:1.45;}
+  .plan li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--rose);
+                   flex:none;margin-top:8px;}
+  .plan li.herite{color:var(--encre-soft);font-weight:600;}
+  .plan li.herite::before{background:var(--encre-faint);}
+  .plan .go{display:block;text-align:center;text-decoration:none;border-radius:100px;padding:14px;
+            font-size:14.5px;font-weight:700;transition:background .18s;}
+  .plan .go.plein{background:var(--rose);color:#000;}
+  .plan .go.plein:hover{background:var(--vert-deep,#067A00);color:#fff;}
+  .plan .go.vide{border:1.5px solid var(--line);color:var(--encre);}
+  .plan .go.vide:hover{border-color:var(--encre);}
+
+  .commun{margin-top:22px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:24px 26px;}
+  .commun .ct{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+              color:var(--jade);margin-bottom:14px;}
+  .commun ul{list-style:none;display:grid;grid-template-columns:1fr;gap:9px;}
+  @media(min-width:640px){.commun ul{grid-template-columns:1fr 1fr;}}
+  .commun li{display:flex;gap:10px;font-size:14px;align-items:flex-start;}
+  .commun li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--encre-faint);
+                     flex:none;margin-top:7px;}
+  .essai-bandeau{text-align:center;margin-top:22px;font-size:15px;font-weight:600;}
+  .essai-bandeau span{background:var(--rose);color:#000;padding:8px 16px;border-radius:100px;
+                      display:inline-block;}
+
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.3,1);}
   .reveal.seen{opacity:1;transform:none;}
 
@@ -235,7 +278,7 @@
       <p class="lede">On installe chez vous une carte de fidélité qui vit dans le téléphone de vos clients. Ils posent leur téléphone sur la pastille au comptoir : leur carte se remplit toute seule.</p>
       <div class="hero-actions">
         <a class="btn-1" href="#contact">Voir ce que ça donne chez vous</a>
-        <a class="btn-2" href="#comment">Comment ça marche</a>
+        <a class="btn-2" href="#prix">Voir les forfaits</a>
       </div>
     </div>
 
@@ -329,9 +372,9 @@
             <p>Un client qui n'est pas repassé depuis trois semaines reçoit votre petit mot. Vous n'avez rien à faire.</p>
           </div>
           <div class="feat">
-            <span class="tag">Quartier</span>
-            <h4>Un rappel quand il passe devant</h4>
-            <p>Sa carte s'affiche sur son écran quand il est à quelques pas de chez vous.</p>
+            <span class="tag">Ciblé</span>
+            <h4>Le bon message aux bonnes personnes</h4>
+            <p>Ceux qui approchent de leur récompense, ceux qui ont une carte pleine, ceux qui s'éloignent : à vous de choisir qui reçoit quoi.</p>
           </div>
         </div>
       </div>
@@ -362,25 +405,56 @@
 </section>
 
 <!-- PRIX -->
-<section>
+<section id="prix">
   <div class="wrap">
     <div class="sec-h reveal">
-      <div class="eyebrow">Le prix</div>
-      <h2 class="disp">Un seul tarif, tout compris.</h2>
+      <div class="eyebrow">Les forfaits</div>
+      <h2 class="disp">Deux formules, selon ce que vous voulez en faire.</h2>
+      <p>Vous voulez juste remplacer vos cartes en carton ? Prenez l'Essentiel. Vous voulez faire revenir vos clients ? Prenez le Pro.</p>
     </div>
-    <div class="price-box reveal">
-      <div>
-        <div class="price-n"><span class="amount disp">39</span><span class="cur">€</span></div>
-        <div class="price-per">par mois, pour votre commerce.</div>
-        <div class="price-gift">Le premier mois est offert</div>
+
+    <div class="plans reveal">
+      <div class="plan">
+        <h3>Essentiel</h3>
+        <div class="pour">Pour digitaliser votre carte de fidélité, simplement.</div>
+        <div class="tarif"><span class="n">20</span><span class="cur">€</span></div>
+        <div class="par">par mois</div>
+        <ul>
+          <li>La carte de fidélité dans le téléphone de vos clients</li>
+          <li>Vos clients et leur progression, en direct</li>
+          <li>Ajout et correction des tampons</li>
+          <li>Validation des récompenses au comptoir</li>
+          <li>Les chiffres de votre semaine</li>
+        </ul>
+        <a class="go vide" href="#contact">Choisir l'Essentiel</a>
       </div>
-      <div class="price-sep"></div>
-      <ul class="incl">
-        <li>La carte dessinée à vos couleurs, par nos soins.</li>
-        <li>Les pastilles à poser sur le comptoir.</li>
-        <li>Votre espace en ligne et vos messages.</li>
-        <li>L'installation sur place et la prise en main avec l'équipe.</li>
-        <li>Les clients inscrits restent les vôtres.</li>
+
+      <div class="plan mis">
+        <div class="flag">Le plus utile</div>
+        <h3>Pro</h3>
+        <div class="pour">Pour faire revenir vos clients, pas seulement les compter.</div>
+        <div class="tarif"><span class="n">35</span><span class="cur">€</span></div>
+        <div class="par">par mois</div>
+        <ul>
+          <li class="herite">Tout ce que contient l'Essentiel</li>
+          <li>Vos offres sur l'écran verrouillé de vos clients</li>
+          <li>Le choix de qui reçoit quoi : proches de la récompense, absents, nouveaux…</li>
+          <li>Les clients qui s'éloignent relancés automatiquement</li>
+          <li>Les fonctionnalités qu'on ajoutera ensuite</li>
+        </ul>
+        <a class="go plein" href="#contact">Choisir le Pro</a>
+      </div>
+    </div>
+
+    <div class="essai-bandeau reveal"><span>Deux mois d'essai offerts, en Pro, sans engagement</span></div>
+
+    <div class="commun reveal">
+      <div class="ct">Compris dans les deux forfaits</div>
+      <ul>
+        <li>La carte dessinée à vos couleurs, par nos soins</li>
+        <li>Les pastilles à poser sur le comptoir</li>
+        <li>L'installation sur place et la prise en main avec l'équipe</li>
+        <li>Les clients inscrits restent les vôtres</li>
       </ul>
     </div>
   </div>
