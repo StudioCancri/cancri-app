@@ -479,7 +479,7 @@
     <span class="count" id="clientCount"></span>
   </div>
 
-  <input class="search" id="search" type="text" placeholder="Rechercher un prénom…">
+  <input class="search" id="search" type="text" placeholder="Rechercher un prénom ou un email…">
 
   <div id="clientsZone">
     <div class="loading">Chargement…</div>
@@ -632,7 +632,7 @@
 
     // les cartes de ce commerce
     const { data: cartes } = await sb.from("cartes")
-      .select("id, prenom, tampons, dernier_tap, cree_le")
+      .select("id, prenom, email, tampons, dernier_tap, cree_le")
       .eq("commerce_id", commerce.id)
       .order("dernier_tap", { ascending: false });
 
@@ -707,7 +707,7 @@
   /* recherche */
   $("search").addEventListener("input", function(){
     const q = this.value.trim().toLowerCase();
-    const filtres = q ? toutClients.filter(c => (c.prenom || "").toLowerCase().includes(q)) : toutClients;
+    const filtres = q ? toutClients.filter(c => ((c.prenom || "") + " " + (c.email || "")).toLowerCase().includes(q)) : toutClients;
     // on relit l'objectif depuis le premier rendu — stocké sur le commerce, on le récupère via un attribut
     afficherClients(filtres, window.__objectif || 10);
   });
@@ -812,7 +812,7 @@
     const idx = toutClients.findIndex(c => c.id === carte.id);
     if(idx >= 0){ toutClients[idx].tampons = carte.tampons; toutClients[idx].dernier_tap = carte.dernier_tap; }
     const q = ($("search").value || "").trim().toLowerCase();
-    const filtres = q ? toutClients.filter(c => (c.prenom||"").toLowerCase().includes(q)) : toutClients;
+    const filtres = q ? toutClients.filter(c => ((c.prenom||"") + " " + (c.email||"")).toLowerCase().includes(q)) : toutClients;
     afficherClients(filtres, objectifCourant);
   }
 
@@ -945,7 +945,7 @@
       msg.textContent = "Enregistré ✓ Les cartes de vos clients se mettent à jour.";
       setTimeout(function(){ msg.className = "prog-msg"; }, 3500);
       const q = ($("search").value || "").trim().toLowerCase();
-      const filtres = q ? toutClients.filter(c => (c.prenom||"").toLowerCase().includes(q)) : toutClients;
+      const filtres = q ? toutClients.filter(c => ((c.prenom||"") + " " + (c.email||"")).toLowerCase().includes(q)) : toutClients;
       afficherClients(filtres, r.objectif);
     } else {
       msg.className = "prog-msg err";
