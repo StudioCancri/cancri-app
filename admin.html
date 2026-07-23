@@ -84,8 +84,8 @@
 
   /* tableau commerces */
   .table{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;}
-  .thead{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 40px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);}
-  .trow{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 40px;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);align-items:center;cursor:pointer;transition:background .12s;}
+  .thead{display:grid;grid-template-columns:2fr 1fr .9fr .8fr .8fr 40px;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);}
+  .trow{display:grid;grid-template-columns:2fr 1fr .9fr .8fr .8fr 40px;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);align-items:center;cursor:pointer;transition:background .12s;}
   .trow:last-child{border-bottom:none;}
   .trow:hover{background:var(--panel-2);}
   .c-nom{font-weight:600;font-size:14.5px;}
@@ -189,6 +189,37 @@
   .mini .m-t{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--gold);}
   .mini .m-d{font-size:11.5px;color:var(--text-faint);}
 
+
+
+  /* ---------- FORFAIT ---------- */
+  .plan-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .plan-pick{display:flex;gap:8px;}
+  .plan-opt{border:1.5px solid var(--line-2);background:transparent;color:var(--text-soft);
+            border-radius:11px;padding:11px 16px;cursor:pointer;font:inherit;font-size:13.5px;font-weight:700;
+            transition:border-color .15s,color .15s,background .15s;}
+  .plan-opt:hover{color:var(--text);}
+  .plan-opt.on{border-color:var(--gold);background:rgba(224,169,109,.14);color:var(--gold);}
+  .plan-prix{font-family:'JetBrains Mono',monospace;font-size:12px;opacity:.75;display:block;font-weight:500;margin-top:2px;}
+
+  .caps{display:grid;grid-template-columns:1fr;gap:9px;margin-top:6px;}
+  @media(min-width:560px){.caps{grid-template-columns:1fr 1fr;}}
+  .cap{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
+       border-radius:10px;cursor:pointer;font-size:13.5px;}
+  .cap:hover{border-color:var(--line-2);}
+  .cap input{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex:none;}
+  .cap .cap-n{flex:1;}
+  .cap .cap-tag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+                color:var(--gold);opacity:0;}
+  .cap.forced .cap-tag{opacity:1;}
+
+  .conso{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+  .conso .c-box{background:var(--bg-2);border:1px solid var(--line);border-radius:11px;padding:13px 15px;}
+  .conso .c-v{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;}
+  .conso .c-l{font-size:11px;color:var(--text-faint);margin-top:3px;font-weight:600;}
+
+  .essai-pill{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:99px;
+              background:rgba(123,167,217,.14);color:var(--blue);}
+  .essai-pill.fin{background:rgba(224,123,109,.16);color:var(--red);}
 
   /* ---------- ATELIER (aperçu carte) ---------- */
   .atelier{display:grid;grid-template-columns:1fr;gap:22px;}
@@ -378,6 +409,44 @@
     </div>
 
     <div class="card">
+      <h3>Forfait & abonnement</h3>
+      <div class="c-sub">Ce que ce commerce paie, et ce à quoi il a accès.</div>
+
+      <div class="plan-head">
+        <div class="plan-pick" id="planPick">
+          <button class="plan-opt" data-plan="essentiel">Essentiel<span class="plan-prix">20 €/mois</span></button>
+          <button class="plan-opt" data-plan="pro">Pro<span class="plan-prix">35 €/mois</span></button>
+        </div>
+        <span class="essai-pill" id="essaiPill" style="display:none"></span>
+      </div>
+
+      <div class="grid2">
+        <div class="fld"><label>Statut de l'abonnement</label>
+          <select id="aStatut">
+            <option value="essai">Essai en cours</option>
+            <option value="actif">Actif (payant)</option>
+            <option value="suspendu">Suspendu</option>
+            <option value="arrete">Arrêté</option>
+          </select>
+        </div>
+        <div class="fld"><label>Début d'essai</label><input id="aDebut" type="date"></div>
+        <div class="fld"><label>Fin d'essai</label><input id="aFin" type="date"></div>
+      </div>
+
+      <div style="margin-top:18px;">
+        <label style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:9px;display:block;">Accès (décoché/coché = exception au forfait)</label>
+        <div class="caps" id="capsZone"></div>
+      </div>
+
+      <div class="conso">
+        <div class="c-box"><div class="c-v mono" id="consoMsg">–</div><div class="c-l">Messages ce mois-ci</div></div>
+        <div class="c-box"><div class="c-v mono" id="consoCartes">–</div><div class="c-l">Cartes clients</div></div>
+      </div>
+
+      <button class="save" id="saveForfait">Enregistrer</button><span class="saved" id="savedForfait">Enregistré</span>
+    </div>
+
+    <div class="card">
       <h3>Contrat</h3>
       <div class="c-sub">Dates, montant et renouvellement.</div>
       <div class="grid2">
@@ -518,13 +587,16 @@
       $("tableZone").innerHTML='<div class="empty"><div class="big">Aucun commerce pour l\'instant</div>Clique sur « Nouveau commerce » pour créer ta première fiche.</div>';
       return;
     }
-    let h='<div class="table"><div class="thead"><div>Commerce</div><div>Statut</div><div>Cartes</div><div>Actifs 7j</div><div></div></div>';
+    let h='<div class="table"><div class="thead"><div>Commerce</div><div>Statut</div><div>Forfait</div><div>Cartes</div><div>Actifs 7j</div><div></div></div>';
     for(const c of r.commerces){
       const st = c.statut || 'actif';
       const flag = c.demandes_ouvertes>0 ? '<span class="flag">'+c.demandes_ouvertes+'</span>' : '';
+      const essai = (c.abonnement === 'essai' && c.essai_restant !== null)
+        ? '<div class="c-slug">essai · '+Math.max(0,c.essai_restant)+' j</div>' : '';
       h += '<div class="trow" data-id="'+c.id+'">'+
         '<div><div class="c-nom">'+c.nom+flag+'</div><div class="c-slug">'+c.slug+'</div></div>'+
         '<div><span class="badge b-'+st+'">'+(LABELS[st]||st)+'</span></div>'+
+        '<div><div class="c-num">'+(c.plan_nom||'—')+'</div>'+essai+'</div>'+
         '<div class="c-num">'+c.nb_cartes+'</div>'+
         '<div class="c-num">'+c.actifs_semaine+'</div>'+
         '<div class="arrow">›</div>'+
@@ -602,6 +674,7 @@
     $("kRenouv").value = (k && k.renouvellement_auto === false) ? "non" : "oui";
     $("kConditions").value = k ? (k.conditions||"") : "";
 
+    rendreForfait(r);
     renderDemandes(r.demandes || []);
     renderMini(cartes.slice(0,10), c.objectif);
   }
@@ -712,6 +785,115 @@
     $("miniZone").innerHTML = h3;
   }
 
+
+
+  /* ---------- FORFAIT ---------- */
+  const CAPS_LISIBLES = {
+    messages: "Notifications marketing",
+    segments: "Ciblage par catégorie",
+    relances: "Relances automatiques",
+    stats_avancees: "Statistiques avancées",
+    programme: "Modifier son programme",
+    tampons: "Ajuster les tampons",
+    recompenses: "Valider les récompenses",
+  };
+  let planCourant = "pro";
+  let defPlans = null;
+
+  function rendreCaps(capEffectives){
+    const base = (defPlans && defPlans[planCourant]) ? defPlans[planCourant].capacites : {};
+    let html = "";
+    Object.keys(CAPS_LISIBLES).forEach(function(k){
+      const duPlan = base[k] === true;
+      const effectif = capEffectives[k] === true;
+      const force = effectif !== duPlan;
+      html += '<label class="cap'+(force?' forced':'')+'" data-cap="'+k+'">'+
+        '<input type="checkbox" '+(effectif?'checked':'')+'>'+
+        '<span class="cap-n">'+CAPS_LISIBLES[k]+'</span>'+
+        '<span class="cap-tag">exception</span>'+
+      '</label>';
+    });
+    $("capsZone").innerHTML = html;
+    $("capsZone").querySelectorAll(".cap").forEach(function(el){
+      el.querySelector("input").addEventListener("change", function(){
+        const k = el.getAttribute("data-cap");
+        const duPlan = base[k] === true;
+        el.classList.toggle("forced", this.checked !== duPlan);
+      });
+    });
+  }
+
+  function rendreForfait(r){
+    defPlans = r.plans || null;
+    const c = r.commerce;
+    const cap = r.capacites || {};
+    const ab = r.abonnement || {};
+    planCourant = cap.plan || "pro";
+
+    $("planPick").querySelectorAll(".plan-opt").forEach(function(b){
+      b.classList.toggle("on", b.getAttribute("data-plan") === planCourant);
+    });
+    if(defPlans){
+      $("planPick").querySelectorAll(".plan-opt").forEach(function(b){
+        const d = defPlans[b.getAttribute("data-plan")];
+        if(d) b.querySelector(".plan-prix").textContent = d.prix + " €/mois";
+      });
+    }
+
+    $("aStatut").value = ab.statut || "essai";
+    $("aDebut").value = ab.essai_debut || "";
+    $("aFin").value = ab.essai_fin || "";
+
+    const pill = $("essaiPill");
+    if(ab.en_essai && ab.jours_restants !== null){
+      pill.style.display = "inline-block";
+      pill.textContent = ab.jours_restants > 0
+        ? "Essai — " + ab.jours_restants + " jours restants"
+        : "Essai terminé — à convertir";
+      pill.classList.toggle("fin", ab.jours_restants <= 7);
+    } else {
+      pill.style.display = "none";
+    }
+
+    rendreCaps(cap);
+    $("consoMsg").textContent = (r.conso && r.conso.messages_ce_mois) || 0;
+    $("consoCartes").textContent = (r.conso && r.conso.cartes) || 0;
+  }
+
+  $("planPick").addEventListener("click", function(e){
+    const b = e.target.closest(".plan-opt");
+    if(!b) return;
+    planCourant = b.getAttribute("data-plan");
+    $("planPick").querySelectorAll(".plan-opt").forEach(function(x){
+      x.classList.toggle("on", x === b);
+    });
+    /* on repart des capacités du plan choisi, sans exception */
+    const base = (defPlans && defPlans[planCourant]) ? defPlans[planCourant].capacites : {};
+    rendreCaps(base);
+  });
+
+  $("saveForfait").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    this.disabled = true;
+    /* on n'enregistre en exception que ce qui diffère du forfait */
+    const base = (defPlans && defPlans[planCourant]) ? defPlans[planCourant].capacites : {};
+    const extras = {};
+    $("capsZone").querySelectorAll(".cap").forEach(function(el){
+      const k = el.getAttribute("data-cap");
+      const coche = el.querySelector("input").checked;
+      if(coche !== (base[k] === true)) extras[k] = coche;
+    });
+    const r = await call({
+      action:"maj_commerce", commerce_id: commerceOuvert.id,
+      plan: planCourant,
+      plan_extras: extras,
+      abonnement_statut: $("aStatut").value,
+      essai_debut: $("aDebut").value || null,
+      essai_fin: $("aFin").value || null
+    });
+    this.disabled = false;
+    if(r.ok){ flash("savedForfait"); }
+  });
 
   /* ---------- ATELIER : aperçu live ---------- */
   function rgbToHex(str){
