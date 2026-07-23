@@ -228,6 +228,20 @@
 
 
 
+
+  /* ---- blocs hors forfait ---- */
+  .verrou{position:relative;}
+  .verrou > *:not(.verrou-voile){opacity:.32;pointer-events:none;filter:grayscale(1);}
+  .verrou-voile{
+    position:absolute;inset:0;border-radius:inherit;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;padding:20px;gap:6px;
+    background:rgba(251,247,242,.72);backdrop-filter:blur(1.5px);-webkit-backdrop-filter:blur(1.5px);
+  }
+  .verrou-voile .vt{font-family:'Fraunces',serif;font-weight:600;font-size:15px;color:var(--ink);}
+  .verrou-voile .vs{font-size:12.5px;color:var(--ink-soft);max-width:30ch;line-height:1.45;}
+  .badge-plan{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+              background:var(--cream-2);color:var(--ink-soft);padding:4px 9px;border-radius:99px;}
+
   /* ---- mon programme ---- */
   .prog-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;}
   .prog-card .ph{font-family:'Fraunces',serif;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px;margin-bottom:6px;}
@@ -659,6 +673,7 @@
     majQuota();
     chargerRelances();
     chargerProgramme();
+    chargerForfait();
   }
 
   function afficherClients(liste, objectif){
@@ -958,6 +973,38 @@
       msg.textContent = raisons[r && r.raison] || ("Impossible d'enregistrer" + (r && r.raison ? " (" + r.raison + ")" : "") + ".");
     }
   });
+
+
+  /* ---------- FORFAIT ---------- */
+  function verrouiller(id, titre, sous){
+    const el = $(id);
+    if(!el || el.querySelector(".verrou-voile")) return;
+    el.classList.add("verrou");
+    const v = document.createElement("div");
+    v.className = "verrou-voile";
+    v.innerHTML = '<div class="vt">' + titre + '</div><div class="vs">' + sous + '</div>';
+    el.appendChild(v);
+  }
+
+  function chargerForfait(){
+    appelPro({ action:"mon_forfait" }).then(function(r){
+      if(!r || !r.ok) return;
+      const cap = r.capacites || {};
+      if(!cap.messages){
+        verrouiller("campagne", "Inclus dans le forfait Pro",
+          "Envoyez une offre sur l'écran de vos clients. Parlez-en à Studio Cancri.");
+      }
+      if(!cap.relances){
+        verrouiller("relances", "Inclus dans le forfait Pro",
+          "Faites revenir automatiquement les clients qui s'éloignent.");
+      }
+      const ab = r.abonnement || {};
+      if(ab.en_essai && ab.jours_restants !== null && ab.jours_restants <= 30){
+        const g = $("greeting");
+        if(g) g.textContent = g.textContent + "  ·  Essai : " + Math.max(0, ab.jours_restants) + " jours restants";
+      }
+    }).catch(function(){});
+  }
 
   /* ---------- démarrage : session ? ---------- */
   sb.auth.getSession().then(({ data }) => {
