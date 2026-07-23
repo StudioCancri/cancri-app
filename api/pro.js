@@ -10,6 +10,7 @@
    ============================================================ */
 
 const http2 = require("http2");
+const { capacites, abonnement } = require("./plans");
 
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
@@ -128,10 +129,16 @@ module.exports = async (req, res) => {
       const message = (body.message || "").toString().trim().slice(0, 120);
       if (!message) return res.status(200).json({ ok: false, raison: "message_vide" });
 
-      // quota : 20 campagnes / jour glissant (mode démo)
+      /* le forfait autorise-t-il les messages ? */
+      const comC = await sb("commerces?id=eq." + commerceId + "&select=*");
+      const capC = capacites(comC[0]);
+      if (!capC.messages) return res.status(200).json({ ok: false, raison: "hors_forfait" });
+
+      /* quota du jour, défini par le forfait */
+      const maxJour = capC.messages_par_jour || 0;
       const ilya24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
       const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya24h + "&select=id");
-      if (recentes && recentes.length >= 20) {
+      if (recentes && recentes.length >= maxJour) {
         return res.status(200).json({ ok: false, raison: "quota", restants: 0 });
       }
 
@@ -157,7 +164,7 @@ module.exports = async (req, res) => {
         body: { commerce_id: commerceId, message: message, nb_clients: jetons.length },
       });
 
-      const restants = Math.max(0, 20 - ((recentes ? recentes.length : 0) + 1));
+      const restants = Math.max(0, maxJour - ((recentes ? recentes.length : 0) + 1));
       return res.status(200).json({ ok: true, nb_clients: jetons.length, envoyes: envoyes, restants: restants });
     }
 
@@ -166,13 +173,25 @@ module.exports = async (req, res) => {
       const membre3 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
       if (!membre3 || !membre3.length) return res.status(403).json({ ok: false });
       const commerceId = membre3[0].commerce_id;
+      const comQ = await sb("commerces?id=eq." + commerceId + "&select=*");
+      const capQ = capacites(comQ[0]);
+      const maxQ = capQ.messages_par_jour || 0;
       const ilya24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
       const recentes = await sb("campagnes?commerce_id=eq." + commerceId + "&cree_le=gte." + ilya24h + "&select=id");
       const utilisees = recentes ? recentes.length : 0;
-      return res.status(200).json({ ok: true, restants: Math.max(0, 20 - utilisees), total: 20 });
+      return res.status(200).json({ ok: true, actif: capQ.messages === true, restants: Math.max(0, maxQ - utilisees), total: maxQ });
     }
 
 
+
+    /* ---- MON FORFAIT : ce que le commerce a le droit de faire ---- */
+    if (action === "mon_forfait") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
+      const cap = capacites(c[0]);
+      return res.status(200).json({ ok: true, capacites: cap, abonnement: abonnement(c[0]), role: m[0].role });
+    }
 
     /* ---- RÉGLAGES DE RELANCE ---- */
     if (action === "get_relances") {
@@ -184,6 +203,8 @@ module.exports = async (req, res) => {
     if (action === "set_relances") {
       const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
+      const comR = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
+      if (!capacites(comR[0]).relances) return res.status(200).json({ ok: false, raison: "hors_forfait" });
       const msg = (body.message || "").toString().trim().slice(0, 120);
       await sb("commerces?id=eq." + m[0].commerce_id, {
         method: "PATCH",
