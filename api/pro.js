@@ -220,6 +220,46 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    /* ---- PROGRAMME DE FIDÉLITÉ (objectif + récompense) ---- */
+    if (action === "get_programme") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=objectif,recompense,unite");
+      return res.status(200).json({ ok: true, objectif: c[0].objectif, recompense: c[0].recompense, unite: c[0].unite, role: m[0].role });
+    }
+
+    if (action === "set_programme") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      if (m[0].role !== "proprio") return res.status(200).json({ ok: false, raison: "reserve_proprio" });
+      const commerceId = m[0].commerce_id;
+
+      const objectif = Math.max(4, Math.min(12, parseInt(body.objectif, 10) || 10));
+      const recompense = (body.recompense || "").toString().trim().slice(0, 60);
+      if (!recompense) return res.status(200).json({ ok: false, raison: "recompense_vide" });
+
+      await sb("commerces?id=eq." + commerceId, {
+        method: "PATCH",
+        body: { objectif: objectif, recompense: recompense },
+      });
+
+      /* les cartes déjà au-delà du nouvel objectif sont ramenées à l'objectif */
+      const trop = await sb("cartes?commerce_id=eq." + commerceId + "&tampons=gt." + objectif + "&select=id");
+      if (trop && trop.length) {
+        for (const t of trop) {
+          await sb("cartes?id=eq." + t.id, { method: "PATCH", body: { tampons: objectif } });
+        }
+      }
+
+      /* on rafraîchit les pass Wallet de tous les clients */
+      const cartesC = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
+      for (const c of (cartesC || [])) {
+        try { await envoyerPush(c.jeton); } catch (e) {}
+      }
+
+      return res.status(200).json({ ok: true, objectif: objectif, recompense: recompense, cartes_ajustees: trop ? trop.length : 0 });
+    }
+
     return res.status(200).json({ ok: false, raison: "action_inconnue" });
   } catch (e) {
     console.error("pro error:", e.message || e);
