@@ -192,10 +192,18 @@ module.exports = async (req, res) => {
         body: { message_actuel: message, message_maj: new Date().toISOString() },
       });
 
-      /* 2. les cartes concernées par le segment */
+      /* 2. les cartes concernées : sélection manuelle, sinon segment */
       const toutesCartes = await sb("cartes?commerce_id=eq." + commerceId +
         "&select=id,jeton,tampons,dernier_tap,cree_le");
-      const ciblees = filtrerSegment(toutesCartes, segment, comC[0].objectif);
+      let ciblees;
+      const choisies = Array.isArray(body.carte_ids) ? body.carte_ids : null;
+      if (choisies && choisies.length) {
+        if (!capC.segments) return res.status(200).json({ ok: false, raison: "ciblage_hors_forfait" });
+        ciblees = toutesCartes.filter((c) => choisies.indexOf(c.id) !== -1);
+        segment = "selection";
+      } else {
+        ciblees = filtrerSegment(toutesCartes, segment, comC[0].objectif);
+      }
       const jetons = ciblees.map((c) => c.jeton);
 
       /* 3. le message est écrit SUR CHAQUE CARTE visée — c'est ce qui rend le ciblage possible */
