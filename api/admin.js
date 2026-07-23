@@ -9,6 +9,8 @@
    demandes (list/add/maj)
    ============================================================ */
 
+const { PLANS, capacites, abonnement } = require("./plans");
+
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
 }
@@ -79,7 +81,11 @@ module.exports = async (req, res) => {
         const actifs7j = liste.filter(x => x.dernier_tap && (maintenant - new Date(x.dernier_tap).getTime()) < semaine).length;
         const contrats = await sb("contrats?commerce_id=eq." + c.id + "&select=date_fin,statut&order=date_fin.desc&limit=1");
         const demandesOuvertes = await sb("demandes?commerce_id=eq." + c.id + "&statut=neq.fait&select=id");
+        const capC = capacites(c);
+        const abC = abonnement(c);
         enriched.push({
+          plan: capC.plan, plan_nom: capC.nom, prix: capC.prix,
+          abonnement: abC.statut, essai_restant: abC.jours_restants,
           id: c.id, slug: c.slug, nom: c.nom, statut: c.statut,
           nb_cartes: liste.length, actifs_semaine: actifs7j,
           objectif: c.objectif, unite: c.unite, recompense: c.recompense,
@@ -90,7 +96,10 @@ module.exports = async (req, res) => {
       // stats globales
       const totalCartes = enriched.reduce((s, c) => s + c.nb_cartes, 0);
       const totalActifs = enriched.filter(c => c.statut === 'actif').length;
-      const mrr = enriched.filter(c => c.statut === 'actif').length * 39;
+      /* le MRR ne compte que les abonnements payants, au prix réel de leur forfait */
+      const mrr = enriched
+        .filter(c => c.statut === 'actif' && c.abonnement === 'actif')
+        .reduce((somme, c) => somme + (c.prix || 0), 0);
       return res.status(200).json({
         ok: true, commerces: enriched,
         stats: { total: enriched.length, actifs: totalActifs, cartes: totalCartes, mrr: mrr }
@@ -105,7 +114,18 @@ module.exports = async (req, res) => {
       const demandes = await sb("demandes?commerce_id=eq." + body.commerce_id + "&select=*&order=cree_le.desc");
       const cartes = await sb("cartes?commerce_id=eq." + body.commerce_id + "&select=id,prenom,tampons,dernier_tap&order=dernier_tap.desc&limit=50");
       const membres = await sb("membres?commerce_id=eq." + body.commerce_id + "&select=user_id,role");
-      return res.status(200).json({ ok: true, commerce: c[0], contrats: contrats || [], demandes: demandes || [], cartes: cartes || [], membres: membres || [] });
+      /* consommation du mois en cours */
+      const debutMois = new Date(); debutMois.setDate(1); debutMois.setHours(0,0,0,0);
+      const camp = await sb("campagnes?commerce_id=eq." + body.commerce_id +
+        "&cree_le=gte." + debutMois.toISOString() + "&select=id");
+      return res.status(200).json({
+        ok: true, commerce: c[0], contrats: contrats || [], demandes: demandes || [],
+        cartes: cartes || [], membres: membres || [],
+        plans: PLANS,
+        capacites: capacites(c[0]),
+        abonnement: abonnement(c[0]),
+        conso: { messages_ce_mois: camp ? camp.length : 0, cartes: (cartes || []).length },
+      });
     }
 
     /* ---- CRÉER UN COMMERCE (prospect) ---- */
@@ -140,7 +160,8 @@ module.exports = async (req, res) => {
       const champs = {};
       const permis = ["nom","unite","objectif","recompense","code_staff","couleur_fond","couleur_texte","couleur_label",
                       "statut","notes_admin","contact_nom","contact_email","contact_tel","adresse",
-                      "latitude","longitude","texte_geoloc","message_relance","relances_actives"];
+                      "latitude","longitude","texte_geoloc","message_relance","relances_actives",
+                      "plan","plan_extras","abonnement_statut","essai_debut","essai_fin"];
       for (const k of permis) if (body[k] !== undefined) champs[k] = body[k];
       if (!Object.keys(champs).length) return res.status(200).json({ ok: false, raison: "rien_a_maj" });
       const maj = await sb("commerces?id=eq." + encodeURIComponent(body.commerce_id), { method: "PATCH", body: champs });
