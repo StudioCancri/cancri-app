@@ -370,6 +370,25 @@
   .barre-sel .ok{background:var(--terracotta);color:#fff;}
   .barre-sel .no{background:transparent;color:rgba(255,255,255,.6);padding:9px 6px;}
 
+
+  /* les anciens conteneurs deviennent des panneaux : on annule leur mise en boîte */
+  details.pli.relances, details.pli.prog-card{padding:0;margin-bottom:12px;}
+  .pli-corps{padding:2px 18px 18px;}
+  .pli-corps .rs, .pli-corps .ps{margin-bottom:14px;}
+  .pli-corps textarea{margin-bottom:2px;}
+
+  /* interrupteur des relances : une ligne lisible */
+  .rel-switch{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--cream);
+              border:1px solid var(--line);border-radius:12px;margin-bottom:14px;}
+  .rel-switch .rl{flex:1;font-size:13.5px;font-weight:600;}
+  .rel-switch .rl small{display:block;font-weight:500;font-size:12px;color:var(--ink-soft);margin-top:1px;}
+
+  /* pied de bloc : message discret, bouton à droite */
+  .pli-corps .rbar{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;}
+  .pli-corps .rmsg{margin-right:auto;}
+  .pli-corps .prog-bar{margin-top:14px;}
+  .prog-preview{gap:7px;margin-top:12px;}
+
   /* ---- fiche client (panneau) ---- */
   .sheet-bg{
     position:fixed;inset:0;z-index:40;background:rgba(42,32,24,.4);
@@ -519,13 +538,14 @@
   </div>
 
 
-  <details class="pli" id="relances">
+  <details class="pli relances" id="relances">
     <summary>🔔 Relances automatiques <span class="resume" id="relResume"></span><span class="chev">›</span></summary>
     <div class="pli-corps">
-    <div class="rh" style="justify-content:flex-end;margin-bottom:10px;">
+    <div class="rel-switch">
+      <span class="rl">Relancer automatiquement<small>Après 21 jours sans visite, une seule fois.</small></span>
       <label class="switch"><input type="checkbox" id="relToggle" checked><span class="slider"></span></label>
     </div>
-    <div class="rs">Un client qui n'est pas revenu depuis 21 jours reçoit automatiquement ce message sur sa carte. Une seule fois, sans que vous ayez rien à faire.</div>
+    <div class="rs">Le message que recevront les clients qui s'éloignent.</div>
     <textarea id="relMsg" maxlength="120" placeholder="Votre message de relance…"></textarea>
     <div class="rbar">
       <span class="rmsg" id="relResult">Enregistré ✓</span>
@@ -534,7 +554,7 @@
     </div>
   </details>
 
-  <details class="pli" id="progCard">
+  <details class="pli prog-card" id="progCard">
     <summary>☕ Mon programme <span class="resume" id="progResume"></span><span class="chev">›</span></summary>
     <div class="pli-corps">
     <div class="ps">Le nombre de passages pour gagner, et ce que vous offrez. Les cartes de vos clients se mettent à jour toutes seules.</div>
