@@ -251,10 +251,16 @@ module.exports = async (req, res) => {
         }
       }
 
-      /* on rafraîchit les pass Wallet de tous les clients */
-      const cartesC = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
-      for (const c of (cartesC || [])) {
-        try { await envoyerPush(c.jeton); } catch (e) {}
+      /* on rafraîchit les pass Wallet, sans bloquer la réponse plus de 5 s */
+      try {
+        const cartesC = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
+        const pushes = (cartesC || []).map((c) => envoyerPush(c.jeton).catch(() => {}));
+        await Promise.race([
+          Promise.allSettled(pushes),
+          new Promise((r) => setTimeout(r, 5000)),
+        ]);
+      } catch (e) {
+        console.log("set_programme push:", e.message);
       }
 
       return res.status(200).json({ ok: true, objectif: objectif, recompense: recompense, cartes_ajustees: trop ? trop.length : 0 });
