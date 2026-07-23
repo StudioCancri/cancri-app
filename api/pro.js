@@ -47,12 +47,16 @@ async function userDepuisToken(token) {
 /* Vérifie que l'user est membre du commerce de cette carte.
    Renvoie { carte, commerce } si OK, sinon null. */
 async function verifierAcces(userId, carteId) {
+  if (!carteId || carteId === "undefined") { console.log("[pro] acces refuse : carte_id absent"); return null; }
   const cartes = await sb("cartes?id=eq." + encodeURIComponent(carteId) + "&select=*");
-  if (!cartes || !cartes[0]) return null;
+  if (!cartes || !cartes[0]) { console.log("[pro] acces refuse : carte introuvable", carteId); return null; }
   const carte = cartes[0];
   const membre = await sb("membres?user_id=eq." + encodeURIComponent(userId) +
     "&commerce_id=eq." + carte.commerce_id + "&select=role");
-  if (!membre || !membre.length) return null;
+  if (!membre || !membre.length) {
+    console.log("[pro] acces refuse : user", userId, "n'est PAS membre du commerce", carte.commerce_id, "→ verifier la table membres");
+    return null;
+  }
   const commerces = await sb("commerces?id=eq." + carte.commerce_id + "&select=*");
   return { carte: carte, commerce: commerces[0], role: membre[0].role };
 }
@@ -67,7 +71,11 @@ function certDepuisEnv(nom) {
 async function envoyerPush(jetonCarte) {
   try {
     const appareils = await sb("appareils?jeton=eq." + encodeURIComponent(jetonCarte) + "&select=push_token");
-    if (!appareils || !appareils.length) return;
+    if (!appareils || !appareils.length) {
+      console.log("[push] aucun appareil enregistre pour ce jeton → la carte n'est pas (ou plus) dans un Wallet");
+      return;
+    }
+    console.log("[push]", appareils.length, "appareil(s) pour ce jeton");
     const cert = certDepuisEnv("PASS_CERT");
     const key = certDepuisEnv("PASS_KEY");
     if (!cert || !key) return;
@@ -83,7 +91,7 @@ async function envoyerPush(jetonCarte) {
           ":method": "POST", ":path": "/3/device/" + a.push_token,
           "apns-topic": topic, "apns-push-type": "background", "apns-priority": "5",
         });
-        req.on("response", () => {});
+        req.on("response", (hd) => { console.log("[push] reponse Apple :", hd[":status"]); });
         req.on("end", () => { try { client.close(); } catch (x) {} resolve(); });
         req.on("error", () => { try { client.close(); } catch (x) {} resolve(); });
         req.write(JSON.stringify({})); req.end();
@@ -108,6 +116,7 @@ module.exports = async (req, res) => {
     if (typeof body === "string") body = JSON.parse(body || "{}");
     body = body || {};
     const { action, carte_id } = body;
+    console.log("[pro]", action, "| user:", userId, "| carte:", carte_id || "-");
 
     /* ---- ENVOYER UNE CAMPAGNE (notif à tous les clients) ---- */
     if (action === "envoyer_campagne") {
