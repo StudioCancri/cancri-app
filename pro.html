@@ -320,6 +320,56 @@
   .seg.on .s-c{opacity:.65;}
   .seg:disabled{opacity:.4;cursor:default;}
 
+
+  /* ---- blocs repliables ---- */
+  details.pli{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;overflow:hidden;}
+  details.pli > summary{
+    list-style:none;cursor:pointer;padding:16px 18px;display:flex;align-items:center;gap:10px;
+    font-family:'Fraunces',serif;font-weight:600;font-size:15.5px;-webkit-tap-highlight-color:transparent;
+  }
+  details.pli > summary::-webkit-details-marker{display:none;}
+  details.pli > summary .chev{margin-left:auto;font-size:13px;color:var(--ink-faint);transition:transform .2s;}
+  details.pli[open] > summary .chev{transform:rotate(90deg);}
+  details.pli > summary .resume{font-family:'Instrument Sans',sans-serif;font-weight:600;font-size:12.5px;
+                                color:var(--ink-soft);margin-left:4px;}
+  details.pli > summary:hover{background:var(--cream);}
+  .pli-corps{padding:0 18px 18px;}
+
+  /* ---- destinataires compact ---- */
+  .dest{display:flex;align-items:center;gap:10px;margin-bottom:12px;position:relative;flex-wrap:wrap;}
+  .dest label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;opacity:.8;}
+  .dest select{
+    flex:1;min-width:180px;border:1px solid rgba(255,255,255,.4);background:rgba(255,255,255,.14);
+    color:#fff;border-radius:11px;padding:10px 12px;font:inherit;font-size:13.5px;font-weight:600;
+    -webkit-appearance:none;appearance:none;cursor:pointer;
+  }
+  .dest select option{color:var(--ink);background:#fff;}
+  .dest select:focus{outline:2px solid rgba(255,255,255,.55);}
+
+  /* ---- mode sélection dans la liste ---- */
+  .sel-btn{border:1px solid var(--line);background:var(--card);color:var(--ink-soft);font:inherit;
+           font-size:12px;font-weight:600;border-radius:9px;padding:7px 12px;cursor:pointer;
+           -webkit-tap-highlight-color:transparent;}
+  .sel-btn:hover{color:var(--terracotta);border-color:var(--terracotta);}
+  .sel-btn.on{background:var(--terracotta);color:#fff;border-color:var(--terracotta);}
+  .client .coche{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--line);flex:none;
+                 display:none;align-items:center;justify-content:center;font-size:12px;color:transparent;}
+  .mode-sel .client .coche{display:flex;}
+  .client.pick .coche{background:var(--terracotta);border-color:var(--terracotta);color:#fff;}
+
+  .barre-sel{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:30;
+    background:var(--ink);color:#fff;border-radius:14px;padding:12px 14px;
+    display:none;align-items:center;gap:12px;box-shadow:0 14px 34px -12px rgba(0,0,0,.5);
+    max-width:calc(100% - 32px);
+  }
+  .barre-sel.on{display:flex;}
+  .barre-sel .n{font-size:13.5px;font-weight:600;white-space:nowrap;}
+  .barre-sel button{border:none;border-radius:10px;padding:9px 14px;font:inherit;font-size:13px;
+                    font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .barre-sel .ok{background:var(--terracotta);color:#fff;}
+  .barre-sel .no{background:transparent;color:rgba(255,255,255,.6);padding:9px 6px;}
+
   /* ---- fiche client (panneau) ---- */
   .sheet-bg{
     position:fixed;inset:0;z-index:40;background:rgba(42,32,24,.4);
@@ -444,7 +494,10 @@
       <div class="cq" id="quota">2 restantes</div>
     </div>
     <div class="cs">Un message sur l'écran verrouillé de vos clients. Choisissez qui le reçoit.</div>
-    <div class="segs" id="segsZone"></div>
+    <div class="dest">
+      <label for="destSel">À qui</label>
+      <select id="destSel"></select>
+    </div>
     <textarea id="campMsg" maxlength="120" placeholder="Ex : Happy hour ce soir 17h-19h, 2ème boisson offerte ☕"></textarea>
     <div class="quick" id="quickMsgs">
       <button data-m="Happy hour ce soir 17h-19h : 2ème boisson à -50% ☕">Happy hour</button>
@@ -466,9 +519,10 @@
   </div>
 
 
-  <div class="relances" id="relances">
-    <div class="rh">
-      <div class="rt">🔔 Relances automatiques</div>
+  <details class="pli" id="relances">
+    <summary>🔔 Relances automatiques <span class="resume" id="relResume"></span><span class="chev">›</span></summary>
+    <div class="pli-corps">
+    <div class="rh" style="justify-content:flex-end;margin-bottom:10px;">
       <label class="switch"><input type="checkbox" id="relToggle" checked><span class="slider"></span></label>
     </div>
     <div class="rs">Un client qui n'est pas revenu depuis 21 jours reçoit automatiquement ce message sur sa carte. Une seule fois, sans que vous ayez rien à faire.</div>
@@ -477,10 +531,12 @@
       <span class="rmsg" id="relResult">Enregistré ✓</span>
       <button class="rsave" id="relSave">Enregistrer</button>
     </div>
-  </div>
+    </div>
+  </details>
 
-  <div class="prog-card" id="progCard">
-    <div class="ph">☕ Mon programme</div>
+  <details class="pli" id="progCard">
+    <summary>☕ Mon programme <span class="resume" id="progResume"></span><span class="chev">›</span></summary>
+    <div class="pli-corps">
     <div class="ps">Le nombre de passages pour gagner, et ce que vous offrez. Les cartes de vos clients se mettent à jour toutes seules.</div>
     <div class="prog-row">
       <div>
@@ -502,11 +558,15 @@
       <button class="prog-save" id="pSave">Enregistrer</button>
     </div>
     <div class="prog-msg" id="pMsg"></div>
-  </div>
+    </div>
+  </details>
 
   <div class="section-head">
     <h2>Vos clients</h2>
-    <span class="count" id="clientCount"></span>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="count" id="clientCount"></span>
+      <button class="sel-btn" id="selBtn">Sélectionner</button>
+    </div>
   </div>
 
   <input class="search" id="search" type="text" placeholder="Rechercher un prénom ou un email…">
@@ -550,6 +610,12 @@
 
     <div class="hist" id="shHist"></div>
   </div>
+</div>
+
+<div class="barre-sel" id="barreSel">
+  <span class="n" id="barreN">0 sélectionné</span>
+  <button class="ok" id="barreOk">Leur écrire</button>
+  <button class="no" id="barreNo">Annuler</button>
 </div>
 
 <script>
@@ -703,7 +769,8 @@
     for(const c of liste){
       const plein = c.tampons >= objectif;
       const pct = Math.min(100, Math.round((c.tampons / objectif) * 100));
-      html += '<div class="client' + (plein ? ' full' : '') + '" data-id="' + c.id + '">'+
+      html += '<div class="client' + (plein ? ' full' : '') + (selection.has(c.id) ? ' pick' : '') + '" data-id="' + c.id + '">'+
+        '<div class="coche">✓</div>'+
         '<div class="ini">' + initiales(c.prenom) + '</div>'+
         '<div class="info">'+
           '<div class="cn">' + (c.prenom || "Client") + '</div>'+
@@ -720,6 +787,12 @@
     $("clientsZone").querySelectorAll(".client").forEach(function(el){
       el.addEventListener("click", function(){
         const id = el.getAttribute("data-id");
+        if(modeSelection){
+          if(selection.has(id)){ selection.delete(id); el.classList.remove("pick"); }
+          else { selection.add(id); el.classList.add("pick"); }
+          majBarre();
+          return;
+        }
         const carte = toutClients.find(c => c.id === id);
         if(carte) ouvrirFiche(carte);
       });
@@ -882,13 +955,16 @@
     if(!msg){ res.className = "cmsg on"; res.textContent = "Écrivez un message d'abord."; return; }
     $("campSend").disabled = true;
     $("campSend").textContent = "Envoi…";
-    var r = await appelPro({ action:"envoyer_campagne", message: msg, segment: segmentChoisi });
+    var payload = { action:"envoyer_campagne", message: msg, segment: segmentChoisi };
+    if(segmentChoisi === "selection") payload.carte_ids = Array.from(selection);
+    var r = await appelPro(payload);
     $("campSend").textContent = "Envoyer à tous";
     if(r.ok){
       res.className = "cmsg on";
       res.textContent = "✓ Envoyé à " + r.nb_clients + " client" + (r.nb_clients>1?"s":"") + ". Il reste " + r.restants + " envoi" + (r.restants>1?"s":"") + " aujourd'hui.";
       $("campMsg").value = "";
       $("campCount").textContent = "0";
+      if(modeSelection) basculerMode(false);
       chargerSegments();
       $("quota").textContent = r.restants + (r.restants > 1 ? " restantes" : " restante");
       if(r.restants <= 0){ $("campSend").disabled = true; } else { $("campSend").disabled = false; }
@@ -914,6 +990,8 @@
       if(r && r.ok){
         $("relMsg").value = r.message || "";
         $("relToggle").checked = r.actives !== false;
+        const rr = $("relResume");
+        if(rr) rr.textContent = (r.actives !== false) ? "· activées" : "· désactivées";
       }
     }).catch(function(){});
   }
@@ -955,6 +1033,8 @@
       progObjectif = r.objectif; progInitial = r.objectif; progRole = r.role;
       $("pRecompense").value = r.recompense || "";
       dessinerProg();
+      const rp = $("progResume");
+      if(rp) rp.textContent = "· " + r.objectif + " passages · " + (r.recompense || "");
       if(progRole !== "proprio"){
         $("pMoins").disabled = true; $("pPlus").disabled = true;
         $("pRecompense").disabled = true; $("pSave").disabled = true;
@@ -1029,31 +1109,62 @@
   }
 
 
+
+  /* ---------- SÉLECTION MANUELLE DE CLIENTS ---------- */
+  const selection = new Set();
+  let modeSelection = false;
+
+  function majBarre(){
+    const n = selection.size;
+    $("barreN").textContent = n + " sélectionné" + (n>1?"s":"");
+    $("barreSel").classList.toggle("on", modeSelection && n > 0);
+  }
+
+  function basculerMode(actif){
+    modeSelection = actif;
+    document.body.classList.toggle("mode-sel", actif);
+    $("selBtn").classList.toggle("on", actif);
+    $("selBtn").textContent = actif ? "Terminer" : "Sélectionner";
+    if(!actif){ selection.clear(); document.querySelectorAll(".client.pick").forEach(function(el){ el.classList.remove("pick"); }); }
+    majBarre();
+    if(!actif && segmentChoisi === "selection"){ segmentChoisi = "tous"; }
+    rendreSegments(cibleOkCourant);
+    majBoutonEnvoi();
+  }
+
+  $("selBtn").addEventListener("click", function(){ basculerMode(!modeSelection); });
+  $("barreNo").addEventListener("click", function(){ basculerMode(false); });
+  $("barreOk").addEventListener("click", function(){
+    segmentChoisi = "selection";
+    rendreSegments(cibleOkCourant);
+    majBoutonEnvoi();
+    $("barreSel").classList.remove("on");
+    document.getElementById("campagne").scrollIntoView({ behavior:"smooth", block:"start" });
+    setTimeout(function(){ $("campMsg").focus(); }, 400);
+  });
+
   /* ---------- SEGMENTS ---------- */
   let segmentChoisi = "tous";
   let segmentsData = [];
+  let cibleOkCourant = false;
 
   function rendreSegments(cibleOk){
     let html = "";
     segmentsData.forEach(function(s){
-      const actif = s.code === segmentChoisi;
       const bloque = (s.code !== "tous") && !cibleOk;
-      html += '<button class="seg'+(actif?' on':'')+'" data-seg="'+s.code+'"'+(bloque?' disabled':'')+'>'+
-        '<span class="s-n">'+s.nom+'</span>'+
-        '<span class="s-c">'+s.nombre+' client'+(s.nombre>1?'s':'')+'</span>'+
-      '</button>';
+      if(bloque) return;
+      html += '<option value="'+s.code+'"'+(s.code===segmentChoisi?' selected':'')+'>'+
+        s.nom+' — '+s.nombre+' client'+(s.nombre>1?'s':'')+'</option>';
     });
-    $("segsZone").innerHTML = html;
-    $("segsZone").querySelectorAll(".seg").forEach(function(b){
-      b.addEventListener("click", function(){
-        segmentChoisi = b.getAttribute("data-seg");
-        rendreSegments(cibleOk);
-        majBoutonEnvoi();
-      });
-    });
+    if(selection.size){
+      html += '<option value="selection"'+(segmentChoisi==="selection"?' selected':'')+'>'+
+        'Ma sélection — '+selection.size+' client'+(selection.size>1?'s':'')+'</option>';
+    }
+    $("destSel").innerHTML = html;
   }
 
   function segmentActuel(){
+    if(segmentChoisi === "selection") return { code:"selection", nom:"Ma sélection", nombre: selection.size };
     return segmentsData.find(function(s){ return s.code === segmentChoisi; });
   }
 
@@ -1066,12 +1177,19 @@
     $("campSend").disabled = s.nombre === 0;
   }
 
+  $("destSel").addEventListener("change", function(){
+    segmentChoisi = this.value;
+    majBoutonEnvoi();
+  });
+
   function chargerSegments(){
     appelPro({ action:"segments" }).then(function(r){
       if(!r || !r.ok) return;
       segmentsData = r.segments || [];
       if(!segmentsData.some(function(s){ return s.code === segmentChoisi; })) segmentChoisi = "tous";
-      rendreSegments(r.cible_possible === true);
+      cibleOkCourant = r.cible_possible === true;
+      $("selBtn").style.display = cibleOkCourant ? "inline-block" : "none";
+      rendreSegments(cibleOkCourant);
       majBoutonEnvoi();
     }).catch(function(){});
   }
