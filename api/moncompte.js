@@ -76,7 +76,7 @@ module.exports = async (req, res) => {
     /* ---- MES CARTES ---- */
     if (action === "mes_cartes") {
       const cartes = await sb(
-        "cartes?email=eq." + encodeURIComponent(email) +
+        "cartes?email=ilike." + encodeURIComponent(email) +
         "&select=id,jeton,prenom,tampons,dernier_tap,commerce_id&order=dernier_tap.desc"
       );
       const liste = [];
