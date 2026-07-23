@@ -227,6 +227,41 @@
   .quick button:active{transform:scale(.96);}
 
 
+
+  /* ---- mon programme ---- */
+  .prog-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;}
+  .prog-card .ph{font-family:'Fraunces',serif;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .prog-card .ps{font-size:12.5px;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;}
+  .prog-row{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:520px){.prog-row{grid-template-columns:170px 1fr;}}
+  .prog-row label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:7px;display:block;}
+  .stepper{display:flex;align-items:center;gap:10px;}
+  .stepper button{
+    width:42px;height:42px;flex:none;border:1.5px solid var(--line);background:var(--cream);color:var(--ink);
+    font:inherit;font-size:19px;font-weight:700;border-radius:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  }
+  .stepper button:hover{border-color:var(--terracotta);color:var(--terracotta);}
+  .stepper button:active{transform:scale(.95);}
+  .stepper button:disabled{opacity:.35;cursor:default;}
+  .stepper .val{flex:1;text-align:center;font-family:'Fraunces',serif;font-weight:600;font-size:26px;
+                font-variant-numeric:tabular-nums;line-height:1;}
+  .prog-card input[type=text]{
+    width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;font:inherit;
+    font-size:14.5px;background:var(--cream);color:var(--ink);
+  }
+  .prog-card input[type=text]:focus{outline:none;border-color:var(--terracotta);}
+  .prog-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+  .prog-preview i{width:16px;height:16px;border-radius:50%;border:1.5px dashed var(--ink-faint);display:block;}
+  .prog-bar{display:flex;align-items:center;justify-content:space-between;margin-top:16px;gap:12px;}
+  .prog-warn{font-size:12px;color:var(--ink-soft);line-height:1.45;flex:1;}
+  .prog-save{border:none;background:var(--ink);color:#fff;font:inherit;font-size:13px;font-weight:700;
+             border-radius:10px;padding:11px 18px;cursor:pointer;flex:none;-webkit-tap-highlight-color:transparent;}
+  .prog-save:active{transform:scale(.97);}
+  .prog-save:disabled{opacity:.5;}
+  .prog-msg{font-size:12.5px;margin-top:10px;display:none;}
+  .prog-msg.on{display:block;color:var(--sage);}
+  .prog-msg.err{display:block;color:var(--terracotta);}
+
   /* ---- relances auto ---- */
   .relances{
     background:var(--card);border:1px solid var(--line);border-radius:16px;
@@ -414,6 +449,31 @@
     </div>
   </div>
 
+  <div class="prog-card" id="progCard">
+    <div class="ph">☕ Mon programme</div>
+    <div class="ps">Le nombre de passages pour gagner, et ce que vous offrez. Les cartes de vos clients se mettent à jour toutes seules.</div>
+    <div class="prog-row">
+      <div>
+        <label>Passages pour gagner</label>
+        <div class="stepper">
+          <button id="pMoins">−</button>
+          <div class="val" id="pVal">10</div>
+          <button id="pPlus">+</button>
+        </div>
+      </div>
+      <div>
+        <label>Ce que vous offrez</label>
+        <input type="text" id="pRecompense" maxlength="60" placeholder="Boisson offerte">
+        <div class="prog-preview" id="pPreview"></div>
+      </div>
+    </div>
+    <div class="prog-bar">
+      <div class="prog-warn" id="pWarn"></div>
+      <button class="prog-save" id="pSave">Enregistrer</button>
+    </div>
+    <div class="prog-msg" id="pMsg"></div>
+  </div>
+
   <div class="section-head">
     <h2>Vos clients</h2>
     <span class="count" id="clientCount"></span>
@@ -598,6 +658,7 @@
     afficherClients(liste, objectif);
     majQuota();
     chargerRelances();
+    chargerProgramme();
   }
 
   function afficherClients(liste, objectif){
@@ -830,6 +891,67 @@
     if(r && r.ok){
       var m = $("relResult"); m.classList.add("on");
       setTimeout(function(){ m.classList.remove("on"); }, 2000);
+    }
+  });
+
+
+  /* ---------- MON PROGRAMME ---------- */
+  let progObjectif = 10, progInitial = 10, progRole = "proprio";
+
+  function dessinerProg(){
+    $("pVal").textContent = progObjectif;
+    let g = "";
+    for(let i=0;i<progObjectif;i++) g += "<i></i>";
+    $("pPreview").innerHTML = g;
+    $("pMoins").disabled = progObjectif <= 4;
+    $("pPlus").disabled = progObjectif >= 12;
+    if(progObjectif !== progInitial){
+      $("pWarn").textContent = "Les cartes en cours passeront sur " + progObjectif + " passages.";
+    } else {
+      $("pWarn").textContent = "";
+    }
+  }
+
+  function chargerProgramme(){
+    appelPro({ action:"get_programme" }).then(function(r){
+      if(!r || !r.ok) return;
+      progObjectif = r.objectif; progInitial = r.objectif; progRole = r.role;
+      $("pRecompense").value = r.recompense || "";
+      dessinerProg();
+      if(progRole !== "proprio"){
+        $("pMoins").disabled = true; $("pPlus").disabled = true;
+        $("pRecompense").disabled = true; $("pSave").disabled = true;
+        $("pWarn").textContent = "Seul le propriétaire peut modifier le programme.";
+      }
+    }).catch(function(){});
+  }
+
+  $("pMoins").addEventListener("click", function(){ if(progObjectif > 4){ progObjectif--; dessinerProg(); } });
+  $("pPlus").addEventListener("click", function(){ if(progObjectif < 12){ progObjectif++; dessinerProg(); } });
+
+  $("pSave").addEventListener("click", async function(){
+    const rec = ($("pRecompense").value || "").trim();
+    const msg = $("pMsg");
+    if(!rec){ msg.className = "prog-msg err"; msg.textContent = "Indiquez ce que vous offrez."; return; }
+    this.disabled = true; this.textContent = "…";
+    const r = await appelPro({ action:"set_programme", objectif: progObjectif, recompense: rec });
+    this.disabled = false; this.textContent = "Enregistrer";
+    if(r && r.ok){
+      progInitial = r.objectif; progObjectif = r.objectif;
+      objectifCourant = r.objectif;
+      window.__objectif = r.objectif;
+      dessinerProg();
+      msg.className = "prog-msg on";
+      msg.textContent = "Enregistré ✓ Les cartes de vos clients se mettent à jour.";
+      setTimeout(function(){ msg.className = "prog-msg"; }, 3500);
+      const q = ($("search").value || "").trim().toLowerCase();
+      const filtres = q ? toutClients.filter(c => (c.prenom||"").toLowerCase().includes(q)) : toutClients;
+      afficherClients(filtres, r.objectif);
+    } else {
+      msg.className = "prog-msg err";
+      msg.textContent = (r && r.raison === "reserve_proprio")
+        ? "Seul le propriétaire peut modifier le programme."
+        : "Impossible d'enregistrer. Réessayez.";
     }
   });
 
