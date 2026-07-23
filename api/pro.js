@@ -165,43 +165,6 @@ module.exports = async (req, res) => {
 
 
 
-    const acces = await verifierAcces(userId, carte_id);
-    if (!acces) return res.status(403).json({ ok: false, raison: "acces_refuse" });
-    const { carte, commerce } = acces;
-
-    /* ---- AJUSTER TAMPONS (valeur absolue, bornée) ---- */
-    if (action === "ajuster_tampons") {
-      let val = parseInt(body.tampons, 10);
-      if (isNaN(val)) return res.status(200).json({ ok: false, raison: "valeur_invalide" });
-      val = Math.max(0, Math.min(commerce.objectif, val));
-      const maj = await sb("cartes?id=eq." + carte.id, {
-        method: "PATCH",
-        body: { tampons: val, dernier_tap: new Date().toISOString() },
-      });
-      await envoyerPush(carte.jeton);
-      return res.status(200).json({ ok: true, tampons: maj[0].tampons });
-    }
-
-    /* ---- VALIDER RÉCOMPENSE (carte pleine → remise à 0) ---- */
-    if (action === "valider_recompense") {
-      if (carte.tampons < commerce.objectif) {
-        return res.status(200).json({ ok: false, raison: "pas_pleine" });
-      }
-      const maj = await sb("cartes?id=eq." + carte.id, {
-        method: "PATCH",
-        body: { tampons: 0, dernier_tap: new Date().toISOString() },
-      });
-      await sb("taps", { method: "POST", body: { carte_id: carte.id, valeur: 0 } });
-      await envoyerPush(carte.jeton);
-      return res.status(200).json({ ok: true, tampons: 0, offert: true });
-    }
-
-    /* ---- HISTORIQUE / ÉTAT d'une carte ---- */
-    if (action === "historique") {
-      const taps = await sb("taps?carte_id=eq." + carte.id + "&select=valeur,cree_le&order=cree_le.desc&limit=20");
-      return res.status(200).json({ ok: true, carte: carte, taps: taps || [] });
-    }
-
     /* ---- RÉGLAGES DE RELANCE ---- */
     if (action === "get_relances") {
       const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
@@ -264,6 +227,44 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({ ok: true, objectif: objectif, recompense: recompense, cartes_ajustees: trop ? trop.length : 0 });
+    }
+
+
+    const acces = await verifierAcces(userId, carte_id);
+    if (!acces) return res.status(403).json({ ok: false, raison: "acces_refuse" });
+    const { carte, commerce } = acces;
+
+    /* ---- AJUSTER TAMPONS (valeur absolue, bornée) ---- */
+    if (action === "ajuster_tampons") {
+      let val = parseInt(body.tampons, 10);
+      if (isNaN(val)) return res.status(200).json({ ok: false, raison: "valeur_invalide" });
+      val = Math.max(0, Math.min(commerce.objectif, val));
+      const maj = await sb("cartes?id=eq." + carte.id, {
+        method: "PATCH",
+        body: { tampons: val, dernier_tap: new Date().toISOString() },
+      });
+      await envoyerPush(carte.jeton);
+      return res.status(200).json({ ok: true, tampons: maj[0].tampons });
+    }
+
+    /* ---- VALIDER RÉCOMPENSE (carte pleine → remise à 0) ---- */
+    if (action === "valider_recompense") {
+      if (carte.tampons < commerce.objectif) {
+        return res.status(200).json({ ok: false, raison: "pas_pleine" });
+      }
+      const maj = await sb("cartes?id=eq." + carte.id, {
+        method: "PATCH",
+        body: { tampons: 0, dernier_tap: new Date().toISOString() },
+      });
+      await sb("taps", { method: "POST", body: { carte_id: carte.id, valeur: 0 } });
+      await envoyerPush(carte.jeton);
+      return res.status(200).json({ ok: true, tampons: 0, offert: true });
+    }
+
+    /* ---- HISTORIQUE / ÉTAT d'une carte ---- */
+    if (action === "historique") {
+      const taps = await sb("taps?carte_id=eq." + carte.id + "&select=valeur,cree_le&order=cree_le.desc&limit=20");
+      return res.status(200).json({ ok: true, carte: carte, taps: taps || [] });
     }
 
     return res.status(200).json({ ok: false, raison: "action_inconnue" });
