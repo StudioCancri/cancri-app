@@ -112,7 +112,7 @@ module.exports = async (req, res) => {
         // 1. on écrit le message de relance SUR LA CARTE (le pass l'affichera)
         await sb("cartes?id=eq." + carte.id, {
           method: "PATCH",
-          body: { message_relance: texteRelance, derniere_relance: new Date().toISOString() },
+          body: { message_perso: texteRelance, derniere_relance: new Date().toISOString() },
         });
         // 2. on pousse la mise à jour du pass → notif écran verrouillé
         const envoye = await envoyerPush(carte.jeton);
