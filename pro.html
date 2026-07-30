@@ -10,9 +10,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --terracotta:#D45234;
-    --terracotta-deep:#B23E23;
-    --terracotta-soft:rgba(212,82,52,.10);
+    --terracotta:#FCA321;
+    --terracotta-deep:#E8890A;
+    --terracotta-soft:rgba(252,163,33,.12);
     --cream:#FBF7F2;
     --cream-2:#F4ECE2;
     --ink:#2A2018;
@@ -50,10 +50,7 @@
   .brand-mark{
     display:flex;align-items:baseline;gap:10px;margin-bottom:40px;
   }
-  .brand-mark .logo{
-    font-family:'Fraunces',serif;font-weight:600;font-size:30px;letter-spacing:-.02em;
-    color:var(--terracotta);
-  }
+  .brand-logo{height:30px;width:auto;display:block;}
   .brand-mark .tag{
     font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
     color:var(--ink-faint);padding-bottom:5px;
@@ -89,6 +86,7 @@
   }
   .login-msg.ok{display:block;background:rgba(122,139,111,.12);color:#4d5c43;border:1px solid rgba(122,139,111,.3);}
   .login-msg.err{display:block;background:var(--terracotta-soft);color:var(--terracotta-deep);border:1px solid rgba(212,82,52,.25);}
+  .login-credit{margin-top:22px;font-size:11.5px;color:var(--ink-faint);letter-spacing:.03em;}
   .login-foot{
     margin-top:36px;font-size:12px;color:var(--ink-faint);line-height:1.6;
   }
@@ -483,7 +481,7 @@
 <div class="login-wrap" id="loginView">
   <div class="login-card">
     <div class="brand-mark">
-      <span class="logo">MOME</span>
+      <img src="/assets/lunat-logo.png" alt="Lunat" class="brand-logo">
       <span class="tag">Espace commerçant</span>
     </div>
     <h1 class="login-title">Votre comptoir,<br>côté chiffres.</h1>
@@ -502,6 +500,7 @@
     <div class="login-msg" id="loginMsg"></div>
 
     <p class="login-foot">Pas de mot de passe à retenir. On vous envoie un code sécurisé par email, valable quelques minutes.</p>
+    <p class="login-credit">Propulsé par Studio Cancri</p>
   </div>
 </div>
 
