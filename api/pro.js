@@ -259,6 +259,33 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, cible_possible: cap.segments === true, segments: liste });
     }
 
+    /* ---- RACCOURCIS DE MESSAGES (jusqu'à 5, éditables par le gérant) ---- */
+    if (action === "get_raccourcis") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=raccourcis_messages");
+      let liste = c[0].raccourcis_messages;
+      if (typeof liste === "string") { try { liste = JSON.parse(liste); } catch (e) { liste = null; } }
+      if (!Array.isArray(liste)) liste = [];
+      return res.status(200).json({ ok: true, raccourcis: liste.slice(0, 5) });
+    }
+
+    if (action === "set_raccourcis") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      if (m[0].role !== "proprio") return res.status(200).json({ ok: false, raison: "reserve_proprio" });
+      let liste = Array.isArray(body.raccourcis) ? body.raccourcis : [];
+      liste = liste
+        .map(function (x) { return (x || "").toString().trim().slice(0, 120); })
+        .filter(function (x) { return x.length > 0; })
+        .slice(0, 5);
+      await sb("commerces?id=eq." + m[0].commerce_id, {
+        method: "PATCH",
+        body: { raccourcis_messages: JSON.stringify(liste) },
+      });
+      return res.status(200).json({ ok: true, raccourcis: liste });
+    }
+
     /* ---- MON FORFAIT : ce que le commerce a le droit de faire ---- */
     if (action === "mon_forfait") {
       const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
