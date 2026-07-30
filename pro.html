@@ -727,6 +727,37 @@
     return "Bonsoir";
   }
 
+
+  /* ---------- THÈME DU COMMERCE ---------- */
+  function versRgb(str){
+    if(!str) return [212,82,52];
+    let m = str.match(/(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+    if(m) return [parseInt(m[1]),parseInt(m[2]),parseInt(m[3])];
+    let x = str.replace("#","");
+    if(x.length===6) return [parseInt(x.slice(0,2),16),parseInt(x.slice(2,4),16),parseInt(x.slice(4,6),16)];
+    return [212,82,52];
+  }
+  function assombrir(rgb, f){
+    return rgb.map(function(c){ return Math.max(0, Math.round(c*(1-f))); });
+  }
+  function appliquerTheme(commerce){
+    // couleur d'accent = couleur du texte de la carte (la teinte forte du commerce),
+    // avec repli sur le fond si besoin
+    let base = versRgb(commerce.couleur_texte);
+    // si le texte est quasi blanc/noir, on prend plutôt le label ou le fond
+    const somme = base[0]+base[1]+base[2];
+    if(somme > 720 || somme < 40){
+      base = versRgb(commerce.couleur_label);
+      const s2 = base[0]+base[1]+base[2];
+      if(s2 > 720 || s2 < 40) base = versRgb(commerce.couleur_fond);
+    }
+    const deep = assombrir(base, .18);
+    const r = document.documentElement.style;
+    r.setProperty("--terracotta", "rgb("+base[0]+","+base[1]+","+base[2]+")");
+    r.setProperty("--terracotta-deep", "rgb("+deep[0]+","+deep[1]+","+deep[2]+")");
+    r.setProperty("--terracotta-soft", "rgba("+base[0]+","+base[1]+","+base[2]+",.10)");
+  }
+
   async function chargerDashboard(session){
     $("loginView").style.display = "none";
     $("appView").classList.add("on");
@@ -738,6 +769,7 @@
       return;
     }
     const commerce = commerces[0];
+    appliquerTheme(commerce);
     objectifCourant = commerce.objectif;
     uniteCourante = commerce.unite;
     window.__objectif = commerce.objectif;
