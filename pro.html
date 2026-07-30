@@ -225,6 +225,19 @@
     -webkit-tap-highlight-color:transparent;
   }
   .quick button:active{transform:scale(.96);}
+  .quick .rc-gerer{border:1px dashed rgba(255,255,255,.5);background:transparent;color:#fff;opacity:.85;}
+  .rc-edit{background:rgba(255,255,255,.12);border-radius:12px;padding:14px;margin-top:10px;position:relative;display:none;}
+  .rc-edit.on{display:block;}
+  .rc-edit .rc-row{display:flex;gap:8px;margin-bottom:8px;}
+  .rc-edit .rc-row input{flex:1;border:none;border-radius:9px;padding:10px 12px;font:inherit;font-size:13.5px;background:#fff;color:var(--ink);}
+  .rc-edit .rc-row input:focus{outline:2px solid rgba(255,255,255,.6);}
+  .rc-edit .rc-del{border:none;background:rgba(255,255,255,.9);color:var(--terracotta);border-radius:9px;width:38px;font-size:16px;font-weight:700;cursor:pointer;flex:none;}
+  .rc-edit .rc-add{border:1px dashed rgba(255,255,255,.6);background:transparent;color:#fff;border-radius:9px;padding:9px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;width:100%;margin-bottom:10px;}
+  .rc-edit .rc-add:disabled{opacity:.4;cursor:default;}
+  .rc-edit .rc-bar{display:flex;gap:8px;justify-content:flex-end;}
+  .rc-edit .rc-save{border:none;background:#fff;color:var(--terracotta);font:inherit;font-size:13px;font-weight:700;border-radius:9px;padding:9px 16px;cursor:pointer;}
+  .rc-edit .rc-cancel{border:none;background:transparent;color:rgba(255,255,255,.7);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:9px 6px;}
+
 
 
 
@@ -518,10 +531,14 @@
       <select id="destSel"></select>
     </div>
     <textarea id="campMsg" maxlength="120" placeholder="Ex : Happy hour ce soir 17h-19h, 2ème boisson offerte ☕"></textarea>
-    <div class="quick" id="quickMsgs">
-      <button data-m="Happy hour ce soir 17h-19h : 2ème boisson à -50% ☕">Happy hour</button>
-      <button data-m="Nouvelle pâtisserie maison à découvrir aujourd'hui 🥐">Nouveauté</button>
-      <button data-m="Il pleut sur Bordeaux → cookie offert avec chaque café ☔">Jour de pluie</button>
+    <div class="quick" id="quickMsgs"></div>
+    <div class="rc-edit" id="rcEdit">
+      <div id="rcRows"></div>
+      <button class="rc-add" id="rcAdd">+ Ajouter un raccourci</button>
+      <div class="rc-bar">
+        <button class="rc-cancel" id="rcCancel">Annuler</button>
+        <button class="rc-save" id="rcSave">Enregistrer</button>
+      </div>
     </div>
     <div class="cbar">
       <div class="cc"><span id="campCount">0</span>/120</div>
@@ -994,11 +1011,74 @@
     $("campCount").textContent = this.value.length;
   });
 
-  document.getElementById("quickMsgs").addEventListener("click", function(e){
-    var b = e.target.closest("button");
-    if(!b) return;
-    $("campMsg").value = b.getAttribute("data-m");
-    $("campCount").textContent = $("campMsg").value.length;
+  /* ---------- RACCOURCIS DE MESSAGES ---------- */
+  let raccourcis = [];
+  let estProprio = false;
+
+  function rendreRaccourcis(){
+    var z = $("quickMsgs");
+    var html = "";
+    raccourcis.forEach(function(txt, i){
+      var court = txt.length > 22 ? txt.slice(0,22) + "…" : txt;
+      html += '<button data-i="'+i+'">'+court+'</button>';
+    });
+    if(estProprio){
+      html += '<button class="rc-gerer" id="rcGerer">✎ Gérer</button>';
+    }
+    z.innerHTML = html;
+    z.querySelectorAll("button[data-i]").forEach(function(b){
+      b.addEventListener("click", function(){
+        $("campMsg").value = raccourcis[parseInt(b.getAttribute("data-i"))];
+        $("campCount").textContent = $("campMsg").value.length;
+      });
+    });
+    var g = $("rcGerer");
+    if(g) g.addEventListener("click", ouvrirEditeurRaccourcis);
+  }
+
+  function chargerRaccourcis(){
+    appelPro({ action:"get_raccourcis" }).then(function(r){
+      if(r && r.ok){ raccourcis = r.raccourcis || []; rendreRaccourcis(); }
+    }).catch(function(){});
+  }
+
+  function lignesEditeur(){
+    var z = $("rcRows");
+    z.innerHTML = "";
+    raccourcis.forEach(function(txt){ ajouterLigneEditeur(txt); });
+    if(!raccourcis.length) ajouterLigneEditeur("");
+    majAddBtn();
+  }
+  function ajouterLigneEditeur(txt){
+    var row = document.createElement("div");
+    row.className = "rc-row";
+    row.innerHTML = '<input type="text" maxlength="120" value="'+ (txt||"").replace(/"/g,"&quot;") +'" placeholder="Ex : Nouvelle pâtisserie aujourd\'hui 🥐"><button class="rc-del">✕</button>';
+    row.querySelector(".rc-del").addEventListener("click", function(){ row.remove(); majAddBtn(); });
+    $("rcRows").appendChild(row);
+  }
+  function majAddBtn(){
+    var n = $("rcRows").querySelectorAll(".rc-row").length;
+    $("rcAdd").disabled = n >= 5;
+  }
+  function ouvrirEditeurRaccourcis(){
+    lignesEditeur();
+    $("rcEdit").classList.add("on");
+  }
+  $("rcAdd").addEventListener("click", function(){ ajouterLigneEditeur(""); majAddBtn(); });
+  $("rcCancel").addEventListener("click", function(){ $("rcEdit").classList.remove("on"); });
+  $("rcSave").addEventListener("click", async function(){
+    var vals = [];
+    $("rcRows").querySelectorAll("input").forEach(function(inp){
+      var v = inp.value.trim(); if(v) vals.push(v);
+    });
+    this.disabled = true;
+    var r = await appelPro({ action:"set_raccourcis", raccourcis: vals });
+    this.disabled = false;
+    if(r && r.ok){
+      raccourcis = r.raccourcis || [];
+      rendreRaccourcis();
+      $("rcEdit").classList.remove("on");
+    }
   });
 
   $("campSend").addEventListener("click", async function(){
@@ -1144,6 +1224,8 @@
     appelPro({ action:"mon_forfait" }).then(function(r){
       if(!r || !r.ok) return;
       const cap = r.capacites || {};
+      estProprio = (r.role === "proprio");
+      chargerRaccourcis();
       if(!cap.messages){
         verrouiller("campagne", "Inclus dans le forfait Pro",
           "Envoyez une offre sur l'écran de vos clients. Parlez-en à Studio Cancri.");
