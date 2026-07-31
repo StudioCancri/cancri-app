@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
     if (action === "mes_cartes") {
       const cartes = await sb(
         "cartes?email=ilike." + encodeURIComponent(email) +
-        "&select=id,jeton,prenom,tampons,dernier_tap,commerce_id&order=dernier_tap.desc"
+        "&select=id,jeton,prenom,tampons,dernier_tap,message_perso,commerce_id&order=dernier_tap.desc"
       );
       const liste = [];
       for (const c of (cartes || [])) {
@@ -96,7 +96,7 @@ module.exports = async (req, res) => {
           objectif: m.objectif,
           recompense: m.recompense,
           adresse: m.adresse || "",
-          message: m.message_actuel || "",
+          message: (c.message_perso && c.message_perso.trim()) ? c.message_perso.trim() : (m.message_actuel || ""),
           fond: m.couleur_fond || "rgb(255,255,255)",
           texte: m.couleur_texte || "rgb(0,0,0)",
           label: m.couleur_label || "rgb(0,0,0)",
