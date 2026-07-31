@@ -10,34 +10,34 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
-    --gris:#EEEEEE;
-    --gris-2:#E2E2E2;
-    --noir:#000000;
-    --noir-soft:rgba(0,0,0,.62);
-    --noir-faint:rgba(0,0,0,.38);
-    --vert:#08CB00;
-    --vert-deep:#067A00;
+    --papier:#F2F2F0;
+    --papier-2:#E7E7E4;
+    --nuit:#1B2027;
+    --nuit-soft:rgba(27,32,39,.64);
+    --nuit-faint:rgba(27,32,39,.40);
+    --orange:#FCA321;
+    --orange-deep:#E8890A;
     --line:rgba(0,0,0,.12);
   }
   *{margin:0;padding:0;box-sizing:border-box;}
   html{-webkit-text-size-adjust:100%;}
   body{
     font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;
-    background:var(--gris);color:var(--noir);line-height:1.55;min-height:100dvh;
+    background:var(--papier);color:var(--nuit);line-height:1.55;min-height:100dvh;
     -webkit-font-smoothing:antialiased;
   }
   .disp{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-weight:800;letter-spacing:-.035em;line-height:1;}
   .wrap{max-width:520px;margin:0 auto;padding:0 22px;}
   a{color:inherit;}
-  :focus-visible{outline:2px solid var(--vert-deep);outline-offset:3px;border-radius:6px;}
+  :focus-visible{outline:2px solid var(--orange-deep);outline-offset:3px;border-radius:6px;}
 
   /* ---------- barre ---------- */
   .bar{display:flex;align-items:center;justify-content:space-between;padding:18px 0;}
   .bar .mk{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;text-decoration:none;}
-  .bar .mk svg{width:18px;height:18px;}
-  .bar .out{border:1px solid var(--line);background:transparent;color:var(--noir-soft);font:inherit;
+  .mk-logo{height:22px;width:auto;display:block;}
+  .bar .out{border:1px solid var(--line);background:transparent;color:var(--nuit-soft);font:inherit;
             font-size:12.5px;font-weight:600;border-radius:100px;padding:8px 14px;cursor:pointer;}
-  .bar .out:hover{border-color:var(--noir);color:var(--noir);}
+  .bar .out:hover{border-color:var(--nuit);color:var(--nuit);}
 
   /* ---------- connexion ---------- */
   .login{padding:20px 0 60px;}
@@ -51,35 +51,36 @@
   .ghost:nth-child(3){transform:translateX(-50%) rotate(-1deg);
     box-shadow:0 14px 30px -14px rgba(0,0,0,.35);}
   .ghost .g-dots{display:flex;gap:6px;padding:14px;flex-wrap:wrap;width:100%;}
-  .ghost .g-dots i{width:13px;height:13px;border-radius:50%;background:var(--gris-2);display:block;}
-  .ghost .g-dots i.on{background:var(--vert);}
+  .ghost .g-dots i{width:13px;height:13px;border-radius:50%;background:var(--papier-2);display:block;}
+  .ghost .g-dots i.on{background:var(--orange);}
 
   .login h1{font-size:clamp(28px,7vw,36px);margin-bottom:12px;}
-  .login p.sub{font-size:15.5px;color:var(--noir-soft);margin-bottom:28px;}
-  .lbl{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--noir-soft);
+  .login p.sub{font-size:15.5px;color:var(--nuit-soft);margin-bottom:28px;}
+  .lbl{font-size:11px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:var(--nuit-soft);
        margin-bottom:8px;display:block;}
   .inp{width:100%;border:1.5px solid var(--line);border-radius:13px;padding:15px 16px;font:inherit;
-       font-size:16px;background:#fff;color:var(--noir);}
-  .inp:focus{outline:none;border-color:var(--vert-deep);}
-  .btn{width:100%;border:none;border-radius:13px;padding:16px;margin-top:12px;background:var(--vert);
-       color:#000;font:inherit;font-size:15.5px;font-weight:700;cursor:pointer;
+       font-size:16px;background:#fff;color:var(--nuit);}
+  .inp:focus{outline:none;border-color:var(--orange-deep);}
+  .btn{width:100%;border:none;border-radius:13px;padding:16px;margin-top:12px;background:var(--orange);
+       color:var(--nuit);font:inherit;font-size:15.5px;font-weight:700;cursor:pointer;
        transition:background .15s,transform .1s;-webkit-tap-highlight-color:transparent;}
-  .btn:hover{background:var(--vert-deep);color:#fff;}
+  .btn:hover{background:var(--orange-deep);color:var(--nuit);}
   .btn:active{transform:scale(.985);}
   .btn:disabled{opacity:.5;}
   #otpZone{display:none;margin-top:16px;}
   #otpCode{text-align:center;letter-spacing:.34em;font-size:21px;font-weight:700;}
   .msg{margin-top:18px;padding:14px 16px;border-radius:12px;font-size:13.5px;display:none;line-height:1.5;}
-  .msg.ok{display:block;background:rgba(8,203,0,.12);color:var(--vert-deep);border:1px solid rgba(8,203,0,.3);}
-  .msg.err{display:block;background:rgba(0,0,0,.05);color:var(--noir);border:1px solid var(--line);}
-  .foot-note{margin-top:30px;font-size:12.5px;color:var(--noir-faint);line-height:1.6;}
+  .msg.ok{display:block;background:rgba(252,163,33,.14);color:var(--orange-deep);border:1px solid rgba(252,163,33,.35);}
+  .msg.err{display:block;background:rgba(27,32,39,.05);color:var(--nuit);border:1px solid var(--line);}
+  .credit{margin-top:20px;font-size:11.5px;color:var(--nuit-faint);letter-spacing:.03em;}
+  .foot-note{margin-top:30px;font-size:12.5px;color:var(--nuit-faint);line-height:1.6;}
 
   /* ---------- mes cartes ---------- */
   .cartes{display:none;padding-bottom:70px;}
   .cartes.on{display:block;}
   .hello{margin:8px 0 26px;}
   .hello h2{font-size:clamp(24px,6vw,30px);margin-bottom:5px;}
-  .hello p{font-size:14px;color:var(--noir-soft);}
+  .hello p{font-size:14px;color:var(--nuit-soft);}
 
   .carte{
     border-radius:20px;padding:20px 20px 18px;margin-bottom:16px;
@@ -116,9 +117,9 @@
 
   .vide{text-align:center;padding:44px 20px;background:#fff;border:1px solid var(--line);border-radius:18px;}
   .vide .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:20px;margin-bottom:8px;letter-spacing:-.02em;}
-  .vide p{font-size:14px;color:var(--noir-soft);max-width:34ch;margin:0 auto;}
+  .vide p{font-size:14px;color:var(--nuit-soft);max-width:34ch;margin:0 auto;}
 
-  .aide{margin-top:26px;font-size:12.5px;color:var(--noir-faint);text-align:center;line-height:1.6;}
+  .aide{margin-top:26px;font-size:12.5px;color:var(--nuit-faint);text-align:center;line-height:1.6;}
 
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important;}
@@ -130,9 +131,8 @@
 
 <div class="wrap">
   <div class="bar">
-    <a class="mk" href="/">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 1.5l2.6 6.6L21.5 11l-6.9 2.9L12 20.5l-2.6-6.6L2.5 11l6.9-2.9L12 1.5z" fill="#08CB00"/></svg>
-      Studio Cancri
+    <a class="mk" href="/" aria-label="Lunat">
+      <img src="/assets/lunat-logo.png" alt="Lunat" class="mk-logo">
     </a>
     <button class="out" id="outBtn" style="display:none">Se déconnecter</button>
   </div>
@@ -160,6 +160,7 @@
 
     <div class="msg" id="loginMsg"></div>
     <p class="foot-note">Aucun mot de passe : un code à usage unique, valable quelques minutes. Vos cartes restent celles des commerces où vous les avez prises.</p>
+    <p class="credit">Propulsé par Studio Cancri</p>
   </div>
 
   <!-- MES CARTES -->
