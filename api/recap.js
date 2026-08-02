@@ -89,10 +89,19 @@ module.exports = async (req, res) => {
 
     for (const c of (commerces || [])) {
       const cartes = await sb("cartes?commerce_id=eq." + c.id + "&select=id,cree_le,dernier_tap,tampons");
-      const taps7 = await sb("taps?commerce_id=eq." + c.id + "&cree_le=gte." + ilya(7) + "&select=id");
+      const ids = (cartes || []).map((x) => x.id);
+
+      /* passages de la semaine : taps des cartes de ce commerce
+         (la table taps est reliée à la carte, pas au commerce) */
+      let passages7 = 0;
+      if (ids.length) {
+        const liste = ids.join(",");
+        const taps7 = await sb("taps?carte_id=in.(" + liste + ")&cree_le=gte." + ilya(7) + "&select=id");
+        passages7 = (taps7 || []).length;
+      }
 
       const stats = {
-        passages: (taps7 || []).length,
+        passages: passages7,
         nouveaux: (cartes || []).filter((x) => x.cree_le && x.cree_le >= ilya(7)).length,
         recompenses: 0, // approx : cartes revenues à 0 récemment — laissé à 0 faute de journal dédié
         total: (cartes || []).length,
