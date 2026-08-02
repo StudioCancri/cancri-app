@@ -700,7 +700,13 @@
   /* ========================================== */
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-    auth: { flowType: "implicit", detectSessionInUrl: true }
+    auth: {
+      flowType: "implicit",
+      detectSessionInUrl: true,
+      persistSession: true,      /* le commerçant reste connecté entre les sessions */
+      autoRefreshToken: true,    /* le jeton se renouvelle tout seul, pas de reconnexion */
+      storageKey: "lunat-pro-session"
+    }
   });
 
   const $ = (id) => document.getElementById(id);
