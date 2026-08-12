@@ -287,6 +287,51 @@
   .prog-msg.on{display:block;color:var(--sage);}
   .prog-msg.err{display:block;color:var(--terracotta);}
 
+
+  /* ---- coupons ---- */
+  .coupons-card{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:12px;overflow:hidden;}
+  .cpn-head{padding:16px 18px;display:flex;align-items:center;gap:10px;}
+  .cpn-head .t{font-family:'Fraunces',serif;font-weight:600;font-size:16px;}
+  .cpn-head .plus{margin-left:auto;border:none;background:var(--terracotta);color:#fff;font:inherit;
+                  font-size:13px;font-weight:700;border-radius:10px;padding:9px 15px;cursor:pointer;
+                  -webkit-tap-highlight-color:transparent;transition:transform .12s;}
+  .cpn-head .plus:active{transform:scale(.96);}
+  .cpn-corps{padding:0 18px 18px;}
+  .cpn-vide{font-size:13px;color:var(--ink-soft);padding:4px 0 10px;}
+  .cpn-item{border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:9px;
+            display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s;}
+  .cpn-item:hover{border-color:var(--terracotta);}
+  .cpn-item .ci-main{flex:1;min-width:0;}
+  .cpn-item .ci-titre{font-weight:600;font-size:14px;margin-bottom:2px;}
+  .cpn-item .ci-sub{font-size:11.5px;color:var(--ink-soft);}
+  .cpn-item .ci-badge{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+                      padding:4px 8px;border-radius:99px;flex:none;}
+  .ci-badge.part{background:rgba(33,94,99,.14);color:#215E63;}
+  .ci-badge.perso{background:var(--terracotta-soft);color:var(--terracotta-deep);}
+  .ci-badge.off{background:rgba(42,32,24,.08);color:var(--ink-faint);}
+  .cpn-item .ci-compteur{font-family:'Fraunces',serif;font-weight:600;font-size:15px;flex:none;text-align:right;}
+  .cpn-item .ci-compteur small{display:block;font-family:'Instrument Sans';font-weight:500;font-size:10px;color:var(--ink-faint);}
+
+  /* éditeur de coupon (repli) */
+  .cpn-form{display:none;background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:10px;}
+  .cpn-form.on{display:block;}
+  .cpn-form label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 6px;display:block;}
+  .cpn-form input[type=text], .cpn-form input[type=datetime-local], .cpn-form input[type=number]{
+    width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;background:#fff;color:var(--ink);}
+  .cpn-form input:focus{outline:none;border-color:var(--terracotta);}
+  .cpn-modes{display:flex;gap:8px;}
+  .cpn-modes button{flex:1;border:1.5px solid var(--line);background:#fff;color:var(--ink-soft);font:inherit;
+                    font-size:12.5px;font-weight:700;border-radius:10px;padding:11px;cursor:pointer;}
+  .cpn-modes button.on{border-color:var(--terracotta);background:var(--terracotta-soft);color:var(--terracotta-deep);}
+  .cpn-modes button small{display:block;font-weight:500;font-size:10.5px;color:var(--ink-faint);margin-top:2px;}
+  .cpn-limites{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .cpn-form .cf-bar{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+  .cpn-form .cf-send{border:none;background:var(--ink);color:#fff;font:inherit;font-size:13px;font-weight:700;border-radius:10px;padding:11px 18px;cursor:pointer;}
+  .cpn-form .cf-cancel{border:none;background:transparent;color:var(--ink-soft);font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:11px 6px;}
+  .cpn-msg{font-size:12.5px;margin-top:8px;display:none;}
+  .cpn-msg.on{display:block;color:var(--sage);}
+  .cpn-msg.err{display:block;color:var(--terracotta-deep);}
+
   /* ---- relances auto ---- */
   .relances{
     background:var(--card);border:1px solid var(--line);border-radius:16px;
@@ -592,6 +637,36 @@
   </div>
 
 
+  <div class="coupons-card" id="couponsCard">
+    <div class="cpn-head">
+      <span class="t">🎟 Coupons</span>
+      <button class="plus" id="cpnNouveau">Nouveau</button>
+    </div>
+    <div class="cpn-corps">
+      <div class="cpn-form" id="cpnForm">
+        <label>L'offre</label>
+        <input type="text" id="cpnTitre" maxlength="80" placeholder="Ex : -50% sur les cheesecakes ce soir">
+        <label>Précisions (optionnel)</label>
+        <input type="text" id="cpnDetails" maxlength="120" placeholder="Ex : dans la limite des stocks">
+        <label>Type de coupon</label>
+        <div class="cpn-modes">
+          <button data-mode="partageable" class="on" id="cpnModePart">Partageable<small>Même offre pour tous</small></button>
+          <button data-mode="personnel" id="cpnModePerso">Personnel<small>Un par client</small></button>
+        </div>
+        <div class="cpn-limites">
+          <div><label>Expire le (optionnel)</label><input type="datetime-local" id="cpnExpire"></div>
+          <div><label>Nb max (optionnel)</label><input type="number" id="cpnMax" min="1" placeholder="ex : 50"></div>
+        </div>
+        <div class="cf-bar">
+          <button class="cf-cancel" id="cpnCancel">Annuler</button>
+          <button class="cf-send" id="cpnEnvoyer">Envoyer le coupon</button>
+        </div>
+        <div class="cpn-msg" id="cpnMsg"></div>
+      </div>
+      <div id="cpnListe"><div class="cpn-vide">Aucun coupon pour l'instant. Créez une offre à envoyer à vos clients.</div></div>
+    </div>
+  </div>
+
   <details class="pli relances" id="relances">
     <summary>🔔 Relances automatiques <span class="resume" id="relResume"></span><span class="chev">›</span></summary>
     <div class="pli-corps">
@@ -651,6 +726,20 @@
 </div>
 
 <!-- ============ FICHE CLIENT ============ -->
+<div class="sheet-bg" id="cpnPanBg">
+  <div class="sheet" id="cpnPan">
+    <div class="sheet-grab"></div>
+    <div class="sheet-head">
+      <div style="flex:1">
+        <div class="sn" id="cpnPanTitre">Coupon</div>
+        <div class="sd" id="cpnPanSub">—</div>
+      </div>
+      <button class="sheet-close" id="cpnPanClose">✕</button>
+    </div>
+    <div id="cpnPanListe"></div>
+  </div>
+</div>
+
 <div class="sheet-bg" id="sheetBg">
   <div class="sheet" id="sheet">
     <div class="sheet-grab"></div>
@@ -869,6 +958,7 @@
     chargerProgramme();
     chargerForfait();
     chargerSegments();
+    chargerCoupons();
   }
 
   function afficherClients(liste, objectif){
@@ -979,6 +1069,13 @@
       }
     });
   }
+
+  if($("cpnPanClose")) $("cpnPanClose").addEventListener("click", function(){
+    $("cpnPanBg").classList.remove("on"); document.body.style.overflow = "";
+  });
+  if($("cpnPanBg")) $("cpnPanBg").addEventListener("click", function(e){
+    if(e.target === this){ this.classList.remove("on"); document.body.style.overflow = ""; }
+  });
 
   function fermerFiche(){
     $("sheetBg").classList.remove("on");
@@ -1270,6 +1367,7 @@
       estProprio = (r.role === "proprio");
       chargerRaccourcis();
       if(!cap.messages){
+        verrouiller("couponsCard", "Inclus dans le forfait Pro", "Envoyez des offres et coupons à vos clients.");
         verrouiller("campagne", "Inclus dans le forfait Pro",
           "Envoyez une offre sur l'écran de vos clients. Parlez-en à Studio Cancri.");
       }
@@ -1369,6 +1467,114 @@
       rendreSegments(cibleOkCourant);
       majBoutonEnvoi();
     }).catch(function(){});
+  }
+
+
+  /* ---------- COUPONS ---------- */
+  let cpnMode = "partageable";
+
+  $("cpnNouveau").addEventListener("click", function(){
+    $("cpnForm").classList.toggle("on");
+  });
+  $("cpnCancel").addEventListener("click", function(){
+    $("cpnForm").classList.remove("on");
+  });
+  $("cpnModePart").addEventListener("click", function(){
+    cpnMode = "partageable"; this.classList.add("on"); $("cpnModePerso").classList.remove("on");
+  });
+  $("cpnModePerso").addEventListener("click", function(){
+    cpnMode = "personnel"; this.classList.add("on"); $("cpnModePart").classList.remove("on");
+  });
+
+  $("cpnEnvoyer").addEventListener("click", async function(){
+    const titre = ($("cpnTitre").value || "").trim();
+    const msg = $("cpnMsg");
+    if(!titre){ msg.className = "cpn-msg err"; msg.textContent = "Indiquez l'offre."; return; }
+    this.disabled = true; this.textContent = "Envoi…";
+    const payload = {
+      action: "creer_coupon",
+      titre: titre,
+      details: ($("cpnDetails").value || "").trim(),
+      mode: cpnMode,
+      segment: (typeof segmentChoisi !== "undefined" ? segmentChoisi : "tous"),
+      expire_le: $("cpnExpire").value || null,
+      max_utilisations: $("cpnMax").value || null
+    };
+    if(typeof segmentChoisi !== "undefined" && segmentChoisi === "selection" && typeof selection !== "undefined"){
+      payload.carte_ids = Array.from(selection);
+    }
+    const r = await appelPro(payload);
+    this.disabled = false; this.textContent = "Envoyer le coupon";
+    if(r && r.ok){
+      msg.className = "cpn-msg on";
+      msg.textContent = "Coupon " + r.code + " envoyé à " + r.nb_clients + " client" + (r.nb_clients>1?"s":"") + " ✓";
+      $("cpnTitre").value = ""; $("cpnDetails").value = ""; $("cpnExpire").value = ""; $("cpnMax").value = "";
+      setTimeout(function(){ $("cpnForm").classList.remove("on"); msg.className = "cpn-msg"; }, 2500);
+      chargerCoupons();
+    } else {
+      msg.className = "cpn-msg err";
+      const raisons = { hors_forfait: "Les coupons sont inclus dans le forfait Pro.", titre_vide: "Indiquez l'offre.",
+                        ciblage_hors_forfait: "Le ciblage est réservé au forfait Pro." };
+      msg.textContent = raisons[r && r.raison] || "Envoi impossible. Réessayez.";
+    }
+  });
+
+  function chargerCoupons(){
+    appelPro({ action: "liste_coupons" }).then(function(r){
+      if(!r || !r.ok) return;
+      const z = $("cpnListe");
+      if(!r.coupons.length){
+        z.innerHTML = '<div class="cpn-vide">Aucun coupon pour l\'instant. Créez une offre à envoyer à vos clients.</div>';
+        return;
+      }
+      let html = "";
+      r.coupons.forEach(function(co){
+        if(co.actif === false) return;
+        const badge = co.expire ? '<span class="ci-badge off">Expiré</span>'
+          : (co.mode === "personnel" ? '<span class="ci-badge perso">Personnel</span>' : '<span class="ci-badge part">Partageable</span>');
+        const limite = co.max_utilisations ? (" · max " + co.max_utilisations) : "";
+        html += '<div class="cpn-item" data-id="'+co.id+'">'+
+          '<div class="ci-main"><div class="ci-titre">'+co.titre+'</div>'+
+          '<div class="ci-sub">Code '+co.code+limite+'</div></div>'+
+          badge+
+          '<div class="ci-compteur">'+co.utilises+'<small>utilisés</small></div>'+
+        '</div>';
+      });
+      z.innerHTML = html || '<div class="cpn-vide">Aucun coupon actif.</div>';
+      z.querySelectorAll(".cpn-item").forEach(function(el){
+        el.addEventListener("click", function(){ ouvrirCoupon(el.getAttribute("data-id")); });
+      });
+    }).catch(function(){});
+  }
+
+  async function ouvrirCoupon(id){
+    const r = await appelPro({ action: "detail_coupon", coupon_id: id });
+    if(!r || !r.ok) return;
+    const co = r.coupon;
+    let liste = r.porteurs.map(function(p){
+      return '<label style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px">'+
+        '<input type="checkbox" data-lien="'+p.id+'" '+(p.utilise?'checked':'')+' style="width:18px;height:18px;accent-color:var(--terracotta)">'+
+        '<span style="flex:1">'+p.prenom+'</span>'+
+        (p.utilise ? '<span style="font-size:11px;color:var(--sage);font-weight:700">utilisé</span>' : '')+
+      '</label>';
+    }).join("");
+    if(!r.porteurs.length) liste = '<div style="padding:14px 0;color:var(--ink-soft);font-size:14px">Personne n\'a encore ce coupon.</div>';
+
+    $("cpnPanTitre").textContent = "🎟 " + co.titre;
+    $("cpnPanSub").innerHTML = 'Code <b>'+co.code+'</b>'+
+      (co.mode==="personnel"?" · personnel":" · partageable")+
+      (co.expire_le?(" · jusqu\'au "+new Date(co.expire_le).toLocaleDateString("fr-FR")):"");
+    $("cpnPanListe").innerHTML =
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin:6px 0 4px">Cochez au comptoir quand c\'est utilisé</div>' + liste;
+    $("cpnPanBg").classList.add("on");
+    document.body.style.overflow = "hidden";
+
+    document.querySelectorAll("#cpnPanListe [data-lien]").forEach(function(chk){
+      chk.addEventListener("change", async function(){
+        await appelPro({ action:"valider_coupon", lien_id: chk.getAttribute("data-lien"), annuler: !chk.checked });
+        chargerCoupons();
+      });
+    });
   }
 
   /* ---------- démarrage : session ? ---------- */
