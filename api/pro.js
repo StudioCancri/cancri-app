@@ -383,8 +383,8 @@ module.exports = async (req, res) => {
         "&select=id,utilise,utilise_le,carte_id");
       /* prénoms des porteurs */
       for (const l of (liens || [])) {
-        const ca = await sb("cartes?id=eq." + l.carte_id + "&select=prenom");
-        l.prenom = (ca && ca[0]) ? ca[0].prenom : "Client";
+        const ca = await sb("cartes?id=eq." + l.carte_id + "&select=prenom,nom");
+        l.prenom = (ca && ca[0]) ? ((ca[0].prenom || "Client") + (ca[0].nom ? " " + ca[0].nom : "")) : "Client";
       }
       return res.status(200).json({ ok: true, coupon: co[0], porteurs: liens || [] });
     }
