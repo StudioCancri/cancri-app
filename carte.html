@@ -232,6 +232,7 @@
     <div class="w-title" id="wTitle">Bienvenue ☕</div>
     <div class="w-sub">Ta carte de fidélité se crée en 2 secondes — avec un tampon de bienvenue offert. Ton prénom ? (optionnel)</div>
     <input class="w-input" id="wName" type="text" maxlength="20" placeholder="Prénom" autocomplete="given-name">
+    <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom (optionnel)" autocomplete="family-name">
     <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email (optionnel)" autocomplete="email">
     <label class="w-consent"><input type="checkbox" id="wConsent"> OK pour recevoir les offres et nouveautés de ce commerce par email</label>
     <button class="w-btn" id="wGo">Créer ma carte</button>
@@ -354,6 +355,7 @@
     bannerText: document.getElementById("bannerText"),
     welcome: document.getElementById("welcome"),
     wName: document.getElementById("wName"),
+    wNom: document.getElementById("wNom"),
     wMail: document.getElementById("wMail"),
     wConsent: document.getElementById("wConsent"),
     wGo: document.getElementById("wGo"),
@@ -504,10 +506,13 @@
     var n = (els.wName.value || "").trim();
     if(n) n = n.charAt(0).toUpperCase() + n.slice(1);
     var mail = (els.wMail.value || "").trim();
+    var nom = (els.wNom.value || "").trim();
+    if(nom) nom = nom.charAt(0).toUpperCase() + nom.slice(1);
     api({
       action: "creer",
       commerce: SLUG,
       prenom: n,
+      nom: nom,
       email: mail,
       consentement: els.wConsent.checked
     }).then(function(r){
