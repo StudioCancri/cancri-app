@@ -312,6 +312,14 @@
   .cpn-item .ci-compteur{font-family:'Fraunces',serif;font-weight:600;font-size:15px;flex:none;text-align:right;}
   .cpn-item .ci-compteur small{display:block;font-family:'Instrument Sans';font-weight:500;font-size:10px;color:var(--ink-faint);}
 
+
+  .cpn-item .ci-actions{display:flex;align-items:center;gap:6px;flex:none;}
+  .cpn-item .ci-send{border:none;background:var(--terracotta);color:#fff;font:inherit;font-size:11.5px;font-weight:700;
+                     border-radius:8px;padding:7px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .cpn-item .ci-del{border:none;background:transparent;font-size:15px;cursor:pointer;opacity:.55;padding:4px;}
+  .cpn-item .ci-del:hover{opacity:1;}
+  .cpn-item .ci-main{cursor:pointer;}
+
   /* éditeur de coupon (repli) */
   .cpn-form{display:none;background:var(--cream);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:10px;}
   .cpn-form.on{display:block;}
@@ -662,7 +670,7 @@
         <button id="cpnChoisir" style="margin-top:8px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);font:inherit;font-size:12.5px;font-weight:600;border-radius:9px;padding:8px 12px;cursor:pointer">Choisir des clients précis</button>
         <div class="cf-bar">
           <button class="cf-cancel" id="cpnCancel">Annuler</button>
-          <button class="cf-send" id="cpnEnvoyer">Envoyer le coupon</button>
+          <button class="cf-send" id="cpnEnvoyer">Préparer le coupon</button>
         </div>
         <div class="cpn-msg" id="cpnMsg"></div>
       </div>
@@ -1524,7 +1532,7 @@
     const titre = ($("cpnTitre").value || "").trim();
     const msg = $("cpnMsg");
     if(!titre){ msg.className = "cpn-msg err"; msg.textContent = "Indiquez l'offre."; return; }
-    this.disabled = true; this.textContent = "Envoi…";
+    this.disabled = true; this.textContent = "…";
     const payload = {
       action: "creer_coupon",
       titre: titre,
@@ -1538,10 +1546,10 @@
       payload.carte_ids = Array.from(selection);
     }
     const r = await appelPro(payload);
-    this.disabled = false; this.textContent = "Envoyer le coupon";
+    this.disabled = false; this.textContent = "Préparer le coupon";
     if(r && r.ok){
       msg.className = "cpn-msg on";
-      msg.textContent = "Coupon " + r.code + " envoyé à " + r.nb_clients + " client" + (r.nb_clients>1?"s":"") + " ✓";
+      msg.textContent = "Coupon " + r.code + " prêt pour " + r.nb_clients + " client" + (r.nb_clients>1?"s":"") + ". Envoyez-le quand vous voulez.";
       $("cpnTitre").value = ""; $("cpnDetails").value = ""; $("cpnExpire").value = ""; $("cpnMax").value = "";
       setTimeout(function(){ $("cpnForm").classList.remove("on"); msg.className = "cpn-msg"; }, 2500);
       chargerCoupons();
@@ -1567,16 +1575,38 @@
         const badge = co.expire ? '<span class="ci-badge off">Expiré</span>'
           : (co.mode === "personnel" ? '<span class="ci-badge perso">Personnel</span>' : '<span class="ci-badge part">Partageable</span>');
         const limite = co.max_utilisations ? (" · max " + co.max_utilisations) : "";
+        const envoye = !!co.envoye_le;
         html += '<div class="cpn-item" data-id="'+co.id+'">'+
-          '<div class="ci-main"><div class="ci-titre">'+co.titre+'</div>'+
-          '<div class="ci-sub">Code '+co.code+limite+'</div></div>'+
+          '<div class="ci-main" data-open="1"><div class="ci-titre">'+co.titre+'</div>'+
+          '<div class="ci-sub">Code '+co.code+limite+(envoye?" · envoyé":" · brouillon")+'</div></div>'+
           badge+
           '<div class="ci-compteur">'+co.utilises+'<small>utilisés</small></div>'+
+          '<div class="ci-actions">'+
+            (envoye ? '' : '<button class="ci-send" data-send="'+co.id+'" title="Envoyer">Envoyer</button>')+
+            '<button class="ci-del" data-del="'+co.id+'" title="Supprimer">🗑</button>'+
+          '</div>'+
         '</div>';
       });
       z.innerHTML = html || '<div class="cpn-vide">Aucun coupon actif.</div>';
-      z.querySelectorAll(".cpn-item").forEach(function(el){
-        el.addEventListener("click", function(){ ouvrirCoupon(el.getAttribute("data-id")); });
+      z.querySelectorAll(".cpn-item [data-open]").forEach(function(el){
+        el.addEventListener("click", function(){ ouvrirCoupon(el.closest(".cpn-item").getAttribute("data-id")); });
+      });
+      z.querySelectorAll("[data-send]").forEach(function(b){
+        b.addEventListener("click", async function(e){
+          e.stopPropagation();
+          if(!confirm("Envoyer ce coupon aux clients concernés ? Ils le verront sur leur carte.")) return;
+          b.disabled = true; b.textContent = "…";
+          const r = await appelPro({ action:"envoyer_coupon", coupon_id: b.getAttribute("data-send") });
+          if(r && r.ok){ chargerCoupons(); } else { b.disabled = false; b.textContent = "Envoyer"; }
+        });
+      });
+      z.querySelectorAll("[data-del]").forEach(function(b){
+        b.addEventListener("click", async function(e){
+          e.stopPropagation();
+          if(!confirm("Supprimer ce coupon définitivement ?")) return;
+          const r = await appelPro({ action:"supprimer_coupon", coupon_id: b.getAttribute("data-del") });
+          if(r && r.ok) chargerCoupons();
+        });
       });
     }).catch(function(){});
   }
