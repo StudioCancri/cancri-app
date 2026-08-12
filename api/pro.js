@@ -344,17 +344,38 @@ module.exports = async (req, res) => {
       const messageCoupon = "🎟 " + titre + " — Code : " + code +
         (expire ? " (jusqu'au " + new Date(expire).toLocaleDateString("fr-FR") + ")" : "");
 
+      /* on prépare les destinataires SANS notifier : le commerçant enverra quand il veut */
       let n = 0;
       for (const c of ciblees) {
-        /* lien coupon <-> carte */
         await sb("coupons_cartes", { method: "POST", body: { coupon_id: coupon.id, carte_id: c.id } });
-        /* affichage au dos de la carte */
-        await sb("cartes?id=eq." + c.id, { method: "PATCH", body: { message_perso: messageCoupon } });
-        try { await envoyerPush(c.jeton); } catch (e) {}
         n++;
       }
 
       return res.status(200).json({ ok: true, code: code, nb_clients: n, coupon_id: coupon.id });
+    }
+
+    /* diffuser un coupon : écrit l'offre au dos des cartes + notifie (déclenché par le commerçant) */
+    if (action === "envoyer_coupon") {
+      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const co = await sb("coupons?id=eq." + encodeURIComponent(body.coupon_id) + "&select=*");
+      if (!co || !co[0] || co[0].commerce_id !== m[0].commerce_id) return res.status(200).json({ ok: false });
+      const coupon = co[0];
+
+      const liens = await sb("coupons_cartes?coupon_id=eq." + coupon.id + "&select=carte_id");
+      const message = "🎟 " + coupon.titre + " — Code : " + coupon.code +
+        (coupon.expire_le ? " (jusqu'au " + new Date(coupon.expire_le).toLocaleDateString("fr-FR") + ")" : "");
+
+      let n = 0;
+      for (const l of (liens || [])) {
+        const ca = await sb("cartes?id=eq." + l.carte_id + "&select=jeton");
+        if (!ca || !ca[0]) continue;
+        await sb("cartes?id=eq." + l.carte_id, { method: "PATCH", body: { message_perso: message } });
+        try { await envoyerPush(ca[0].jeton); } catch (e) {}
+        n++;
+      }
+      await sb("coupons?id=eq." + coupon.id, { method: "PATCH", body: { envoye_le: new Date().toISOString() } });
+      return res.status(200).json({ ok: true, nb_clients: n });
     }
 
     /* liste des coupons du commerce (avec compteurs) */
@@ -411,13 +432,22 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, utilise: !remettre, nb_utilisations: nb });
     }
 
-    /* désactiver / supprimer un coupon */
-    if (action === "stopper_coupon") {
+    /* supprimer un coupon (et ses liens) */
+    if (action === "supprimer_coupon") {
       const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const co = await sb("coupons?id=eq." + encodeURIComponent(body.coupon_id) + "&select=id,commerce_id");
       if (!co || !co[0] || co[0].commerce_id !== m[0].commerce_id) return res.status(200).json({ ok: false });
-      await sb("coupons?id=eq." + co[0].id, { method: "PATCH", body: { actif: false } });
+      /* on retire aussi le message des cartes qui l'affichaient encore */
+      const liens = await sb("coupons_cartes?coupon_id=eq." + co[0].id + "&select=carte_id");
+      for (const l of (liens || [])) {
+        const ca = await sb("cartes?id=eq." + l.carte_id + "&select=message_perso");
+        if (ca && ca[0] && (ca[0].message_perso || "").indexOf("🎟") === 0) {
+          await sb("cartes?id=eq." + l.carte_id, { method: "PATCH", body: { message_perso: null } });
+        }
+      }
+      await sb("coupons_cartes?coupon_id=eq." + co[0].id, { method: "DELETE" });
+      await sb("coupons?id=eq." + co[0].id, { method: "DELETE" });
       return res.status(200).json({ ok: true });
     }
 
