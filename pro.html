@@ -978,8 +978,8 @@
         '<div class="coche">✓</div>'+
         '<div class="ini">' + initiales(c.prenom) + '</div>'+
         '<div class="info">'+
-          '<div class="cn">' + (c.prenom || "Client") + '</div>'+
-          '<div class="cd">' + derniereVisite(c.dernier_tap) + '</div>'+
+          '<div class="cn">' + ((c.prenom || "Client") + (c.nom ? " " + c.nom : "")) + '</div>'+
+          '<div class="cd">' + derniereVisite(c.dernier_tap) + (c.email ? ' · ' + c.email : '') + '</div>'+
         '</div>'+
         '<div class="prog">'+
           '<div class="bar"><span style="width:' + pct + '%"></span></div>'+
@@ -1017,7 +1017,7 @@
   /* recherche */
   $("search").addEventListener("input", function(){
     const q = this.value.trim().toLowerCase();
-    const filtres = q ? toutClients.filter(c => ((c.prenom || "") + " " + (c.email || "")).toLowerCase().includes(q)) : toutClients;
+    const filtres = q ? toutClients.filter(c => ((c.prenom || "") + " " + (c.nom || "") + " " + (c.email || "")).toLowerCase().includes(q)) : toutClients;
     // on relit l'objectif depuis le premier rendu — stocké sur le commerce, on le récupère via un attribut
     afficherClients(filtres, window.__objectif || 10);
   });
@@ -1049,8 +1049,8 @@
   function ouvrirFiche(carte){
     carteOuverte = carte;
     $("shIni").textContent = initiales(carte.prenom);
-    $("shName").textContent = carte.prenom || "Client";
-    $("shDate").textContent = derniereVisite(carte.dernier_tap);
+    $("shName").textContent = (carte.prenom || "Client") + (carte.nom ? " " + carte.nom : "");
+    $("shDate").textContent = derniereVisite(carte.dernier_tap) + (carte.email ? " · " + carte.email : "");
     $("shUnite").textContent = uniteCourante;
     $("shMsg").className = "sheet-msg";
     $("shMsg").textContent = "";
