@@ -657,6 +657,9 @@
           <div><label>Expire le (optionnel)</label><input type="datetime-local" id="cpnExpire"></div>
           <div><label>Nb max (optionnel)</label><input type="number" id="cpnMax" min="1" placeholder="ex : 50"></div>
         </div>
+        <label>À qui l'envoyer</label>
+        <select id="cpnDest" style="width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;font:inherit;font-size:14px;background:#fff;color:var(--ink)"></select>
+        <button id="cpnChoisir" style="margin-top:8px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);font:inherit;font-size:12.5px;font-weight:600;border-radius:9px;padding:8px 12px;cursor:pointer">Choisir des clients précis</button>
         <div class="cf-bar">
           <button class="cf-cancel" id="cpnCancel">Annuler</button>
           <button class="cf-send" id="cpnEnvoyer">Envoyer le coupon</button>
@@ -1465,6 +1468,7 @@
       cibleOkCourant = r.cible_possible === true;
       $("selBtn").style.display = cibleOkCourant ? "inline-block" : "none";
       rendreSegments(cibleOkCourant);
+      rendreCpnDest();
       majBoutonEnvoi();
     }).catch(function(){});
   }
@@ -1475,6 +1479,7 @@
 
   $("cpnNouveau").addEventListener("click", function(){
     $("cpnForm").classList.toggle("on");
+    rendreCpnDest();
   });
   $("cpnCancel").addEventListener("click", function(){
     $("cpnForm").classList.remove("on");
@@ -1484,6 +1489,35 @@
   });
   $("cpnModePerso").addEventListener("click", function(){
     cpnMode = "personnel"; this.classList.add("on"); $("cpnModePart").classList.remove("on");
+  });
+
+  let cpnSegment = "tous";
+
+  function rendreCpnDest(){
+    const sel = $("cpnDest");
+    if(!sel || typeof segmentsData === "undefined") return;
+    let html = "";
+    (segmentsData || []).forEach(function(s){
+      const bloque = (s.code !== "tous") && !(typeof cibleOkCourant !== "undefined" && cibleOkCourant);
+      if(bloque) return;
+      html += '<option value="'+s.code+'"'+(s.code===cpnSegment?' selected':'')+'>'+
+        s.nom+' — '+s.nombre+' client'+(s.nombre>1?'s':'')+'</option>';
+    });
+    if(typeof selection !== "undefined" && selection.size){
+      html += '<option value="selection"'+(cpnSegment==="selection"?' selected':'')+'>Ma sélection — '+selection.size+' client'+(selection.size>1?'s':'')+'</option>';
+    }
+    sel.innerHTML = html;
+  }
+  if($("cpnDest")) $("cpnDest").addEventListener("change", function(){ cpnSegment = this.value; });
+  if($("cpnChoisir")) $("cpnChoisir").addEventListener("click", function(){
+    /* réutilise le mode sélection global : on active les cases dans la liste clients */
+    if(typeof basculerMode === "function"){
+      basculerMode(true);
+      $("cpnForm").classList.remove("on");
+      /* remonter à la liste clients */
+      var vc = document.querySelector(".section-head");
+      if(vc) vc.scrollIntoView({ behavior:"smooth", block:"start" });
+    }
   });
 
   $("cpnEnvoyer").addEventListener("click", async function(){
@@ -1496,11 +1530,11 @@
       titre: titre,
       details: ($("cpnDetails").value || "").trim(),
       mode: cpnMode,
-      segment: (typeof segmentChoisi !== "undefined" ? segmentChoisi : "tous"),
+      segment: cpnSegment,
       expire_le: $("cpnExpire").value || null,
       max_utilisations: $("cpnMax").value || null
     };
-    if(typeof segmentChoisi !== "undefined" && segmentChoisi === "selection" && typeof selection !== "undefined"){
+    if(cpnSegment === "selection" && typeof selection !== "undefined"){
       payload.carte_ids = Array.from(selection);
     }
     const r = await appelPro(payload);
