@@ -166,6 +166,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: false, raison: "commerce_inconnu" });
       }
       const prenom = (body.prenom || "").toString().trim().slice(0, 20) || null;
+      const nom = (body.nom || "").toString().trim().slice(0, 30) || null;
       const brut = (body.email || "").toString().trim().slice(0, 80);
       const email = brut && brut.indexOf("@") > 0 ? brut : null;
       const consentement = body.consentement === true && !!email;
@@ -175,6 +176,7 @@ module.exports = async (req, res) => {
         body: {
           commerce_id: commerce.id,
           prenom: prenom,
+          nom: nom,
           email: email,
           consentement: consentement,
           tampons: TAMPON_DEPART,
