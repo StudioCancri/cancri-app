@@ -235,6 +235,37 @@
   .cta .sub{margin-top:18px;font-size:13px;color:rgba(242,242,240,.4);}
   .cta .propulse{margin-top:34px;font-size:11px;color:rgba(242,242,240,.35);letter-spacing:.03em;}
 
+  /* ---- Tarifs : détail dépliable + inclus (CSS qui manquait) ---- */
+  .pc{cursor:pointer;}
+  .pc .voir{margin-top:14px;font-size:12.5px;font-weight:700;color:var(--orange-deep);
+    display:flex;align-items:center;justify-content:center;gap:6px;user-select:none;}
+  .pc .voir .chev{font-size:10px;transition:transform .3s;}
+  .pc.open .voir .chev{transform:rotate(180deg);}
+  .pc .detail{max-height:0;overflow:hidden;transition:max-height .45s cubic-bezier(.3,.7,.3,1);}
+  .pc.open .detail{max-height:360px;}
+  .pc .detail ul{list-style:none;display:flex;flex-direction:column;gap:11px;
+    margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
+  .pc .detail li{display:flex;gap:9px;align-items:flex-start;text-align:left;
+    font-size:12.5px;line-height:1.35;color:var(--encre-soft);}
+  .pc .detail li .ck{flex:none;width:18px;height:18px;border-radius:50%;
+    background:var(--orange-pale);color:var(--orange-deep);display:flex;
+    align-items:center;justify-content:center;font-size:10px;font-weight:800;margin-top:1px;}
+  .pc.mis .detail li .ck{background:var(--orange);color:var(--nuit);}
+  .pc .detail li.her{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;color:var(--nuit);font-size:13px;}
+  .pc .detail li.her .ck{background:transparent;}
+
+  /* ---- Offre 2 mois : carte + effet 3D sur le chiffre ---- */
+  .offer3d{margin-top:20px;display:flex;justify-content:center;}
+  .offer-card{background:var(--nuit);border-radius:22px;padding:22px 34px;text-align:center;
+    box-shadow:0 24px 50px -22px rgba(0,0,0,.55);}
+  .offer-card .free{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--orange);margin-bottom:6px;}
+  .offer-card .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;
+    font-size:54px;line-height:1;letter-spacing:-.04em;color:var(--orange);
+    text-shadow:1px 1px 0 var(--orange-deep),2px 2px 0 var(--orange-deep),
+      3px 3px 0 #b96b08,4px 4px 0 #b96b08,5px 5px 0 #935406,6px 9px 18px rgba(0,0,0,.55);}
+  .offer-card .lab{font-size:13px;color:rgba(242,242,240,.72);margin-top:9px;}
+
   .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.3,1);}
   .reveal.seen{opacity:1;transform:none;}
   .reveal.d1{transition-delay:.1s;} .reveal.d2{transition-delay:.2s;} .reveal.d3{transition-delay:.3s;}
