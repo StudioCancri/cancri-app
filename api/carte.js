@@ -3,15 +3,17 @@
    Une seule porte d'entrée, 4 actions :
    - creer   : nouvelle carte (tampon de bienvenue = 1)
    - etat    : lire l'état de la carte
-   - tap     : +1 tampon (cooldown 15 s, 3/jour max)
+   - tap     : +1 tampon (cooldown 15 s, 3/jour max, vérif NFC SDM)
    - valider : le staff offre la récompense (code), carte repart à 1
 
    Variables d'environnement à définir sur Vercel :
    SUPABASE_URL     = https://xxxx.supabase.co
    SUPABASE_SECRET  = sb_secret_...   (jamais dans une page web !)
+   NFC_CLE_SDM      = 32 caractères hex (clé AES 1 des puces 424)
    ============================================================ */
 
 const { randomUUID } = require("crypto");
+const crypto = require("crypto");
 const http2 = require("http2");
 
 function certDepuisEnv(nom) {
@@ -70,10 +72,13 @@ function nettoyerUrl(u) {
 
 const SUPABASE_URL = nettoyerUrl(process.env.SUPABASE_URL);
 const SECRET = (process.env.SUPABASE_SECRET || "").trim();
+const CLE_SDM = (process.env.NFC_CLE_SDM || "").trim();
 
 const COOLDOWN_S = 15;
 const TAPS_MAX_JOUR = 3;
 const TAMPON_DEPART = 1;
+/* jusqu'à combien de taps en arrière on accepte un compteur (file d'attente au comptoir) */
+const FENETRE_COMPTEUR = 50;
 
 /* ---------- petit client Supabase (API REST, zéro dépendance) ---------- */
 async function sb(chemin, options) {
@@ -92,10 +97,138 @@ async function sb(chemin, options) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   if (!r.ok) {
-    throw new Error("Supabase " + r.status + " : " + (await r.text()));
+    const err = new Error("Supabase " + r.status + " : " + (await r.text()));
+    err.statut = r.status;
+    throw err;
   }
   const t = await r.text();
   return t ? JSON.parse(t) : null;
+}
+
+/* ============================================================
+   BLOC ANTI-TRICHE NFC (SUN / SDM des puces NTAG 424 DNA)
+   La puce ajoute à l'URL :
+     p = PICCData chiffré (32 hex) → contient l'UID + un compteur
+     m = CMAC (16 hex)             → la signature
+   On déchiffre, on recalcule la signature, et on refuse tout
+   ce qui n'a pas été produit par une vraie puce à cet instant.
+   ============================================================ */
+
+function aesBloc(cle, bloc) {
+  const c = crypto.createCipheriv("aes-128-ecb", cle, null);
+  c.setAutoPadding(false);
+  return Buffer.concat([c.update(bloc), c.final()]);
+}
+
+function ouExclusif(a, b) {
+  const out = Buffer.alloc(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = a[i] ^ b[i];
+  return out;
+}
+
+function decalerGauche(buf) {
+  const out = Buffer.alloc(buf.length);
+  let retenue = 0;
+  for (let i = buf.length - 1; i >= 0; i--) {
+    out[i] = ((buf[i] << 1) & 0xff) | retenue;
+    retenue = buf[i] & 0x80 ? 1 : 0;
+  }
+  return out;
+}
+
+/* AES-CMAC (RFC 4493) — implémenté à la main, aucune dépendance npm */
+function aesCmac(cle, message) {
+  const L = aesBloc(cle, Buffer.alloc(16));
+  const K1 = decalerGauche(L);
+  if (L[0] & 0x80) K1[15] ^= 0x87;
+  const K2 = decalerGauche(K1);
+  if (K1[0] & 0x80) K2[15] ^= 0x87;
+
+  let dernier;
+  const blocs = [];
+  if (message.length === 0) {
+    const pad = Buffer.alloc(16);
+    pad[0] = 0x80;
+    dernier = ouExclusif(pad, K2);
+  } else {
+    const n = Math.ceil(message.length / 16);
+    for (let i = 0; i < n - 1; i++) blocs.push(message.subarray(i * 16, i * 16 + 16));
+    const fin = message.subarray((n - 1) * 16);
+    if (fin.length === 16) {
+      dernier = ouExclusif(fin, K1);
+    } else {
+      const pad = Buffer.alloc(16);
+      fin.copy(pad, 0);
+      pad[fin.length] = 0x80;
+      dernier = ouExclusif(pad, K2);
+    }
+  }
+
+  let X = Buffer.alloc(16);
+  for (const b of blocs) X = aesBloc(cle, ouExclusif(X, b));
+  return aesBloc(cle, ouExclusif(X, dernier));
+}
+
+function verifierSdm(pHex, mHex) {
+  if (!/^[0-9a-fA-F]{32}$/.test(CLE_SDM)) return { ok: false, raison: "nfc_cle_absente" };
+  if (!/^[0-9a-fA-F]{32}$/.test(pHex || "")) return { ok: false, raison: "nfc_picc_invalide" };
+  if (!/^[0-9a-fA-F]{16}$/.test(mHex || "")) return { ok: false, raison: "nfc_cmac_invalide" };
+
+  const cle = Buffer.from(CLE_SDM, "hex");
+
+  /* 1. déchiffrement du PICCData (AES-128-CBC, IV à zéro, un seul bloc) */
+  const dechiffreur = crypto.createDecipheriv("aes-128-cbc", cle, Buffer.alloc(16));
+  dechiffreur.setAutoPadding(false);
+  const clair = Buffer.concat([
+    dechiffreur.update(Buffer.from(pHex, "hex")),
+    dechiffreur.final(),
+  ]);
+
+  /* octet de tête : 0xC7 = UID 7 octets présent + compteur présent */
+  if (clair[0] !== 0xc7) return { ok: false, raison: "nfc_illisible" };
+
+  const uid = clair.subarray(1, 8).toString("hex").toUpperCase();
+  const compteur = clair[8] | (clair[9] << 8) | (clair[10] << 16);
+
+  /* 2. clé de session puis signature attendue (message vide : pas de file data mirroring) */
+  const sv2 = Buffer.concat([
+    Buffer.from([0x3c, 0xc3, 0x00, 0x01, 0x00, 0x80]),
+    clair.subarray(1, 8),
+    clair.subarray(8, 11),
+  ]);
+  const cleSession = aesCmac(cle, sv2);
+  const macComplet = aesCmac(cleSession, Buffer.alloc(0));
+
+  const attendu = Buffer.alloc(8);
+  for (let i = 0; i < 8; i++) attendu[i] = macComplet[i * 2 + 1];
+
+  const recu = Buffer.from(mHex, "hex");
+  if (!crypto.timingSafeEqual(attendu, recu)) return { ok: false, raison: "nfc_signature" };
+
+  return { ok: true, uid: uid, compteur: compteur };
+}
+
+/* la puce est-elle bien celle de ce commerce, et ce compteur est-il neuf ? */
+async function consommerTapNfc(uid, compteur, commerce) {
+  const puces = await sb("nfc_puces?uid=eq." + encodeURIComponent(uid) + "&select=*");
+  const puce = puces && puces[0] ? puces[0] : null;
+  if (!puce) return { ok: false, raison: "nfc_puce_inconnue" };
+  if (puce.active === false) return { ok: false, raison: "nfc_puce_desactivee" };
+  if (puce.commerce_id !== commerce.id) return { ok: false, raison: "nfc_mauvais_commerce" };
+
+  const derniers = await sb(
+    "nfc_taps?uid=eq." + encodeURIComponent(uid) + "&select=compteur&order=compteur.desc&limit=1"
+  );
+  const max = derniers && derniers[0] ? derniers[0].compteur : -1;
+  if (compteur < max - FENETRE_COMPTEUR) return { ok: false, raison: "nfc_compteur_ancien" };
+
+  try {
+    await sb("nfc_taps", { method: "POST", body: { uid: uid, compteur: compteur } });
+  } catch (e) {
+    if (e.statut === 409) return { ok: false, raison: "nfc_rejeu" };
+    throw e;
+  }
+  return { ok: true };
 }
 
 /* ---------- helpers ---------- */
@@ -165,6 +298,15 @@ module.exports = async (req, res) => {
       if (!commerce) {
         return res.status(200).json({ ok: false, raison: "commerce_inconnu" });
       }
+
+      /* si le commerce est passé en NFC obligatoire, la création aussi doit être prouvée */
+      if (commerce.nfc_requis === true) {
+        const v = verifierSdm(body.p, body.m);
+        if (!v.ok) return res.status(200).json({ ok: false, raison: v.raison });
+        const c = await consommerTapNfc(v.uid, v.compteur, commerce);
+        if (!c.ok) return res.status(200).json({ ok: false, raison: c.raison });
+      }
+
       const prenom = (body.prenom || "").toString().trim().slice(0, 20) || null;
       const nom = (body.nom || "").toString().trim().slice(0, 30) || null;
       const brut = (body.email || "").toString().trim().slice(0, 80);
@@ -211,6 +353,22 @@ module.exports = async (req, res) => {
 
     /* ----- TAP : +1 tampon ----- */
     if (action === "tap") {
+      /* --- porte d'entrée anti-triche : une vraie puce, un tap jamais rejoué --- */
+      if (commerce.nfc_requis === true) {
+        const v = verifierSdm(body.p, body.m);
+        if (!v.ok) {
+          return res
+            .status(200)
+            .json(etat(carte, commerce, { ok: false, raison: v.raison }));
+        }
+        const c = await consommerTapNfc(v.uid, v.compteur, commerce);
+        if (!c.ok) {
+          return res
+            .status(200)
+            .json(etat(carte, commerce, { ok: false, raison: c.raison }));
+        }
+      }
+
       if (carte.tampons >= commerce.objectif) {
         return res
           .status(200)
