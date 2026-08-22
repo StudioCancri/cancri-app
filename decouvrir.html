@@ -83,8 +83,8 @@
   .demo-intro p{color:rgba(242,242,240,.6);font-size:15px;margin-top:10px;}
 
   /* SECTIONS claires */
-  .light{background:var(--papier);border-radius:34px 34px 0 0;color:var(--encre);position:relative;z-index:2;margin-top:20px;}
-  .light-2{background:var(--papier);}
+  .light{background:var(--papier);border-radius:34px;color:var(--encre);position:relative;z-index:2;margin:16px 8px;box-shadow:0 30px 70px -45px rgba(0,0,0,.55);}
+  .light-2{background:var(--papier);border-radius:34px;position:relative;z-index:2;margin:16px 8px;box-shadow:0 30px 70px -45px rgba(0,0,0,.55);}
   section{padding:64px 0;}
   .sh{text-align:center;margin-bottom:36px;}
   .sh .eyebrow{color:var(--orange-deep);}
@@ -145,10 +145,10 @@
   .dash-toggle{width:38px;height:22px;border-radius:99px;background:var(--orange);position:relative;flex:none;transition:background .3s;}
   .dash-toggle::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .35s cubic-bezier(.4,1.4,.5,1);}
   .dash-toggle.on::after{transform:translateX(16px);}
-  .d-caption{text-align:center;font-size:14px;color:var(--encre-soft);margin-top:22px;max-width:30ch;margin-left:auto;margin-right:auto;}
+  .d-caption{text-align:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(22px,6vw,30px);letter-spacing:-.02em;line-height:1.12;color:var(--nuit);margin:46px auto 4px;max-width:16ch;}
   .duo{display:grid;gap:44px;}
 
-  .push-sec{background:radial-gradient(500px 300px at 50% 0%, rgba(252,163,33,.12), transparent 65%), var(--nuit);color:var(--papier);border-radius:34px;position:relative;overflow:hidden;}
+  .push-sec{background:radial-gradient(500px 300px at 50% 0%, rgba(252,163,33,.12), transparent 65%), var(--nuit);color:var(--papier);border-radius:34px;margin:16px 8px;position:relative;overflow:hidden;}
   .push-sec .sh h2{color:var(--papier);}
   .push-sec .sh .eyebrow{color:var(--orange);}
   /* téléphone 3D flottant */
@@ -203,12 +203,12 @@
   .bx p{font-size:13px;color:var(--encre-soft);line-height:1.45;}
 
   /* VERSUS */
-  .versus{background:var(--sarcelle);color:#fff;border-radius:24px;padding:34px 24px;}
-  .versus .eyebrow{color:rgba(255,255,255,.75);text-align:center;display:block;margin-bottom:10px;}
-  .versus h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(23px,6.5vw,30px);letter-spacing:-.02em;text-align:center;margin-bottom:24px;}
+  .versus{background:linear-gradient(155deg,#ffffff,#FDEBD2);color:var(--encre);border:1px solid rgba(252,163,33,.28);border-radius:24px;padding:34px 24px;box-shadow:0 12px 34px -20px rgba(232,137,10,.4);}
+  .versus .eyebrow{color:var(--orange-deep);text-align:center;display:block;margin-bottom:10px;}
+  .versus h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:clamp(23px,6.5vw,30px);letter-spacing:-.02em;text-align:center;margin-bottom:24px;color:var(--nuit);}
   .versus ul{list-style:none;display:grid;gap:14px;}
-  .versus li{display:flex;gap:12px;font-size:15px;align-items:flex-start;line-height:1.4;}
-  .versus li .c{flex:none;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;}
+  .versus li{display:flex;gap:12px;font-size:15px;align-items:flex-start;line-height:1.4;color:var(--encre-soft);font-weight:500;}
+  .versus li .c{flex:none;width:24px;height:24px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;}
 
   /* PRIX */
   .prix-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
@@ -224,6 +224,24 @@
   .essai span{background:var(--nuit);color:var(--papier);padding:11px 20px;border-radius:100px;font-size:13.5px;font-weight:600;display:inline-block;}
   .essai b{color:var(--orange);}
 
+  /* FONDATEUR — carte de visite 3D */
+  .founder-sec{padding:26px 0 44px;}
+  .founder-eye{color:var(--orange);text-align:center;display:block;margin-bottom:18px;}
+  .viz-card{max-width:360px;margin:0 auto;perspective:1400px;}
+  .viz-inner{background:linear-gradient(150deg,#fff,#F4F1EB);border-radius:22px;padding:24px;
+    box-shadow:0 40px 80px -30px rgba(0,0,0,.7);
+    transform:rotateX(6deg) rotateY(-9deg) rotateZ(.8deg);transform-style:preserve-3d;
+    animation:vizFloat 6.5s ease-in-out infinite;display:flex;gap:18px;align-items:flex-start;}
+  @keyframes vizFloat{0%,100%{transform:rotateX(6deg) rotateY(-9deg) rotateZ(.8deg) translateY(0);}50%{transform:rotateX(6deg) rotateY(-9deg) rotateZ(.8deg) translateY(-12px);}}
+  .viz-photo{width:72px;height:72px;border-radius:16px;flex:none;background:var(--orange-pale);display:flex;align-items:center;justify-content:center;font-size:34px;overflow:hidden;box-shadow:0 6px 16px -6px rgba(0,0,0,.3);}
+  .viz-photo img{width:100%;height:100%;object-fit:cover;}
+  .viz-txt{flex:1;min-width:0;}
+  .viz-name{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:24px;letter-spacing:-.02em;color:var(--nuit);line-height:1;}
+  .viz-role{font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--orange-deep);margin-top:6px;}
+  .viz-bio{font-size:13.5px;color:var(--encre-soft);line-height:1.5;margin-top:12px;}
+  .viz-loc{font-size:11.5px;color:var(--encre-faint);margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  @media(max-width:380px){.viz-inner{transform:rotateX(4deg) rotateY(-6deg);padding:20px;}}
+
   /* CTA */
   .cta{background:radial-gradient(460px 300px at 50% 60%, rgba(252,163,33,.11), transparent 62%), var(--nuit);color:var(--papier);border-radius:34px 34px 0 0;text-align:center;padding:70px 22px 50px;position:relative;overflow:hidden;}
   .cta-in{position:relative;z-index:1;}
@@ -232,6 +250,10 @@
   .cta .go{display:inline-block;background:var(--orange);color:var(--nuit);text-decoration:none;font-size:16px;font-weight:700;
     padding:18px 38px;border-radius:100px;box-shadow:0 14px 34px -8px rgba(252,163,33,.7);transition:transform .15s;}
   .cta .go:active{transform:scale(.96);}
+  .cta .contact-links{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:12px;font-size:13.5px;}
+  .cta .contact-links a{color:var(--orange);text-decoration:none;font-weight:600;}
+  .cta .contact-links a:hover{text-decoration:underline;}
+  .cta .contact-links span{color:rgba(242,242,240,.35);}
   .cta .sub{margin-top:18px;font-size:13px;color:rgba(242,242,240,.4);}
   .cta .propulse{margin-top:34px;font-size:11px;color:rgba(242,242,240,.35);letter-spacing:.03em;}
 
@@ -266,6 +288,11 @@
       3px 3px 0 #b96b08,4px 4px 0 #b96b08,5px 5px 0 #935406,6px 9px 18px rgba(0,0,0,.55);}
   .offer-card .lab{font-size:13px;color:rgba(242,242,240,.72);margin-top:9px;}
 
+  /* icônes givrées dans la page */
+  .fstep .fico{background:#fff;border:1px solid var(--line);}
+  .fstep .fico svg{width:40px;height:40px;display:block;}
+  .bx .bi svg{width:40px;height:40px;display:block;}
+
   .reveal{opacity:0;transform:translateY(28px);transition:opacity .8s ease,transform .8s cubic-bezier(.2,.7,.3,1);}
   .reveal.seen{opacity:1;transform:none;}
   .reveal.d1{transition-delay:.1s;} .reveal.d2{transition-delay:.2s;} .reveal.d3{transition-delay:.3s;}
@@ -273,6 +300,20 @@
 </style>
 </head>
 <body>
+
+<!-- sprite icônes givrées Lunat -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gO" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FCA321"/><stop offset="1" stop-color="#E8890A"/></linearGradient>
+  <filter id="frost" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.7"/></filter>
+</defs>
+  <symbol id="ic-tap" viewBox="0 0 48 48"><rect x="14" y="6" width="20" height="33" rx="6" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><rect x="21" y="10.5" width="6" height="2.4" rx="1.2" fill="#fff" fill-opacity=".6"/><circle cx="24" cy="30" r="5.2" fill="url(#gO)"/></symbol>
+  <symbol id="ic-stamp" viewBox="0 0 48 48"><circle cx="24" cy="24" r="14" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><path d="M17 24.5 l4.6 4.6 L31.5 18.5" fill="none" stroke="url(#gO)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="ic-gift" viewBox="0 0 48 48"><rect x="12" y="20" width="24" height="18" rx="4" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><rect x="11" y="17" width="26" height="7" rx="3" fill="url(#gO)"/><rect x="22" y="17" width="4" height="21" rx="1.5" fill="#fff" fill-opacity=".7"/><circle cx="18.5" cy="14" r="3.4" fill="url(#gO)"/><circle cx="29.5" cy="14" r="3.4" fill="url(#gO)"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 48 48"><circle cx="19" cy="18" r="7" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><path d="M7 39 a12 12 0 0 1 24 0z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><circle cx="33" cy="17" r="5.5" fill="url(#gO)"/><path d="M25.5 38 a9 9 0 0 1 17.5 0z" fill="url(#gO)"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 48 48"><path d="M13 31 c0-9 3-15 11-15 s11 6 11 15 z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><rect x="11" y="30" width="26" height="4" rx="2" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><circle cx="24" cy="38" r="3.4" fill="url(#gO)"/><circle cx="24" cy="13" r="2.6" fill="url(#gO)"/></symbol>
+  <symbol id="ic-tag" viewBox="0 0 48 48"><g transform="rotate(-10 24 24)"><path d="M24 9 H13 a3.5 3.5 0 0 0-3.5 3.5 V24 L24 38.5 38.5 24z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><circle cx="16.5" cy="16.5" r="2.6" fill="#fff" fill-opacity=".75"/></g><text x="26" y="30" font-size="13" font-weight="800" fill="url(#gO)" text-anchor="middle" font-family="'Instrument Sans',sans-serif">%</text></symbol>
+  <symbol id="ic-palette" viewBox="0 0 48 48"><path d="M24 10 c-9 0-14 6-14 13 0 6 5 9 9 9 2 0 3-1 3-3 0-3 2-4 4-4 h4 c3 0 4-2 4-5 0-8-5-10-10-10z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/><circle cx="18" cy="19" r="2.4" fill="url(#gO)"/><circle cx="26" cy="15.5" r="2.4" fill="url(#gO)"/><circle cx="31" cy="22" r="2.4" fill="url(#gO)"/></symbol>
+</svg>
 <div class="stage">
   <div class="content">
 
@@ -286,6 +327,24 @@
     </div>
     <div class="cue">Faites glisser<span class="a">↓</span></div>
   </header>
+
+  <!-- FONDATEUR (carte de visite 3D) -->
+  <section class="founder-sec">
+    <div class="wrap">
+      <p class="eyebrow founder-eye">Qui est derrière Lunat</p>
+      <div class="viz-card reveal">
+        <div class="viz-inner">
+          <div class="viz-photo">🙂</div>
+          <div class="viz-txt">
+            <div class="viz-name">Hugo</div>
+            <div class="viz-role">Fondateur · Lunat</div>
+            <p class="viz-bio">Je dessine chaque carte à la main et je viens l'installer chez vous. Pas d'appli, pas de commission — vos clients restent les vôtres.</p>
+            <div class="viz-loc">Bordeaux et alentours · 06 33 89 66 03</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- DÉMO INTERACTIVE -->
   <section class="demo-sec">
@@ -336,16 +395,14 @@
       <div class="wrap">
         <div class="sh reveal"><span class="eyebrow">Comment ça marche</span><h2 class="disp">Trois gestes.</h2></div>
         <div class="flow">
-          <div class="fstep reveal"><span class="fico">📱</span><div class="fbody"><div class="fnum">ÉTAPE 1</div><h3>Il pose son téléphone</h3><p>Sur une pastille au comptoir. Sa carte se crée en 2 secondes, sans rien installer.</p></div></div>
-          <div class="fstep reveal d1"><span class="fico">☕</span><div class="fbody"><div class="fnum">ÉTAPE 2</div><h3>Sa carte se remplit</h3><p>Un tampon de plus à chaque passage, automatiquement.</p></div></div>
-          <div class="fstep reveal d2"><span class="fico">🎁</span><div class="fbody"><div class="fnum">ÉTAPE 3</div><h3>Il revient la chercher</h3><p>Pour sa récompense. Et s'il s'éloigne, Lunat le relance tout seul.</p></div></div>
+          <div class="fstep reveal"><span class="fico"><svg><use href="#ic-tap"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 1</div><h3>Il pose son téléphone</h3><p>Sur une pastille au comptoir. Sa carte se crée en 2 secondes, sans rien installer.</p></div></div>
+          <div class="fstep reveal d1"><span class="fico"><svg><use href="#ic-stamp"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 2</div><h3>Sa carte se remplit</h3><p>Un tampon de plus à chaque passage, automatiquement.</p></div></div>
+          <div class="fstep reveal d2"><span class="fico"><svg><use href="#ic-gift"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 3</div><h3>Il revient la chercher</h3><p>Pour sa récompense. Et s'il s'éloigne, Lunat le relance tout seul.</p></div></div>
         </div>
       </div>
     </section>
-  </div>
 
-  <!-- APERÇU CÔTÉ CLIENT + COMMERÇANT -->
-  <div class="light">
+    <!-- APERÇU CÔTÉ CLIENT + COMMERÇANT -->
     <section>
       <div class="wrap">
         <div class="sh reveal"><span class="eyebrow">Concrètement</span><h2 class="disp">À quoi ça ressemble.</h2></div>
@@ -419,10 +476,10 @@
       <div class="wrap">
         <div class="sh reveal"><span class="eyebrow">Ce que ça change</span><h2 class="disp">Bien plus qu'une carte.</h2></div>
         <div class="grid2">
-          <div class="bx reveal"><span class="bi">👥</span><h4>Vous connaissez vos habitués</h4><p>Qui revient, qui s'éloigne, qui approche de sa récompense.</p></div>
-          <div class="bx reveal d1"><span class="bi">🔄</span><h4>Les absents reviennent</h4><p>Relancés automatiquement. Vous ne faites rien.</p></div>
-          <div class="bx reveal"><span class="bi">🎟</span><h4>Vos coupons</h4><p>Vos offres, votre marge. Pas de commission.</p></div>
-          <div class="bx reveal d1"><span class="bi">🎨</span><h4>À vos couleurs</h4><p>La carte est dessinée à votre image, par nos soins.</p></div>
+          <div class="bx reveal"><span class="bi"><svg><use href="#ic-users"/></svg></span><h4>Vous connaissez vos habitués</h4><p>Qui revient, qui s'éloigne, qui approche de sa récompense.</p></div>
+          <div class="bx reveal d1"><span class="bi"><svg><use href="#ic-bell"/></svg></span><h4>Les absents reviennent</h4><p>Relancés automatiquement. Vous ne faites rien.</p></div>
+          <div class="bx reveal"><span class="bi"><svg><use href="#ic-tag"/></svg></span><h4>Vos coupons</h4><p>Vos offres, votre marge. Pas de commission.</p></div>
+          <div class="bx reveal d1"><span class="bi"><svg><use href="#ic-palette"/></svg></span><h4>À vos couleurs</h4><p>La carte est dessinée à votre image, par nos soins.</p></div>
         </div>
       </div>
     </section>
@@ -488,12 +545,17 @@
   </div>
 
   <!-- CTA -->
-  <section class="cta">
+  <section class="cta" id="contact">
     <div class="cta-in reveal">
       <h2 class="disp">On en discute ?</h2>
-      <p>Voyez tout ce que Lunat peut faire pour vous.</p>
-      <a class="go" href="https://lunat.fr">Découvrir Lunat</a>
-      <div class="sub">Bordeaux et alentours · lunat.fr</div>
+      <p>Dites-nous ce que vous vendez et ce que vous aimeriez offrir. On vous prépare votre carte, vous la voyez avant de décider.</p>
+      <a class="go" href="mailto:contact@lunat.fr?subject=Ma%20carte%20de%20fid%C3%A9lit%C3%A9%20Lunat">Nous écrire</a>
+      <div class="contact-links">
+        <a href="mailto:contact@lunat.fr">contact@lunat.fr</a>
+        <span>·</span>
+        <a href="tel:+33633896603">06 33 89 66 03</a>
+      </div>
+      <div class="sub">Bordeaux et alentours · réponse sous 24 h</div>
       <div class="propulse">Propulsé par Studio Cancri</div>
     </div>
   </section>
