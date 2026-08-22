@@ -151,10 +151,20 @@
   var API = "/api/carte";
   var params = new URLSearchParams(location.search);
   var SLUG = params.get("c") || "cafe-chartrons";
+  /* preuve NFC ajoutée automatiquement par la puce 424 (SDM/SUN) */
+  var P = params.get("p") || "";
+  var M = params.get("m") || "";
   var CLE = "cancri-jeton-" + SLUG;
   var card = document.getElementById("card");
 
   function jeton(){ try { return localStorage.getItem(CLE); } catch(e){ return null; } }
+
+  /* on emmène la preuve NFC avec nous quand on redirige vers l'inscription */
+  function versInscription(){
+    var u = "/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1";
+    if(P && M) u += "&p=" + encodeURIComponent(P) + "&m=" + encodeURIComponent(M);
+    location.replace(u);
+  }
 
   function api(donnees){
     return fetch(API, {
@@ -178,24 +188,31 @@
   }
   function vue(html){ card.innerHTML = html; document.querySelectorAll('.wallet-link').forEach(function(el){el.style.opacity='1';}); }
 
-  /* pas encore de carte → direction inscription */
-  var j = jeton();
-  if(!j){
-    location.replace("/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1");
-    return;
+  /* message adapté selon le refus renvoyé par le serveur */
+  function messageRefus(raison){
+    if(raison === "cooldown") return "Petit instant… reviens dans quelques secondes \u2615";
+    if(raison === "limite") return "Tu as déjà tamponné aujourd'hui — à bientôt !";
+    if(raison === "nfc_rejeu") return "Tampon déjà compté — repose ton téléphone sur la puce à ta prochaine visite \u2615";
+    if(raison === "nfc_compteur_ancien") return "Tampon déjà compté — repose ton téléphone sur la puce à ta prochaine visite \u2615";
+    if(raison && raison.indexOf("nfc_") === 0) return "Lecture de la puce incomplète — repose ton téléphone bien à plat sur la carte \u2615";
+    return "Reviens tout à l'heure pour ton prochain tampon \u2615";
   }
 
-  /* garde-fou : un refresh dans le même onglet ne re-tamponne pas */
+  /* pas encore de carte → direction inscription */
+  var j = jeton();
+  if(!j){ versInscription(); return; }
+
+  /* garde-fou anti-refresh : inutile quand la puce fournit une preuve
+     (le serveur détecte lui-même un rejeu, et un vrai 2e tap doit compter) */
   var GARDE = "cancri-tapfait-" + SLUG;
   var dejaFait = false;
-  try { dejaFait = (Date.now() - parseInt(sessionStorage.getItem(GARDE) || "0", 10)) < 90000; } catch(e){}
+  if(!(P && M)){
+    try { dejaFait = (Date.now() - parseInt(sessionStorage.getItem(GARDE) || "0", 10)) < 90000; } catch(e){}
+  }
 
   if(dejaFait){
     api({ action:"etat", jeton:j }).then(function(r){
-      if(r.raison === "carte_inconnue"){
-        location.replace("/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1");
-        return;
-      }
+      if(r.raison === "carte_inconnue"){ versInscription(); return; }
       vue(
         '<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">\u2713</span></div>'+
         '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
@@ -208,13 +225,10 @@
     return;
   }
 
-  /* on tente le +1 */
-  api({ action:"tap", jeton:j }).then(function(r){
+  /* on tente le +1, en transmettant la preuve de la puce */
+  api({ action:"tap", jeton:j, p:P, m:M }).then(function(r){
 
-    if(r.raison === "carte_inconnue"){
-      location.replace("/carte.html?c=" + encodeURIComponent(SLUG) + "&tap=1");
-      return;
-    }
+    if(r.raison === "carte_inconnue"){ versInscription(); return; }
 
     /* carte pleine */
     if(r.pleine){
@@ -228,16 +242,13 @@
       return;
     }
 
-    /* refus (cooldown / limite) → message doux, pas d'échec anxiogène */
+    /* refus (cooldown / limite / puce) → message doux, pas d'échec anxiogène */
     if(r.ok === false){
-      var msg = "Reviens tout à l'heure pour ton prochain tampon ☕";
-      if(r.raison === "cooldown") msg = "Petit instant… reviens dans quelques secondes ☕";
-      if(r.raison === "limite") msg = "Tu as déjà tamponné aujourd'hui — à bientôt !";
       vue(
         '<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">✓</span></div>'+
         '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
         '<div class="title show2">'+ r.tampons +'/'+ r.objectif +'</div>'+
-        '<div class="soft show3">'+ msg +'</div>'+
+        '<div class="soft show3">'+ messageRefus(r.raison) +'</div>'+
         dots(r.tampons, r.objectif)+
         walletLink(".9s")
       );
