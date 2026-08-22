@@ -346,9 +346,12 @@
   var params = new URLSearchParams(location.search);
   var SLUG = params.get("c") || "cafe-chartrons";
   var isTap = params.has("tap");
+  /* preuve NFC transmise par tap.html (SDM/SUN de la puce 424) */
+  var P = params.get("p") || "";
+  var M = params.get("m") || "";
   var CLE = "cancri-jeton-" + SLUG;
 
-  /* on nettoie l'URL (garde le commerce, retire le tap) */
+  /* on nettoie l'URL (garde le commerce, retire le tap et la preuve NFC) */
   history.replaceState(null, "", location.pathname + "?c=" + SLUG);
 
   var etatCourant = null;
@@ -392,6 +395,15 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(donnees)
     }).then(function(r){ return r.json(); });
+  }
+
+  /* message adapté aux refus liés à la puce */
+  function messageNfc(raison){
+    if(raison === "nfc_rejeu" || raison === "nfc_compteur_ancien")
+      return "Tampon déjà compté — repose ton téléphone à ta prochaine visite ☕";
+    if(raison === "nfc_mauvais_commerce") return "Cette puce appartient à un autre commerce";
+    if(raison === "nfc_puce_inconnue" || raison === "nfc_puce_desactivee") return "Puce non reconnue — préviens le comptoir";
+    return "Lecture de la puce incomplète — repose ton téléphone bien à plat sur la carte ☕";
   }
 
   function banner(msg){
@@ -478,6 +490,7 @@
       if(r.raison === "cooldown") banner("Doucement ☕ Encore " + r.secondes + " s");
       else if(r.raison === "limite") banner("Limite de " + r.taps_max + " tampons atteinte aujourd'hui");
       else if(r.raison === "pleine") banner("Carte pleine — validation staff nécessaire 🎉");
+      else if(r.raison && r.raison.indexOf("nfc_") === 0) banner(messageNfc(r.raison));
       else banner("Petit souci — réessaie");
       return;
     }
@@ -541,11 +554,14 @@
       prenom: n,
       nom: nom,
       email: mail,
-      consentement: els.wConsent.checked
+      consentement: els.wConsent.checked,
+      p: P,
+      m: M
     }).then(function(r){
       els.wGo.disabled = false;
       if(r.ok === false){
         if(r.raison === "commerce_inconnu") banner("Commerce introuvable — vérifie la puce");
+        else if(r.raison && r.raison.indexOf("nfc_") === 0) banner(messageNfc(r.raison));
         else banner("Erreur serveur — réessaie dans un instant");
         return;
       }
@@ -581,7 +597,7 @@
   if(!j){
     els.welcome.classList.add("on");
   } else if(isTap){
-    api({ action: "tap", jeton: j }).then(function(r){
+    api({ action: "tap", jeton: j, p: P, m: M }).then(function(r){
       if(r.raison === "carte_inconnue"){
         els.welcome.classList.add("on");
         return;
