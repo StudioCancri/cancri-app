@@ -628,8 +628,90 @@
   }
 
 </style>
+<style>
+  .luic{width:1.15em;height:1.15em;vertical-align:-.2em;display:inline-block;flex:none;}
+  .luic-lg{width:1.5em;height:1.5em;vertical-align:-.35em;}
+</style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="gO" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FCA321"/>
+      <stop offset="1" stop-color="#E8890A"/>
+    </linearGradient>
+    <filter id="frost" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.7"/>
+    </filter>
+  </defs>
+  <symbol id="ic-card" viewBox="0 0 48 48">
+    <rect x="9" y="14" width="30" height="21" rx="4.5" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <rect x="9" y="19.5" width="30" height="4.5" fill="url(#gO)"/>
+    <rect x="14" y="28" width="11" height="2.8" rx="1.4" fill="#fff" fill-opacity=".7"/>
+  </symbol>
+  <symbol id="ic-tap" viewBox="0 0 48 48">
+    <rect x="14" y="6" width="20" height="33" rx="6" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <rect x="21" y="10.5" width="6" height="2.4" rx="1.2" fill="#fff" fill-opacity=".6"/>
+    <circle cx="24" cy="30" r="5.2" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-stamp" viewBox="0 0 48 48">
+    <circle cx="24" cy="24" r="14" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <path d="M17 24.5 l4.6 4.6 L31.5 18.5" fill="none" stroke="url(#gO)" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="ic-gift" viewBox="0 0 48 48">
+    <rect x="12" y="20" width="24" height="18" rx="4" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <rect x="11" y="17" width="26" height="7" rx="3" fill="url(#gO)"/>
+    <rect x="22" y="17" width="4" height="21" rx="1.5" fill="#fff" fill-opacity=".7"/>
+    <circle cx="18.5" cy="14" r="3.4" fill="url(#gO)"/>
+    <circle cx="29.5" cy="14" r="3.4" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-users" viewBox="0 0 48 48">
+    <circle cx="19" cy="18" r="7" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <path d="M7 39 a12 12 0 0 1 24 0z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <circle cx="33" cy="17" r="5.5" fill="url(#gO)"/>
+    <path d="M25.5 38 a9 9 0 0 1 17.5 0z" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-bell" viewBox="0 0 48 48">
+    <path d="M13 31 c0-9 3-15 11-15 s11 6 11 15 z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <rect x="11" y="30" width="26" height="4" rx="2" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <circle cx="24" cy="38" r="3.4" fill="url(#gO)"/>
+    <circle cx="24" cy="13" r="2.6" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-tag" viewBox="0 0 48 48">
+    <g transform="rotate(-10 24 24)">
+      <path d="M24 9 H13 a3.5 3.5 0 0 0-3.5 3.5 V24 L24 38.5 38.5 24z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+      <circle cx="16.5" cy="16.5" r="2.6" fill="#fff" fill-opacity=".75"/>
+    </g>
+    <text x="26" y="30" font-size="13" font-weight="800" fill="url(#gO)" text-anchor="middle" font-family="'Instrument Sans',sans-serif">%</text>
+  </symbol>
+  <symbol id="ic-chart" viewBox="0 0 48 48">
+    <rect x="10" y="12" width="28" height="24" rx="4.5" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <rect x="15" y="24" width="4" height="8" rx="2" fill="url(#gO)"/>
+    <rect x="22" y="19" width="4" height="13" rx="2" fill="url(#gO)"/>
+    <rect x="29" y="22" width="4" height="10" rx="2" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-pin" viewBox="0 0 48 48">
+    <path d="M24 7 c-7.5 0-13 5.5-13 13 0 9 13 21 13 21 s13-12 13-21 c0-7.5-5.5-13-13-13z" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <circle cx="24" cy="20" r="5" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-lock" viewBox="0 0 48 48">
+    <rect x="12.5" y="21" width="23" height="18" rx="5" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <path d="M18 21 v-4 a6 6 0 0 1 12 0 v4" fill="none" stroke="url(#gO)" stroke-width="3.2" stroke-linecap="round"/>
+    <circle cx="24" cy="29.5" r="2.8" fill="url(#gO)"/>
+    <rect x="22.6" y="30" width="2.8" height="5" rx="1.4" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-cal" viewBox="0 0 48 48">
+    <rect x="11" y="14" width="26" height="24" rx="5" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <rect x="16" y="10" width="3.6" height="8" rx="1.8" fill="url(#gO)"/>
+    <rect x="28.4" y="10" width="3.6" height="8" rx="1.8" fill="url(#gO)"/>
+    <text x="24" y="33.5" font-size="11" font-weight="800" fill="url(#gO)" text-anchor="middle" font-family="'Instrument Sans',sans-serif">31</text>
+  </symbol>
+  <symbol id="ic-spark" viewBox="0 0 48 48">
+    <circle cx="21" cy="25" r="12" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <path d="M31 10 l2.1 5.2 5.2 2.1 -5.2 2.1 -2.1 5.2 -2.1-5.2 -5.2-2.1 5.2-2.1z" fill="url(#gO)"/>
+  </symbol>
+</svg>
+
 
 <!-- ============ LOGIN ============ -->
 <div class="login-wrap" id="loginView">
@@ -675,7 +757,7 @@
 
   <div class="campagne" id="campagne">
     <div class="ch">
-      <div class="ct">Envoyer une notif</div>
+      <div class="ct"><svg class="luic"><use href="#ic-bell"/></svg> Envoyer une notif</div>
       <div class="cq" id="quota">2 restantes</div>
     </div>
     <div class="cs">Un message sur l'écran verrouillé de vos clients. Choisissez qui le reçoit.</div>
@@ -710,7 +792,7 @@
 
   <div class="coupons-card" id="couponsCard">
     <div class="cpn-head">
-      <span class="t">🎟 Coupons</span>
+      <span class="t"><svg class="luic"><use href="#ic-tag"/></svg> Coupons</span>
       <button class="plus" id="cpnNouveau">Nouveau</button>
     </div>
     <div class="cpn-corps">
@@ -742,7 +824,7 @@
   </div>
 
   <details class="pli relances" id="relances">
-    <summary>🔔 Relances automatiques <span class="resume" id="relResume"></span><span class="chev">›</span></summary>
+    <summary><svg class="luic"><use href="#ic-bell"/></svg> Relances automatiques <span class="resume" id="relResume"></span><span class="chev">›</span></summary>
     <div class="pli-corps">
     <div class="rel-switch">
       <span class="rl">Relancer automatiquement<small>Après 21 jours sans visite, une seule fois.</small></span>
@@ -758,7 +840,7 @@
   </details>
 
   <details class="pli prog-card" id="progCard">
-    <summary>☕ Mon programme <span class="resume" id="progResume"></span><span class="chev">›</span></summary>
+    <summary><svg class="luic"><use href="#ic-card"/></svg> Mon programme <span class="resume" id="progResume"></span><span class="chev">›</span></summary>
     <div class="pli-corps">
     <div class="ps">Le nombre de passages pour gagner, et ce que vous offrez. Les cartes de vos clients se mettent à jour toutes seules.</div>
     <div class="prog-row">
@@ -785,7 +867,7 @@
   </details>
 
   <div class="section-head">
-    <h2>Vos clients</h2>
+    <h2><svg class="luic luic-lg"><use href="#ic-users"/></svg> Vos clients</h2>
     <div style="display:flex;align-items:center;gap:10px;">
       <span class="count" id="clientCount"></span>
       <button class="sel-btn" id="selBtn">Sélectionner</button>
@@ -840,7 +922,7 @@
       <button class="abtn" id="shPlus">+</button>
     </div>
 
-    <button class="reward-btn" id="shReward">🎁 Offrir la récompense</button>
+    <button class="reward-btn" id="shReward"><svg class="luic"><use href="#ic-gift"/></svg> Offrir la récompense</button>
 
     <div class="sheet-msg" id="shMsg"></div>
     <div class="sheet-note">Ajuster ou offrir met à jour la carte du client dans son téléphone automatiquement.</div>
@@ -1687,7 +1769,7 @@
     }).join("");
     if(!r.porteurs.length) liste = '<div style="padding:14px 0;color:var(--ink-soft);font-size:14px">Personne n\'a encore ce coupon.</div>';
 
-    $("cpnPanTitre").textContent = "🎟 " + co.titre;
+    $("cpnPanTitre").textContent = co.titre;
     $("cpnPanSub").innerHTML = 'Code <b>'+co.code+'</b>'+
       (co.mode==="personnel"?" · personnel":" · partageable")+
       (co.expire_le?(" · jusqu\'au "+new Date(co.expire_le).toLocaleDateString("fr-FR")):"");
