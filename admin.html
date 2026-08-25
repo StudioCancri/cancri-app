@@ -33,7 +33,82 @@
     background:var(--bg);color:var(--text);line-height:1.5;min-height:100dvh;
     -webkit-font-smoothing:antialiased;
   }
-  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+  /* ---------- ONGLETS COCKPIT ---------- */
+  .cockpit-tabs{display:flex;gap:8px;margin-bottom:24px;border-bottom:1px solid var(--line);}
+  .ctab{background:none;border:none;color:var(--text-soft);font:inherit;font-size:14px;font-weight:700;
+    padding:12px 16px;cursor:pointer;position:relative;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .ctab.on{color:var(--gold);border-bottom-color:var(--gold);}
+
+  /* ---------- PROSPECTION ---------- */
+  .prosp-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;}
+  .pstat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 4px;text-align:center;cursor:pointer;transition:transform .1s;}
+  .pstat:active{transform:scale(.96);}
+  .pstat.on{border-color:var(--gold);background:var(--panel-2);}
+  .pstat .pn{font-weight:800;font-size:20px;color:var(--text);}
+  .pstat .pl{font-size:9.5px;color:var(--text-soft);margin-top:3px;line-height:1.15;}
+
+  .prosp-rappels{background:var(--panel);border:1px solid rgba(224,169,109,.35);border-radius:14px;padding:14px 16px;margin-bottom:18px;}
+  .prosp-rappels h3{font-size:13px;font-weight:800;color:var(--gold);margin-bottom:10px;}
+  .prosp-rappels .pr-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;cursor:pointer;}
+  .prosp-rappels .pr-item:first-child{border-top:none;}
+  .prosp-rappels .pr-when{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--gold);}
+
+  .prosp-bar{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .prosp-search{flex:1;min-width:140px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 14px;font:inherit;font-size:14px;color:var(--text);}
+  .prosp-search:focus{outline:none;border-color:var(--gold);}
+  .prosp-ville{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 12px;font:inherit;font-size:14px;color:var(--text);}
+  .prosp-ville:focus{outline:none;border-color:var(--gold);}
+
+  .prosp-groupe{margin-bottom:22px;}
+  .prosp-groupe .gh{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;}
+  .prosp-groupe .gh .gcount{color:var(--text-faint);font-weight:600;}
+  .p-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:9px;cursor:pointer;transition:transform .1s;}
+  .p-card:active{transform:scale(.99);}
+  .p-card .p-top{display:flex;align-items:center;gap:10px;}
+  .p-card .p-nom{font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+  .p-badge{font-size:10px;font-weight:800;padding:4px 9px;border-radius:100px;color:#fff;flex:none;letter-spacing:.02em;}
+  .p-card .p-adr{font-size:12.5px;color:var(--text-soft);margin-top:4px;}
+  .p-card .p-note{font-size:12px;color:var(--text-faint);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .p-card .p-rappel{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin-top:8px;padding:4px 9px;border-radius:100px;background:rgba(224,169,109,.14);color:var(--gold);}
+  .p-card .p-rappel.due{background:#C64B44;color:#fff;}
+  .pr-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px;cursor:pointer;color:var(--text);}
+  .pr-item:first-child{border-top:none;}
+  .pr-item .pr-when{margin-left:auto;font-size:11px;font-weight:700;color:var(--gold);flex:none;}
+  .pf-st.sel[data-s="a_demarcher"]{background:#8A8F98;color:#fff;border-color:transparent;}
+  .pf-st.sel[data-s="demarche"]{background:#3D7DD6;color:#fff;border-color:transparent;}
+  .pf-st.sel[data-s="interesse"]{background:#E8890A;color:#fff;border-color:transparent;}
+  .pf-st.sel[data-s="client"]{background:#3BA55C;color:#fff;border-color:transparent;}
+  .pf-st.sel[data-s="pas_interesse"]{background:#C64B44;color:#fff;border-color:transparent;}
+  .pp-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:9px;cursor:pointer;transition:transform .1s;}
+  .pp-card:active{transform:scale(.99);}
+  .pp-top{display:flex;align-items:center;gap:10px;}
+  .pp-nom{font-weight:700;font-size:15px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+  .pp-badge{font-size:10px;font-weight:800;padding:4px 9px;border-radius:100px;color:#fff;flex:none;}
+  .pp-adr{font-size:12.5px;color:var(--text-soft);margin-top:4px;}
+  .pp-note{font-size:12px;color:var(--text-faint);margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .pp-rappel{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;margin-top:7px;padding:3px 8px;border-radius:100px;background:rgba(224,169,109,.15);color:var(--gold);}
+  .pp-rappel.due{background:#C64B44;color:#fff;}
+  /* couleurs statuts (partagées) */
+  .sc-a_demarcher{background:#8A8F98;} .sc-demarche{background:#3D7DD6;}
+  .sc-interesse{background:#C88B4A;} .sc-client{background:#3BA55C;} .sc-pas_interesse{background:#C64B44;}
+
+  /* modale prospect */
+  .prosp-modal{max-height:90dvh;overflow-y:auto;}
+  .pf-lbl{display:block;font-size:11px;font-weight:700;color:var(--text-soft);letter-spacing:.04em;text-transform:uppercase;margin:14px 0 6px;}
+  .pf-in{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:11px;padding:12px 13px;font:inherit;font-size:15px;color:var(--text);}
+  .pf-in:focus{outline:none;border-color:var(--gold);}
+  textarea.pf-in{min-height:74px;resize:vertical;}
+  .pf-statuts{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
+  .pf-st{border:1.5px solid var(--line);border-radius:10px;padding:10px;text-align:center;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--text-soft);}
+  .pf-st.sel{color:#fff;border-color:transparent;}
+  .pf-st.sel[data-s="a_demarcher"]{background:#8A8F98;} .pf-st.sel[data-s="demarche"]{background:#3D7DD6;}
+  .pf-st.sel[data-s="interesse"]{background:#C88B4A;} .pf-st.sel[data-s="client"]{background:#3BA55C;} .pf-st.sel[data-s="pas_interesse"]{background:#C64B44;}
+  .pf-links{display:flex;gap:8px;margin-top:10px;}
+  .pf-links a{font-size:12.5px;font-weight:700;color:var(--gold);text-decoration:none;background:rgba(224,169,109,.14);padding:8px 12px;border-radius:100px;}
+  .pf-actions{display:flex;gap:10px;margin-top:20px;}
+  .pf-actions .addbtn{flex:1;}
+  .btn-ghost2{flex:1;background:none;border:1px solid var(--line);color:var(--text-soft);border-radius:11px;padding:13px;font:inherit;font-weight:700;cursor:pointer;}
+  .pf-del{width:100%;background:none;border:none;color:#C64B44;font:inherit;font-size:13px;font-weight:700;cursor:pointer;margin-top:14px;}
 
   /* ---------- LOGIN ---------- */
   .login{min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;}
@@ -298,6 +373,12 @@
     </div>
   </div>
 
+  <div class="cockpit-tabs" id="cockpitTabs">
+    <button class="ctab on" data-vue="portefeuille">Portefeuille</button>
+    <button class="ctab" data-vue="prospection">Prospection</button>
+  </div>
+
+  <div id="vuePortefeuille">
   <div class="kpis" id="kpis">
     <div class="kpi mrr"><div class="k-l">Revenu mensuel</div><div class="k-v mono" id="kMrr">–</div><div class="k-sub">commerces actifs</div></div>
     <div class="kpi"><div class="k-l">Commerces</div><div class="k-v mono" id="kTotal">–</div><div class="k-sub" id="kActifs">–</div></div>
@@ -486,7 +567,71 @@
       <div id="miniZone"></div>
     </div>
   </div>
-</div>
+  </div><!-- /vuePortefeuille -->
+
+  <!-- ---------- VUE PROSPECTION ---------- -->
+  <div id="vueProspection" style="display:none">
+    <div class="prosp-stats" id="prospStats">
+      <div class="pstat on" data-f="tous"><div class="pn" id="pc-tous">0</div><div class="pl">Tous</div></div>
+      <div class="pstat" data-f="a_demarcher"><div class="pn" id="pc-a_demarcher">0</div><div class="pl">À démarcher</div></div>
+      <div class="pstat" data-f="demarche"><div class="pn" id="pc-demarche">0</div><div class="pl">Démarchés</div></div>
+      <div class="pstat" data-f="interesse"><div class="pn" id="pc-interesse">0</div><div class="pl">Intéressés</div></div>
+      <div class="pstat" data-f="client"><div class="pn" id="pc-client">0</div><div class="pl">Clients</div></div>
+    </div>
+
+    <div class="prosp-rappels" id="prospRappels" style="display:none">
+      <h3>⏰ À relancer</h3>
+      <div id="prospRappelsList"></div>
+    </div>
+
+    <div class="prosp-bar">
+      <input class="prosp-search" id="prospSearch" placeholder="Rechercher un commerce...">
+      <select class="prosp-ville" id="prospVilleFiltre"><option value="">Toutes les villes</option></select>
+      <button class="addbtn" id="prospNewBtn">+ Prospect</button>
+    </div>
+
+    <div id="prospListe"><div class="loading">Chargement…</div></div>
+  </div>
+</div><!-- /appView -->
+
+  <!-- MODALE PROSPECT -->
+  <div class="modal-bg" id="prospModalBg">
+    <div class="modal prosp-modal">
+      <h2 id="prospSheetTitle">Nouveau prospect</h2>
+      <label class="pf-lbl">Nom du commerce</label>
+      <input class="pf-in" id="pf-nom" placeholder="Ex : Café des Arts">
+      <label class="pf-lbl">Ville</label>
+      <input class="pf-in" id="pf-ville" list="villesListe" placeholder="Ex : Bordeaux">
+      <datalist id="villesListe"></datalist>
+      <label class="pf-lbl">Adresse</label>
+      <input class="pf-in" id="pf-adresse" placeholder="Ex : 12 rue Sainte-Catherine">
+      <div class="pf-links" id="pfLinks" style="display:none">
+        <a id="pfMaps" target="_blank" rel="noopener">📍 Maps</a>
+        <a id="pfTel" style="display:none">📞 Appeler</a>
+      </div>
+      <label class="pf-lbl">Statut</label>
+      <div class="pf-statuts" id="pfStatuts">
+        <div class="pf-st" data-s="a_demarcher">À démarcher</div>
+        <div class="pf-st" data-s="demarche">Démarché</div>
+        <div class="pf-st" data-s="interesse">Intéressé</div>
+        <div class="pf-st" data-s="client">Client</div>
+        <div class="pf-st" data-s="pas_interesse">Pas intéressé</div>
+      </div>
+      <label class="pf-lbl">Contact</label>
+      <input class="pf-in" id="pf-contact" placeholder="Ex : Julie, la gérante">
+      <label class="pf-lbl">Téléphone</label>
+      <input class="pf-in" id="pf-telephone" type="tel" placeholder="Ex : 06 12 34 56 78">
+      <label class="pf-lbl">Notes</label>
+      <textarea class="pf-in" id="pf-notes" placeholder="Ce qu'on s'est dit..."></textarea>
+      <label class="pf-lbl">Me rappeler de relancer le</label>
+      <input class="pf-in" id="pf-rappel" type="date">
+      <div class="pf-actions">
+        <button class="btn-ghost2" id="prospCancel">Annuler</button>
+        <button class="addbtn" id="prospSave">Enregistrer</button>
+      </div>
+      <button class="pf-del" id="prospDel" style="display:none">Supprimer ce prospect</button>
+    </div>
+  </div>
 
 <!-- MODALE NOUVEAU COMMERCE -->
 <div class="modal-bg" id="modalBg">
@@ -985,6 +1130,159 @@
 
   /* session existante ? */
   sb.auth.getSession().then(({data})=>{ if(data.session){ demarrer(data.session); } });
+
+  /* ============================================================
+     ONGLETS DU COCKPIT (Portefeuille / Prospection)
+     ============================================================ */
+  document.querySelectorAll(".ctab").forEach(function(tab){
+    tab.addEventListener("click", function(){
+      document.querySelectorAll(".ctab").forEach(t=>t.classList.remove("on"));
+      tab.classList.add("on");
+      var vue = tab.getAttribute("data-vue");
+      $("vuePortefeuille").style.display = (vue==="portefeuille") ? "block" : "none";
+      $("vueProspection").style.display = (vue==="prospection") ? "block" : "none";
+      if(vue==="prospection" && !window.__prospChargee){ chargerProspects(); window.__prospChargee = true; }
+    });
+  });
+
+  /* ============================================================
+     PROSPECTION (CRM démarchage) — groupé par ville
+     ============================================================ */
+  var PROSPECTS = [];
+  var prospFiltreVille = "";
+  var prospEditId = null;
+  var prospStatut = "a_demarcher";
+  const P_LABELS = { a_demarcher:"À démarcher", demarche:"Démarché", interesse:"Intéressé", client:"Client", pas_interesse:"Pas intéressé" };
+  const P_COUL = { a_demarcher:"#8A8F98", demarche:"#3D7DD6", interesse:"#E8890A", client:"#3BA55C", pas_interesse:"#C64B44" };
+
+  function pEsc(s){ return (s||"").replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function pEstDue(d){ if(!d) return false; return new Date(d) <= new Date(new Date().toDateString()); }
+  function pQuand(d){
+    var diff = Math.round((new Date(d) - new Date(new Date().toDateString()))/86400000);
+    if(diff<0) return "en retard"; if(diff===0) return "aujourd'hui"; if(diff===1) return "demain"; return "dans "+diff+"j";
+  }
+  function pFmt(d){ try{ return new Date(d).toLocaleDateString("fr-FR",{day:"numeric",month:"short"}); }catch(e){ return d; } }
+
+  async function chargerProspects(){
+    var r = await call({ action:"liste_prospects" });
+    if(!r.ok){ $("prospListe").innerHTML = '<div class="loading">Erreur de chargement.</div>'; return; }
+    PROSPECTS = r.prospects || [];
+    rendreProspects();
+  }
+
+  function rendreProspects(){
+    var villes = [...new Set(PROSPECTS.map(p=>p.ville).filter(Boolean))].sort();
+    var sel = $("prospVilleFiltre");
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">Toutes les villes</option>' + villes.map(v=>'<option value="'+pEsc(v)+'">'+pEsc(v)+'</option>').join("");
+    sel.value = cur;
+    if($("villesListe")) $("villesListe").innerHTML = villes.map(v=>'<option value="'+pEsc(v)+'">').join("");
+
+    if($("prospStats")){
+      var cnt = { tous:PROSPECTS.length, a_demarcher:0, demarche:0, interesse:0, client:0 };
+      PROSPECTS.forEach(p=>{ if(cnt[p.statut]!==undefined) cnt[p.statut]++; });
+      $("prospStats").querySelectorAll("[data-c]").forEach(el=>{ var k=el.getAttribute("data-c"); if(cnt[k]!==undefined) el.textContent=cnt[k]; });
+    }
+
+    if($("prospRappels") && $("prospRappelsList")){
+      var dus = PROSPECTS.filter(p=> pEstDue(p.rappel_le) && p.statut!=="client" && p.statut!=="pas_interesse")
+        .sort((a,b)=> new Date(a.rappel_le)-new Date(b.rappel_le));
+      if(dus.length){
+        $("prospRappels").style.display="block";
+        $("prospRappelsList").innerHTML = dus.map(p=>'<div class="pr-item" data-id="'+p.id+'"><span>'+pEsc(p.nom)+'</span><span class="pr-when">'+pQuand(p.rappel_le)+'</span></div>').join("");
+        $("prospRappelsList").querySelectorAll(".pr-item").forEach(el=> el.addEventListener("click",()=> ouvrirProspect(PROSPECTS.find(x=>x.id===el.getAttribute("data-id")))));
+      } else { $("prospRappels").style.display="none"; }
+    }
+
+    var q = ($("prospSearch").value||"").toLowerCase().trim();
+    var list = PROSPECTS.slice();
+    if(prospFiltreVille) list = list.filter(p=>p.ville===prospFiltreVille);
+    if(q) list = list.filter(p=> (p.nom||"").toLowerCase().includes(q) || (p.adresse||"").toLowerCase().includes(q) || (p.notes||"").toLowerCase().includes(q));
+
+    if(!list.length){ $("prospListe").innerHTML = '<div class="loading">Aucun prospect. Cliquez « + Prospect » pour commencer.</div>'; return; }
+
+    var groupes = {};
+    list.forEach(p=>{ var v = p.ville || "Sans ville"; (groupes[v] = groupes[v]||[]).push(p); });
+    var villesOrdre = Object.keys(groupes).sort();
+
+    $("prospListe").innerHTML = villesOrdre.map(function(v){
+      var items = groupes[v].map(function(p){
+        var due = pEstDue(p.rappel_le) && p.statut!=="client" && p.statut!=="pas_interesse";
+        return '<div class="p-card" data-id="'+p.id+'">'
+          + '<div class="p-top"><div class="p-nom">'+pEsc(p.nom)+'</div>'
+          + '<span class="p-badge" style="background:'+P_COUL[p.statut]+'">'+P_LABELS[p.statut]+'</span></div>'
+          + (p.adresse ? '<div class="p-adr">'+pEsc(p.adresse)+'</div>' : '')
+          + (p.notes ? '<div class="p-note">'+pEsc(p.notes)+'</div>' : '')
+          + (p.rappel_le ? '<div class="p-rappel'+(due?' due':'')+'">⏰ '+(due?'à relancer '+pQuand(p.rappel_le):'relance '+pFmt(p.rappel_le))+'</div>' : '')
+          + '</div>';
+      }).join("");
+      return '<div class="prosp-groupe"><div class="gh">'+pEsc(v)+' <span class="gcount">'+groupes[v].length+'</span></div>'+items+'</div>';
+    }).join("");
+
+    $("prospListe").querySelectorAll(".p-card").forEach(el=> el.addEventListener("click",()=> ouvrirProspect(PROSPECTS.find(x=>x.id===el.getAttribute("data-id")))));
+  }
+
+  function majProspStatuts(){
+    $("pfStatuts").querySelectorAll(".pf-st").forEach(o=> o.classList.toggle("sel", o.getAttribute("data-s")===prospStatut));
+  }
+  function majProspLiens(){
+    var adr = $("pf-adresse").value.trim(), tel = $("pf-telephone").value.trim();
+    if(!$("pfLinks")) return;
+    $("pfLinks").style.display = (adr||tel) ? "flex" : "none";
+    if(adr){ $("pfMaps").href="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(adr); $("pfMaps").style.display="inline-block"; } else $("pfMaps").style.display="none";
+    if(tel){ $("pfTel").href="tel:"+tel.replace(/\s/g,""); $("pfTel").style.display="inline-block"; } else $("pfTel").style.display="none";
+  }
+
+  function ouvrirProspect(p){
+    prospEditId = p ? p.id : null;
+    $("prospSheetTitle").textContent = p ? "Modifier" : "Nouveau prospect";
+    $("pf-nom").value = p ? (p.nom||"") : "";
+    $("pf-ville").value = p ? (p.ville||"") : "";
+    $("pf-adresse").value = p ? (p.adresse||"") : "";
+    $("pf-contact").value = p ? (p.contact||"") : "";
+    $("pf-telephone").value = p ? (p.telephone||"") : "";
+    $("pf-notes").value = p ? (p.notes||"") : "";
+    $("pf-rappel").value = p && p.rappel_le ? String(p.rappel_le).slice(0,10) : "";
+    prospStatut = p ? p.statut : "a_demarcher";
+    majProspStatuts(); majProspLiens();
+    $("prospDel").style.display = p ? "block" : "none";
+    $("prospModalBg").style.display = "flex";
+  }
+  function fermerProspect(){ $("prospModalBg").style.display = "none"; }
+
+  $("pfStatuts").querySelectorAll(".pf-st").forEach(o=> o.addEventListener("click",()=>{ prospStatut = o.getAttribute("data-s"); majProspStatuts(); }));
+  $("pf-adresse").addEventListener("input", majProspLiens);
+  $("pf-telephone").addEventListener("input", majProspLiens);
+  $("prospNewBtn").addEventListener("click",()=> ouvrirProspect(null));
+  $("prospCancel").addEventListener("click", fermerProspect);
+  $("prospModalBg").addEventListener("click",(e)=>{ if(e.target===$("prospModalBg")) fermerProspect(); });
+  $("prospSearch").addEventListener("input", rendreProspects);
+  $("prospVilleFiltre").addEventListener("change",(e)=>{ prospFiltreVille = e.target.value; rendreProspects(); });
+
+  $("prospSave").addEventListener("click", async ()=>{
+    var nom = $("pf-nom").value.trim();
+    if(!nom){ $("pf-nom").focus(); return; }
+    var payload = {
+      action: prospEditId ? "modifier_prospect" : "creer_prospect",
+      nom: nom, ville: $("pf-ville").value.trim(), adresse: $("pf-adresse").value.trim(),
+      contact: $("pf-contact").value.trim(), telephone: $("pf-telephone").value.trim(),
+      notes: $("pf-notes").value.trim(), statut: prospStatut, rappel_le: $("pf-rappel").value || null,
+    };
+    if(prospEditId) payload.id = prospEditId;
+    $("prospSave").disabled = true;
+    var r = await call(payload);
+    $("prospSave").disabled = false;
+    if(r.ok){ fermerProspect(); await chargerProspects(); }
+    else alert("Erreur : "+(r.raison||"inconnue"));
+  });
+
+  $("prospDel").addEventListener("click", async ()=>{
+    if(!prospEditId) return;
+    if(!confirm("Supprimer ce prospect ? C'est définitif.")) return;
+    var r = await call({ action:"supprimer_prospect", id:prospEditId });
+    if(r.ok){ fermerProspect(); await chargerProspects(); }
+    else alert("Erreur : "+(r.raison||"inconnue"));
+  });
 })();
 </script>
 </body>
