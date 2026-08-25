@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Prospection — Lunat</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Instrument+Sans:wght@0,400;0,500;0,600;0,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --papier:#F2F2F0; --nuit:#1B2027; --nuit-2:#242B34;
+    --encre:#1B2027; --encre-soft:rgba(27,32,39,.62); --encre-faint:rgba(27,32,39,.4);
+    --orange:#FCA321; --orange-deep:#E8890A; --orange-pale:rgba(252,163,33,.13);
+    --line:rgba(27,32,39,.1); --card:#fff;
+    /* couleurs statuts */
+    --s-ademarcher:#8A8F98; --s-demarche:#3D7DD6; --s-interesse:#E8890A; --s-client:#3BA55C; --s-pas:#C64B44;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;background:var(--papier);
+    color:var(--encre);line-height:1.5;-webkit-font-smoothing:antialiased;}
+  .disp{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;letter-spacing:-.03em;}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px;}
+
+  /* ---------- LOGIN ---------- */
+  #login{min-height:100svh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;}
+  #login .logo{height:26px;margin-bottom:24px;}
+  #login h1{font-size:26px;margin-bottom:8px;}
+  #login p{color:var(--encre-soft);font-size:15px;margin-bottom:24px;}
+  .field{width:100%;max-width:320px;background:#fff;border:1px solid var(--line);border-radius:13px;
+    padding:14px 16px;font:inherit;font-size:15px;margin-bottom:10px;}
+  .field:focus{outline:none;border-color:var(--orange);}
+  .btn{width:100%;max-width:320px;background:var(--orange);color:var(--nuit);border:none;border-radius:13px;
+    padding:15px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;}
+  .btn:disabled{opacity:.5;}
+  .msg{font-size:13.5px;margin-top:12px;min-height:18px;}
+  .msg.err{color:#C64B44;} .msg.ok{color:#3BA55C;}
+  #otpZone{display:none;width:100%;max-width:320px;margin-top:14px;}
+
+  /* ---------- APP ---------- */
+  #app{display:none;padding-bottom:90px;}
+  .top{background:var(--nuit);color:var(--papier);padding:18px 0 16px;position:sticky;top:0;z-index:30;}
+  .top .wrap{display:flex;align-items:center;justify-content:space-between;}
+  .top .ti{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;}
+  .top .out{font-size:12.5px;color:rgba(242,242,240,.6);background:none;border:none;cursor:pointer;}
+
+  /* résumé chiffres */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:14px 0 4px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center;cursor:pointer;transition:transform .1s;}
+  .stat:active{transform:scale(.96);}
+  .stat.on{border-color:var(--orange);background:var(--orange-pale);}
+  .stat .n{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;}
+  .stat .l{font-size:9px;color:var(--encre-soft);margin-top:2px;line-height:1.15;}
+
+  /* rappels dus */
+  .rappels{background:#fff;border:1px solid rgba(232,137,10,.35);border-radius:14px;padding:14px 16px;margin:14px 0;}
+  .rappels.hidden{display:none;}
+  .rappels h3{font-size:13px;font-weight:800;color:var(--orange-deep);margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+  .rappels .r-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13.5px;cursor:pointer;}
+  .rappels .r-item:first-of-type{border-top:none;}
+  .rappels .r-when{margin-left:auto;font-size:11.5px;font-weight:700;color:var(--orange-deep);flex:none;}
+
+  .search{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;font:inherit;font-size:14.5px;margin:6px 0 4px;}
+  .search:focus{outline:none;border-color:var(--orange);}
+
+  /* liste */
+  .liste{margin-top:8px;}
+  .p-card{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:15px 16px;margin-bottom:10px;cursor:pointer;transition:transform .1s;position:relative;}
+  .p-card:active{transform:scale(.99);}
+  .p-card .p-top{display:flex;align-items:center;gap:10px;}
+  .p-card .p-nom{font-weight:700;font-size:16px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .p-badge{font-size:10.5px;font-weight:800;padding:4px 9px;border-radius:100px;color:#fff;flex:none;letter-spacing:.02em;}
+  .p-card .p-adr{font-size:13px;color:var(--encre-soft);margin-top:4px;}
+  .p-card .p-note{font-size:12.5px;color:var(--encre-faint);margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .p-card .p-rappel{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;margin-top:8px;padding:4px 9px;border-radius:100px;background:var(--orange-pale);color:var(--orange-deep);}
+  .p-card .p-rappel.due{background:#C64B44;color:#fff;}
+  .empty{text-align:center;color:var(--encre-faint);padding:50px 20px;font-size:14.5px;}
+
+  /* bouton flottant ajouter */
+  .fab{position:fixed;bottom:22px;right:22px;width:58px;height:58px;border-radius:50%;background:var(--orange);
+    color:var(--nuit);border:none;font-size:30px;font-weight:400;cursor:pointer;z-index:40;
+    box-shadow:0 10px 26px -6px rgba(252,163,33,.7);display:flex;align-items:center;justify-content:center;}
+  .fab:active{transform:scale(.93);}
+
+  /* modal fiche */
+  .modal{position:fixed;inset:0;background:rgba(27,32,39,.5);z-index:50;display:none;align-items:flex-end;justify-content:center;}
+  .modal.open{display:flex;}
+  .sheet{background:var(--papier);width:100%;max-width:640px;border-radius:24px 24px 0 0;padding:22px 18px calc(22px + env(safe-area-inset-bottom));max-height:92svh;overflow-y:auto;}
+  .sheet h2{font-size:20px;margin-bottom:16px;}
+  .sheet .lbl{font-size:12px;font-weight:700;color:var(--encre-soft);letter-spacing:.03em;text-transform:uppercase;margin:14px 0 6px;}
+  .sheet input,.sheet textarea{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 14px;font:inherit;font-size:15px;}
+  .sheet input:focus,.sheet textarea:focus{outline:none;border-color:var(--orange);}
+  .sheet textarea{min-height:80px;resize:vertical;}
+  .statuts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .st-opt{border:1.5px solid var(--line);border-radius:11px;padding:11px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;color:var(--encre-soft);background:#fff;}
+  .st-opt.sel{color:#fff;border-color:transparent;}
+  .st-opt.sel[data-s="a_demarcher"]{background:var(--s-ademarcher);}
+  .st-opt.sel[data-s="demarche"]{background:var(--s-demarche);}
+  .st-opt.sel[data-s="interesse"]{background:var(--s-interesse);}
+  .st-opt.sel[data-s="client"]{background:var(--s-client);}
+  .st-opt.sel[data-s="pas_interesse"]{background:var(--s-pas);}
+  .sheet-actions{display:flex;gap:10px;margin-top:22px;}
+  .sheet-actions .btn{max-width:none;flex:1;}
+  .btn-ghost{background:none;border:1px solid var(--line);color:var(--encre-soft);border-radius:13px;padding:15px;font:inherit;font-weight:700;cursor:pointer;}
+  .btn-del{background:none;border:none;color:#C64B44;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:14px;width:100%;text-align:center;}
+  .quick-links{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  .quick-links a{font-size:12.5px;font-weight:700;color:var(--orange-deep);text-decoration:none;background:var(--orange-pale);padding:8px 12px;border-radius:100px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login">
+  <img src="/assets/lunat-logo.png" alt="Lunat" class="logo">
+  <h1 class="disp">Prospection</h1>
+  <p>Votre outil de démarchage Lunat.</p>
+  <input class="field" id="email" type="email" placeholder="Votre email" autocomplete="email">
+  <button class="btn" id="sendBtn">Recevoir mon code</button>
+  <div id="otpZone">
+    <input class="field" id="otp" inputmode="numeric" placeholder="Code reçu par email">
+    <button class="btn" id="verifyBtn">Me connecter</button>
+  </div>
+  <div class="msg" id="loginMsg"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="top">
+    <div class="wrap">
+      <div class="ti">Prospection</div>
+      <button class="out" id="logout">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- résumé cliquable = filtres -->
+    <div class="stats" id="stats">
+      <div class="stat on" data-f="tous"><div class="n" id="c-tous">0</div><div class="l">Tous</div></div>
+      <div class="stat" data-f="a_demarcher"><div class="n" id="c-a_demarcher">0</div><div class="l">À démarcher</div></div>
+      <div class="stat" data-f="demarche"><div class="n" id="c-demarche">0</div><div class="l">Démarchés</div></div>
+      <div class="stat" data-f="interesse"><div class="n" id="c-interesse">0</div><div class="l">Intéressés</div></div>
+      <div class="stat" data-f="client"><div class="n" id="c-client">0</div><div class="l">Clients</div></div>
+    </div>
+
+    <!-- rappels dus -->
+    <div class="rappels hidden" id="rappels">
+      <h3>⏰ À relancer</h3>
+      <div id="rappelsList"></div>
+    </div>
+
+    <input class="search" id="search" placeholder="Rechercher un commerce...">
+
+    <div class="liste" id="liste"></div>
+  </div>
+
+  <button class="fab" id="fab">+</button>
+</div>
+
+<!-- MODAL FICHE -->
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2 class="disp" id="sheetTitle">Nouveau prospect</h2>
+
+    <div class="lbl">Nom du commerce</div>
+    <input id="f-nom" placeholder="Ex : Café des Arts">
+
+    <div class="lbl">Adresse</div>
+    <input id="f-adresse" placeholder="Ex : 12 rue Sainte-Catherine, Bordeaux">
+
+    <div class="quick-links" id="quickLinks" style="display:none">
+      <a id="linkMaps" target="_blank" rel="noopener">📍 Google Maps</a>
+      <a id="linkTel" style="display:none">📞 Appeler</a>
+    </div>
+
+    <div class="lbl">Statut</div>
+    <div class="statuts" id="statuts">
+      <div class="st-opt" data-s="a_demarcher">À démarcher</div>
+      <div class="st-opt" data-s="demarche">Démarché</div>
+      <div class="st-opt" data-s="interesse">Intéressé</div>
+      <div class="st-opt" data-s="client">Client</div>
+      <div class="st-opt" data-s="pas_interesse">Pas intéressé</div>
+    </div>
+
+    <div class="lbl">Contact (nom, rôle)</div>
+    <input id="f-contact" placeholder="Ex : Julie, la gérante">
+
+    <div class="lbl">Téléphone</div>
+    <input id="f-telephone" type="tel" placeholder="Ex : 06 12 34 56 78">
+
+    <div class="lbl">Notes</div>
+    <textarea id="f-notes" placeholder="Ce qu'on s'est dit, ce qu'il faut retenir..."></textarea>
+
+    <div class="lbl">Me rappeler de relancer le</div>
+    <input id="f-rappel" type="date">
+
+    <div class="sheet-actions">
+      <button class="btn-ghost" id="cancelBtn">Annuler</button>
+      <button class="btn" id="saveBtn">Enregistrer</button>
+    </div>
+    <button class="btn-del" id="delBtn" style="display:none">Supprimer ce prospect</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const SUPABASE_URL = "https://xiyqdwezpwhxdqlcgygl.supabase.co";
+  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeXFkd2V6cHdoeGRxbGNneWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjk1ODIsImV4cCI6MjA5OTg0NTU4Mn0.5xnz2HyLCRdA29vzE8sc8Hyr415Rtb0nxaXMEI7-tMI";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, storageKey: "lunat-prosp-session" } });
+  const $ = (id) => document.getElementById(id);
+  const API = "/api/prospection";
+  let token = null;
+  let prospects = [];
+  let filtre = "tous";
+  let editId = null;
+  let statutChoisi = "a_demarcher";
+
+  const LABELS = { a_demarcher:"À démarcher", demarche:"Démarché", interesse:"Intéressé", client:"Client", pas_interesse:"Pas intéressé" };
+  const COULEURS = { a_demarcher:"var(--s-ademarcher)", demarche:"var(--s-demarche)", interesse:"var(--s-interesse)", client:"var(--s-client)", pas_interesse:"var(--s-pas)" };
+
+  async function call(payload){
+    const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+token }, body:JSON.stringify(payload) });
+    return r.json();
+  }
+
+  /* ---------- LOGIN ---------- */
+  async function envoyer(){
+    const email = ($("email").value||"").trim();
+    const msg = $("loginMsg");
+    if(!email || email.indexOf("@")<1){ msg.className="msg err"; msg.textContent="Entre un email valide."; return; }
+    $("sendBtn").disabled=true; $("sendBtn").textContent="Envoi…";
+    const { error } = await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:false } });
+    window.__email=email;
+    $("sendBtn").disabled=false; $("sendBtn").textContent="Recevoir mon code";
+    if(error){ msg.className="msg err"; msg.textContent="Erreur : "+error.message; }
+    else { msg.className="msg ok"; msg.textContent="Code envoyé. Regarde tes emails."; $("otpZone").style.display="block"; }
+  }
+  async function verifier(){
+    const otp = ($("otp").value||"").trim();
+    const msg = $("loginMsg");
+    if(!otp){ msg.className="msg err"; msg.textContent="Entre le code reçu."; return; }
+    $("verifyBtn").disabled=true; $("verifyBtn").textContent="Connexion…";
+    const { data, error } = await sb.auth.verifyOtp({ email: window.__email, token: otp, type:"email" });
+    $("verifyBtn").disabled=false; $("verifyBtn").textContent="Me connecter";
+    if(error){ msg.className="msg err"; msg.textContent="Code invalide."; return; }
+    token = data.session.access_token;
+    demarrer();
+  }
+  $("sendBtn").addEventListener("click", envoyer);
+  $("email").addEventListener("keydown",(e)=>{ if(e.key==="Enter") envoyer(); });
+  $("verifyBtn").addEventListener("click", verifier);
+  $("otp").addEventListener("keydown",(e)=>{ if(e.key==="Enter") verifier(); });
+  $("logout").addEventListener("click", async ()=>{ await sb.auth.signOut(); location.reload(); });
+
+  /* ---------- DÉMARRAGE ---------- */
+  async function demarrer(){
+    $("login").style.display="none";
+    $("app").style.display="block";
+    await charger();
+  }
+
+  async function charger(){
+    const r = await call({ action:"liste" });
+    if(!r.ok){ if(r.erreur==="non_admin"){ alert("Accès réservé."); await sb.auth.signOut(); location.reload(); } return; }
+    prospects = r.prospects || [];
+    rendre();
+  }
+
+  /* ---------- RENDU ---------- */
+  function estDue(d){ if(!d) return false; return new Date(d) <= new Date(new Date().toDateString()); }
+  function joursRestants(d){
+    const diff = Math.round((new Date(d) - new Date(new Date().toDateString())) / 86400000);
+    if(diff < 0) return "en retard"; if(diff === 0) return "aujourd'hui"; if(diff === 1) return "demain"; return "dans " + diff + "j";
+  }
+
+  function rendre(){
+    // compteurs
+    const cnt = { tous:prospects.length, a_demarcher:0, demarche:0, interesse:0, client:0, pas_interesse:0 };
+    prospects.forEach(p=>{ if(cnt[p.statut]!==undefined) cnt[p.statut]++; });
+    ["tous","a_demarcher","demarche","interesse","client"].forEach(k=>{ $("c-"+k).textContent = cnt[k]; });
+
+    // rappels dus
+    const dus = prospects.filter(p=> estDue(p.rappel_le) && p.statut!=="client" && p.statut!=="pas_interesse")
+      .sort((a,b)=> new Date(a.rappel_le)-new Date(b.rappel_le));
+    if(dus.length){
+      $("rappels").classList.remove("hidden");
+      $("rappelsList").innerHTML = dus.map(p=>
+        '<div class="r-item" data-id="'+p.id+'"><span>'+esc(p.nom)+'</span><span class="r-when">'+joursRestants(p.rappel_le)+'</span></div>'
+      ).join("");
+      $("rappelsList").querySelectorAll(".r-item").forEach(el=>{
+        el.addEventListener("click",()=> ouvrir(prospects.find(x=>x.id===el.getAttribute("data-id"))));
+      });
+    } else { $("rappels").classList.add("hidden"); }
+
+    // liste filtrée + recherche
+    const q = ($("search").value||"").toLowerCase().trim();
+    let list = prospects.slice();
+    if(filtre!=="tous") list = list.filter(p=>p.statut===filtre);
+    if(q) list = list.filter(p=> (p.nom||"").toLowerCase().includes(q) || (p.adresse||"").toLowerCase().includes(q));
+
+    if(!list.length){
+      $("liste").innerHTML = '<div class="empty">Aucun prospect ici.<br>Touchez + pour en ajouter un.</div>';
+      return;
+    }
+    $("liste").innerHTML = list.map(p=>{
+      const due = estDue(p.rappel_le) && p.statut!=="client" && p.statut!=="pas_interesse";
+      return '<div class="p-card" data-id="'+p.id+'">'
+        + '<div class="p-top"><div class="p-nom">'+esc(p.nom)+'</div>'
+        + '<span class="p-badge" style="background:'+COULEURS[p.statut]+'">'+LABELS[p.statut]+'</span></div>'
+        + (p.adresse ? '<div class="p-adr">'+esc(p.adresse)+'</div>' : '')
+        + (p.notes ? '<div class="p-note">'+esc(p.notes)+'</div>' : '')
+        + (p.rappel_le ? '<div class="p-rappel'+(due?' due':'')+'">⏰ '+(due?'à relancer '+joursRestants(p.rappel_le):'relance '+fmtDate(p.rappel_le))+'</div>' : '')
+        + '</div>';
+    }).join("");
+    $("liste").querySelectorAll(".p-card").forEach(el=>{
+      el.addEventListener("click",()=> ouvrir(prospects.find(x=>x.id===el.getAttribute("data-id"))));
+    });
+  }
+
+  function esc(s){ return (s||"").replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function fmtDate(d){ try{ return new Date(d).toLocaleDateString("fr-FR",{day:"numeric",month:"short"}); }catch(e){ return d; } }
+
+  /* ---------- FILTRES ---------- */
+  $("stats").querySelectorAll(".stat").forEach(s=>{
+    s.addEventListener("click",()=>{
+      $("stats").querySelectorAll(".stat").forEach(x=>x.classList.remove("on"));
+      s.classList.add("on"); filtre = s.getAttribute("data-f"); rendre();
+    });
+  });
+  $("search").addEventListener("input", rendre);
+
+  /* ---------- MODAL ---------- */
+  function ouvrir(p){
+    editId = p ? p.id : null;
+    $("sheetTitle").textContent = p ? "Modifier" : "Nouveau prospect";
+    $("f-nom").value = p ? (p.nom||"") : "";
+    $("f-adresse").value = p ? (p.adresse||"") : "";
+    $("f-contact").value = p ? (p.contact||"") : "";
+    $("f-telephone").value = p ? (p.telephone||"") : "";
+    $("f-notes").value = p ? (p.notes||"") : "";
+    $("f-rappel").value = p && p.rappel_le ? p.rappel_le.slice(0,10) : "";
+    statutChoisi = p ? p.statut : "a_demarcher";
+    majStatuts();
+    majLiens();
+    $("delBtn").style.display = p ? "block" : "none";
+    $("modal").classList.add("open");
+  }
+  function fermer(){ $("modal").classList.remove("open"); }
+
+  function majStatuts(){
+    $("statuts").querySelectorAll(".st-opt").forEach(o=>{
+      o.classList.toggle("sel", o.getAttribute("data-s")===statutChoisi);
+    });
+  }
+  $("statuts").querySelectorAll(".st-opt").forEach(o=>{
+    o.addEventListener("click",()=>{ statutChoisi = o.getAttribute("data-s"); majStatuts(); });
+  });
+  function majLiens(){
+    const adr = $("f-adresse").value.trim();
+    const tel = $("f-telephone").value.trim();
+    const ql = $("quickLinks");
+    if(adr || tel){ ql.style.display="flex"; } else { ql.style.display="none"; }
+    if(adr){ $("linkMaps").href = "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(adr); $("linkMaps").style.display="inline-block"; }
+    else { $("linkMaps").style.display="none"; }
+    if(tel){ $("linkTel").href = "tel:"+tel.replace(/\s/g,""); $("linkTel").style.display="inline-block"; }
+    else { $("linkTel").style.display="none"; }
+  }
+  $("f-adresse").addEventListener("input", majLiens);
+  $("f-telephone").addEventListener("input", majLiens);
+
+  $("fab").addEventListener("click",()=> ouvrir(null));
+  $("cancelBtn").addEventListener("click", fermer);
+  $("modal").addEventListener("click",(e)=>{ if(e.target===$("modal")) fermer(); });
+
+  $("saveBtn").addEventListener("click", async ()=>{
+    const nom = $("f-nom").value.trim();
+    if(!nom){ $("f-nom").focus(); return; }
+    const payload = {
+      action: editId ? "modifier" : "creer",
+      nom: nom,
+      adresse: $("f-adresse").value.trim(),
+      contact: $("f-contact").value.trim(),
+      telephone: $("f-telephone").value.trim(),
+      notes: $("f-notes").value.trim(),
+      statut: statutChoisi,
+      rappel_le: $("f-rappel").value || null,
+    };
+    if(editId) payload.id = editId;
+    $("saveBtn").disabled=true; $("saveBtn").textContent="…";
+    const r = await call(payload);
+    $("saveBtn").disabled=false; $("saveBtn").textContent="Enregistrer";
+    if(r.ok){ fermer(); await charger(); }
+    else { alert("Erreur : "+(r.erreur||"inconnue")); }
+  });
+
+  $("delBtn").addEventListener("click", async ()=>{
+    if(!editId) return;
+    if(!confirm("Supprimer ce prospect ? C'est définitif.")) return;
+    const r = await call({ action:"supprimer", id:editId });
+    if(r.ok){ fermer(); await charger(); }
+    else { alert("Erreur : "+(r.erreur||"inconnue")); }
+  });
+
+  /* ---------- SESSION AU CHARGEMENT ---------- */
+  (async function(){
+    const { data } = await sb.auth.getSession();
+    if(data && data.session){ token = data.session.access_token; demarrer(); }
+  })();
+})();
+</script>
+</body>
+</html>
