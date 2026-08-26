@@ -1150,6 +1150,7 @@
      ============================================================ */
   var PROSPECTS = [];
   var prospFiltreVille = "";
+  var prospFiltreStatut = "tous";
   var prospEditId = null;
   var prospStatut = "a_demarcher";
   const P_LABELS = { a_demarcher:"À démarcher", demarche:"Démarché", interesse:"Intéressé", client:"Client", pas_interesse:"Pas intéressé" };
@@ -1181,7 +1182,7 @@
     if($("prospStats")){
       var cnt = { tous:PROSPECTS.length, a_demarcher:0, demarche:0, interesse:0, client:0 };
       PROSPECTS.forEach(p=>{ if(cnt[p.statut]!==undefined) cnt[p.statut]++; });
-      $("prospStats").querySelectorAll("[data-c]").forEach(el=>{ var k=el.getAttribute("data-c"); if(cnt[k]!==undefined) el.textContent=cnt[k]; });
+      ["tous","a_demarcher","demarche","interesse","client"].forEach(k=>{ if($("pc-"+k)) $("pc-"+k).textContent = cnt[k]; });
     }
 
     if($("prospRappels") && $("prospRappelsList")){
@@ -1196,6 +1197,7 @@
 
     var q = ($("prospSearch").value||"").toLowerCase().trim();
     var list = PROSPECTS.slice();
+    if(prospFiltreStatut && prospFiltreStatut!=="tous") list = list.filter(p=>p.statut===prospFiltreStatut);
     if(prospFiltreVille) list = list.filter(p=>p.ville===prospFiltreVille);
     if(q) list = list.filter(p=> (p.nom||"").toLowerCase().includes(q) || (p.adresse||"").toLowerCase().includes(q) || (p.notes||"").toLowerCase().includes(q));
 
@@ -1258,6 +1260,14 @@
   $("prospModalBg").addEventListener("click",(e)=>{ if(e.target===$("prospModalBg")) fermerProspect(); });
   $("prospSearch").addEventListener("input", rendreProspects);
   $("prospVilleFiltre").addEventListener("change",(e)=>{ prospFiltreVille = e.target.value; rendreProspects(); });
+  if($("prospStats")){
+    $("prospStats").querySelectorAll(".pstat").forEach(s=>{
+      s.addEventListener("click",()=>{
+        $("prospStats").querySelectorAll(".pstat").forEach(x=>x.classList.remove("on"));
+        s.classList.add("on"); prospFiltreStatut = s.getAttribute("data-f"); rendreProspects();
+      });
+    });
+  }
 
   $("prospSave").addEventListener("click", async ()=>{
     var nom = $("pf-nom").value.trim();
