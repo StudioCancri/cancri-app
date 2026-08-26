@@ -241,10 +241,10 @@
   <div class="w-card">
     <div class="logo">✦</div>
     <div class="w-title" id="wTitle">Bienvenue ☕</div>
-    <div class="w-sub">Ta carte de fidélité se crée en 2 secondes — avec un tampon de bienvenue offert. Ton prénom ? (optionnel)</div>
+    <div class="w-sub">Ta carte de fidélité se crée en 2 secondes — avec un tampon de bienvenue offert. Ta carte de fidélité se crée en quelques secondes.</div>
     <input class="w-input" id="wName" type="text" maxlength="20" placeholder="Prénom" autocomplete="given-name">
-    <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom (optionnel)" autocomplete="family-name">
-    <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email (optionnel)" autocomplete="email">
+    <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom" autocomplete="family-name">
+    <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email" autocomplete="email">
     <label class="w-consent"><input type="checkbox" id="wConsent"> OK pour recevoir les offres et nouveautés de ce commerce par email</label>
     <button class="w-btn" id="wGo">Créer ma carte</button>
   </div>
@@ -529,12 +529,16 @@
 
   /* ----- welcome / création ----- */
   function creerCarte(){
-    els.wGo.disabled = true;
     var n = (els.wName.value || "").trim();
     if(n) n = n.charAt(0).toUpperCase() + n.slice(1);
     var mail = (els.wMail.value || "").trim();
     var nom = (els.wNom.value || "").trim();
     if(nom) nom = nom.charAt(0).toUpperCase() + nom.slice(1);
+    // nom de famille et email obligatoires
+    if(!nom){ banner("Ton nom de famille est requis"); els.wNom.focus(); return; }
+    var mailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail);
+    if(!mailOk){ banner("Un email valide est requis"); els.wMail.focus(); return; }
+    els.wGo.disabled = true;
     api({
       action: "creer",
       commerce: SLUG,
