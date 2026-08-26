@@ -200,6 +200,56 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, demande: maj[0] });
     }
 
+    /* ============================================================
+       PROSPECTION (CRM démarchage) — table prospects
+       ============================================================ */
+    const STATUTS_PROSP = ["a_demarcher", "demarche", "interesse", "client", "pas_interesse"];
+    const nettoieP = (v) => (typeof v === "string" ? v.trim() : v);
+
+    if (action === "liste_prospects") {
+      const rows = await sb("prospects?select=*&order=created_at.desc");
+      return res.status(200).json({ ok: true, prospects: rows || [] });
+    }
+
+    if (action === "creer_prospect") {
+      const nom = nettoieP(body.nom);
+      if (!nom) return res.status(400).json({ ok: false, raison: "nom_requis" });
+      const p = {
+        nom: nom,
+        ville: nettoieP(body.ville) || null,
+        adresse: nettoieP(body.adresse) || null,
+        contact: nettoieP(body.contact) || null,
+        telephone: nettoieP(body.telephone) || null,
+        statut: STATUTS_PROSP.includes(body.statut) ? body.statut : "a_demarcher",
+        notes: nettoieP(body.notes) || null,
+        rappel_le: body.rappel_le || null,
+        cree_par: userId,
+      };
+      const rows = await sb("prospects", { method: "POST", body: p });
+      return res.status(200).json({ ok: true, prospect: rows && rows[0] });
+    }
+
+    if (action === "modifier_prospect") {
+      if (!body.id) return res.status(400).json({ ok: false, raison: "id_requis" });
+      const patch = {};
+      if (body.nom !== undefined) patch.nom = nettoieP(body.nom);
+      if (body.ville !== undefined) patch.ville = nettoieP(body.ville) || null;
+      if (body.adresse !== undefined) patch.adresse = nettoieP(body.adresse) || null;
+      if (body.contact !== undefined) patch.contact = nettoieP(body.contact) || null;
+      if (body.telephone !== undefined) patch.telephone = nettoieP(body.telephone) || null;
+      if (body.statut !== undefined && STATUTS_PROSP.includes(body.statut)) patch.statut = body.statut;
+      if (body.notes !== undefined) patch.notes = nettoieP(body.notes) || null;
+      if (body.rappel_le !== undefined) patch.rappel_le = body.rappel_le || null;
+      const rows = await sb("prospects?id=eq." + encodeURIComponent(body.id), { method: "PATCH", body: patch });
+      return res.status(200).json({ ok: true, prospect: rows && rows[0] });
+    }
+
+    if (action === "supprimer_prospect") {
+      if (!body.id) return res.status(400).json({ ok: false, raison: "id_requis" });
+      await sb("prospects?id=eq." + encodeURIComponent(body.id), { method: "DELETE" });
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(200).json({ ok: false, raison: "action_inconnue" });
   } catch (e) {
     console.error("admin error:", e.message || e);
