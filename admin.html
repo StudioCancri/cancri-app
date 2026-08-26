@@ -662,12 +662,17 @@
 (function(){
   const SUPABASE_URL = "https://xiyqdwezpwhxdqlcgygl.supabase.co";
   const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhpeXFkd2V6cHdoeGRxbGNneWdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNjk1ODIsImV4cCI6MjA5OTg0NTU4Mn0.5xnz2HyLCRdA29vzE8sc8Hyr415Rtb0nxaXMEI7-tMI";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { flowType: "implicit", detectSessionInUrl: true } });
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true, storageKey: "lunat-admin-session" } });
   const $ = (id) => document.getElementById(id);
   const API = "/api/admin";
   let token = null;
 
   async function call(payload){
+    // token toujours frais : on le récupère depuis la session en cours
+    try {
+      const { data } = await sb.auth.getSession();
+      if(data && data.session && data.session.access_token) token = data.session.access_token;
+    } catch(e){}
     const r = await fetch(API, { method:"POST", headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+token }, body:JSON.stringify(payload) });
     return r.json();
   }
