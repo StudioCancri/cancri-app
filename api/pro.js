@@ -560,7 +560,11 @@ module.exports = async (req, res) => {
     /* ---- HISTORIQUE / ÉTAT d'une carte ---- */
     if (action === "historique") {
       const taps = await sb("taps?carte_id=eq." + carte.id + "&select=valeur,cree_le&order=cree_le.desc&limit=20");
-      return res.status(200).json({ ok: true, carte: carte, taps: taps || [] });
+      // totaux sur TOUT l'historique (pas seulement les 20 derniers)
+      const tous = await sb("taps?carte_id=eq." + carte.id + "&select=valeur");
+      let totalCartes = 0, totalPassages = 0;
+      for (const t of (tous || [])) { if (t.valeur === 0) totalCartes++; else totalPassages++; }
+      return res.status(200).json({ ok: true, carte: carte, taps: taps || [], total_passages: totalPassages, total_cartes: totalCartes });
     }
 
     return res.status(200).json({ ok: false, raison: "action_inconnue" });
