@@ -470,7 +470,8 @@
   @media(min-width:560px){.sheet{border-radius:22px;}}
   @keyframes sheetUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
   .sheet-grab{width:38px;height:4px;border-radius:99px;background:var(--line);margin:8px auto 20px;}
-  .sheet-head{display:flex;align-items:center;gap:14px;margin-bottom:22px;}
+  .sheet-sticky{position:sticky;top:0;z-index:5;background:var(--cream);}
+  .sheet-head{display:flex;align-items:center;gap:14px;padding-bottom:16px;}
   .sheet-head .ini{
     width:52px;height:52px;border-radius:15px;flex:none;
     background:var(--terracotta);color:#fff;
@@ -484,6 +485,10 @@
     width:34px;height:34px;border-radius:10px;font-size:16px;color:var(--ink-soft);
     cursor:pointer;-webkit-tap-highlight-color:transparent;
   }
+  .sheet-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .sheet-stats .ss-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;}
+  .sheet-stats .ss-n{font-family:'Fraunces',serif;font-weight:600;font-size:26px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--terracotta);}
+  .sheet-stats .ss-l{font-size:11.5px;color:var(--ink-soft);margin-top:2px;}
 
   /* jauge tampons dans la fiche */
   .sheet-prog{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;}
@@ -898,14 +903,21 @@
 
 <div class="sheet-bg" id="sheetBg">
   <div class="sheet" id="sheet">
-    <div class="sheet-grab"></div>
-    <div class="sheet-head">
-      <div class="ini" id="shIni">?</div>
-      <div>
-        <div class="sn" id="shName">Client</div>
-        <div class="sd" id="shDate">—</div>
+    <div class="sheet-sticky">
+      <div class="sheet-grab"></div>
+      <div class="sheet-head">
+        <div class="ini" id="shIni">?</div>
+        <div>
+          <div class="sn" id="shName">Client</div>
+          <div class="sd" id="shDate">—</div>
+        </div>
+        <button class="sheet-close" id="shClose">✕</button>
       </div>
-      <button class="sheet-close" id="shClose">✕</button>
+    </div>
+
+    <div class="sheet-stats" id="shStats">
+      <div class="ss-box"><div class="ss-n" id="shNbPassages">0</div><div class="ss-l">passages au total</div></div>
+      <div class="ss-box"><div class="ss-n" id="shNbCartes">0</div><div class="ss-l">cartes validées</div></div>
     </div>
 
     <div class="sheet-prog">
@@ -1209,21 +1221,36 @@
     $("shMsg").className = "sheet-msg";
     $("shMsg").textContent = "";
     $("shHist").innerHTML = "";
+    $("shNbPassages").textContent = "…";
+    $("shNbCartes").textContent = "…";
     dessinerJauge(carte.tampons, objectifCourant);
     $("sheetBg").classList.add("on");
     document.body.style.overflow = "hidden";
 
-    // historique
+    // historique + stats (passages, cartes validées)
     appelPro({ action:"historique", carte_id: carte.id }).then(function(r){
-      if(r.ok && r.taps && r.taps.length){
-        let html = '<h3>Dernières visites</h3>';
-        for(const t of r.taps.slice(0,8)){
-          const d = new Date(t.cree_le);
-          const libelle = t.valeur === 0 ? "Récompense offerte" : "+" + t.valeur + " tampon";
-          html += '<div class="hist-row"><span>' + libelle + '</span><span>' + d.toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + '</span></div>';
+      if(r.ok && r.taps){
+        var taps = r.taps;
+        var nbCartes = (r.total_cartes !== undefined) ? r.total_cartes : taps.filter(function(t){ return t.valeur === 0; }).length;
+        var nbPassages = (r.total_passages !== undefined) ? r.total_passages : taps.filter(function(t){ return t.valeur !== 0; }).length;
+        $("shNbPassages").textContent = nbPassages;
+        $("shNbCartes").textContent = nbCartes;
+        if(taps.length){
+          let html = '<h3>Dernières visites</h3>';
+          for(const t of taps.slice(0,10)){
+            const d = new Date(t.cree_le);
+            const libelle = t.valeur === 0 ? "🎁 Récompense offerte" : "+" + t.valeur + " tampon";
+            html += '<div class="hist-row"><span>' + libelle + '</span><span>' + d.toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'}) + '</span></div>';
+          }
+          $("shHist").innerHTML = html;
         }
-        $("shHist").innerHTML = html;
+      } else {
+        $("shNbPassages").textContent = "0";
+        $("shNbCartes").textContent = "0";
       }
+    }).catch(function(){
+      $("shNbPassages").textContent = "—";
+      $("shNbCartes").textContent = "—";
     });
   }
 
