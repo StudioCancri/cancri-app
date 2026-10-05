@@ -175,8 +175,14 @@ async function construirePass(jeton) {
   if (messageCarte) {
     pass.backFields.push({ key: "actu", label: "À ne pas manquer", value: messageCarte, changeMessage: "%@" });
   }
+  /* lien de secours : reconnecte ce téléphone à sa carte (Safari peut oublier) */
+  const lienRetrouver = "https://lunat.fr" +
+    "/carte.html?c=" + encodeURIComponent(commerce.slug) + "&j=" + encodeURIComponent(carte.jeton);
   pass.backFields.push(
     { key: "regle", label: "Comment ça marche", value: "Posez votre téléphone sur la pastille au comptoir : +1 tampon. À " + commerce.objectif + ", votre récompense vous attend." },
+    { key: "retrouver", label: "Votre carte sur ce téléphone",
+      value: "Si on vous redemande de vous inscrire, touchez ce lien : " + lienRetrouver,
+      attributedValue: 'Si on vous redemande de vous inscrire : <a href="' + lienRetrouver + '">Retrouver ma carte</a>' },
     { key: "studio", label: "Propulsé par", value: "Studio Cancri" }
   );
   pass.setBarcodes({ message: carte.jeton, format: "PKBarcodeFormatQR", messageEncoding: "iso-8859-1" });
