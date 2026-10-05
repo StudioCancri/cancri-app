@@ -161,8 +161,31 @@ module.exports = async (req, res) => {
       const permis = ["nom","unite","objectif","recompense","code_staff","couleur_fond","couleur_texte","couleur_label",
                       "statut","notes_admin","contact_nom","contact_email","contact_tel","adresse",
                       "latitude","longitude","texte_geoloc","message_relance","relances_actives",
-                      "plan","plan_extras","abonnement_statut","essai_debut","essai_fin"];
+                      "plan","plan_extras","abonnement_statut","essai_debut","essai_fin",
+                      "mode","points_par_euro","recompenses_points","tap_auto"];
       for (const k of permis) if (body[k] !== undefined) champs[k] = body[k];
+
+      /* système de fidélité : on nettoie ce qui arrive */
+      if (champs.mode !== undefined && !["tampons", "points"].includes(champs.mode)) delete champs.mode;
+      if (champs.points_par_euro !== undefined) {
+        const v = parseFloat(champs.points_par_euro);
+        champs.points_par_euro = isFinite(v) ? Math.max(0.1, Math.min(100, v)) : 1;
+      }
+      if (champs.tap_auto !== undefined) champs.tap_auto = champs.tap_auto === true;
+      if (champs.recompenses_points !== undefined) {
+        const liste = Array.isArray(champs.recompenses_points) ? champs.recompenses_points : [];
+        champs.recompenses_points = liste
+          .map(function (x) {
+            const nom = (x && x.nom || "").toString().trim().slice(0, 40);
+            const cout = parseInt(x && x.cout, 10);
+            const id = ((x && x.id) || "").toString().replace(/[^a-z0-9]/gi, "").slice(0, 12)
+              || Math.random().toString(36).slice(2, 10);
+            return { id: id, nom: nom, cout: cout };
+          })
+          .filter(function (x) { return x.nom && x.cout > 0 && x.cout <= 100000; })
+          .sort(function (a, b) { return a.cout - b.cout; })
+          .slice(0, 10);
+      }
       if (!Object.keys(champs).length) return res.status(200).json({ ok: false, raison: "rien_a_maj" });
       const maj = await sb("commerces?id=eq." + encodeURIComponent(body.commerce_id), { method: "PATCH", body: champs });
       return res.status(200).json({ ok: true, commerce: maj[0] });
