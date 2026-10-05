@@ -284,6 +284,21 @@
   .prog-save:active{transform:scale(.97);}
   .prog-save:disabled{opacity:.5;}
   .prog-msg{font-size:12.5px;margin-top:10px;display:none;}
+  /* mode points */
+  .pt-lab{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);margin:16px 0 7px;display:block;}
+  .pt-lab:first-child{margin-top:0;}
+  .pt-euro{max-width:240px;}
+  .pt-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .pt-row input{border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;font:inherit;font-size:14.5px;
+    background:var(--cream);color:var(--ink);min-width:0;}
+  .pt-row input:focus{outline:none;border-color:var(--terracotta);}
+  .pt-row .pt-nom{flex:1;}
+  .pt-row .pt-cout{width:78px;flex:none;text-align:right;}
+  .pt-row .pt-u{font-size:12px;color:var(--ink-soft);flex:none;}
+  .pt-row .pt-del{width:38px;height:38px;flex:none;border:1.5px solid var(--line);background:none;border-radius:10px;
+    color:var(--ink-soft);font-size:14px;cursor:pointer;}
+  .pt-ajout{width:100%;background:none;border:1.5px dashed var(--line);border-radius:11px;padding:11px;font:inherit;
+    font-size:13px;font-weight:700;color:var(--terracotta-deep);cursor:pointer;margin-top:2px;}
   .prog-msg.on{display:block;color:var(--sage);}
   .prog-msg.err{display:block;color:var(--terracotta);}
 
@@ -864,8 +879,19 @@
   <details class="pli prog-card" id="progCard">
     <summary><svg class="luic"><use href="#ic-card"/></svg> Mon programme <span class="resume" id="progResume"></span><span class="chev">›</span></summary>
     <div class="pli-corps">
-    <div class="ps">Le nombre de passages pour gagner, et ce que vous offrez. Les cartes de vos clients se mettent à jour toutes seules.</div>
-    <div class="prog-row">
+    <div class="ps" id="pDesc">Le nombre de passages pour gagner, et ce que vous offrez. Les cartes de vos clients se mettent à jour toutes seules.</div>
+    <div id="progPoints" style="display:none">
+      <label class="pt-lab">Points gagnés par euro dépensé</label>
+      <div class="stepper pt-euro">
+        <button id="ptMoins">−</button>
+        <div class="val" id="ptVal">1</div>
+        <button id="ptPlus">+</button>
+      </div>
+      <label class="pt-lab">Vos récompenses</label>
+      <div id="ptRecs"></div>
+      <button class="pt-ajout" id="ptAjout">+ Ajouter une récompense</button>
+    </div>
+    <div class="prog-row" id="progTampons">
       <div>
         <label>Passages pour gagner</label>
         <div class="stepper">
@@ -1135,7 +1161,7 @@
 
     // les cartes de ce commerce
     const { data: cartes } = await sb.from("cartes")
-      .select("id, prenom, email, tampons, dernier_tap, cree_le")
+      .select("id, prenom, nom, email, tampons, points, recompenses_dispo, dernier_tap, cree_le")
       .eq("commerce_id", commerce.id)
       .order("dernier_tap", { ascending: false });
 
@@ -1151,7 +1177,7 @@
     const actives = liste.length;
     const passagesSemaine = liste.filter(c => c.dernier_tap && (maintenant - new Date(c.dernier_tap).getTime()) < semaine).length;
     const inactifs = liste.filter(c => c.dernier_tap && (maintenant - new Date(c.dernier_tap).getTime()) > troisSem).length;
-    const pleines = liste.filter(c => c.tampons >= objectif).length;
+    const pleines = liste.filter(c => c.tampons >= objectif || (c.recompenses_dispo || 0) > 0).length;
 
     $("stActives").textContent = actives;
     $("stSemaine").textContent = passagesSemaine;
@@ -1175,8 +1201,17 @@
     }
     let html = '<div class="clients">';
     for(const c of liste){
-      const plein = c.tampons >= objectif;
-      const pct = Math.min(100, Math.round((c.tampons / objectif) * 100));
+      let plein = c.tampons >= objectif || (c.recompenses_dispo || 0) > 0;
+      let pct = Math.min(100, Math.round((c.tampons / objectif) * 100));
+      let frac = c.tampons + '/' + objectif;
+      if(modePoints){
+        const pts = c.points || 0;
+        const prochain = paliersPoints.find(function(x){ return x.cout > pts; });
+        const cible = prochain ? prochain.cout : (paliersPoints.length ? paliersPoints[paliersPoints.length - 1].cout : 100);
+        plein = paliersPoints.length > 0 && pts >= paliersPoints[0].cout;
+        pct = Math.min(100, Math.round((pts / cible) * 100));
+        frac = pts + ' pts';
+      }
       html += '<div class="client' + (plein ? ' full' : '') + (selection.has(c.id) ? ' pick' : '') + '" data-id="' + c.id + '">'+
         '<div class="coche">✓</div>'+
         '<div class="ini">' + initiales(c.prenom) + '</div>'+
@@ -1186,7 +1221,7 @@
         '</div>'+
         '<div class="prog">'+
           '<div class="bar"><span style="width:' + pct + '%"></span></div>'+
-          '<div class="frac">' + c.tampons + '/' + objectif + '</div>'+
+          '<div class="frac">' + frac + '</div>'+
         '</div>'+
       '</div>';
     }
@@ -1338,6 +1373,22 @@
     $("shNbPassages").textContent = "…";
     $("shNbCartes").textContent = "…";
     dessinerJauge(carte.tampons, objectifCourant);
+    /* mode points : solde à la place de la jauge, les points se donnent à la caisse */
+    const zoneAjust = document.querySelector("#sheet .adjust");
+    const libCartes = document.querySelector("#shNbCartes + .ss-l");
+    if(modePoints){
+      $("shFrac").textContent = (carte.points || 0) + " pts";
+      $("shUnite").textContent = "POINTS";
+      $("shGrid").style.display = "none";
+      if(zoneAjust) zoneAjust.style.display = "none";
+      $("shReward").style.display = "none";
+      if(libCartes) libCartes.textContent = "récompenses utilisées";
+    } else {
+      $("shGrid").style.display = "";
+      if(zoneAjust) zoneAjust.style.display = "";
+      $("shReward").style.display = "";
+      if(libCartes) libCartes.textContent = "cartes validées";
+    }
     $("sheetBg").classList.add("on");
     document.body.style.overflow = "hidden";
 
@@ -1353,7 +1404,9 @@
           let html = '<h3>Dernières visites</h3>';
           for(const t of taps.slice(0,10)){
             const d = new Date(t.cree_le);
-            const libelle = t.valeur === 0 ? "🎁 Récompense offerte" : "+" + t.valeur + " tampon";
+            let libelle = t.valeur === 0 ? "🎁 Récompense offerte" : "+" + t.valeur + (t.valeur > 1 ? " tampons" : " tampon");
+            if(t.type === "points") libelle = "+" + (t.points || 0) + " pts" + (t.montant_cents ? " (" + (t.montant_cents / 100).toFixed(2).replace(".", ",") + " €)" : "");
+            if(t.type === "recompense" && t.points) libelle = "🎁 Récompense utilisée (" + t.points + " pts)";
             html += '<div class="hist-row"><span>' + libelle + '</span><span>' + d.toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'}) + '</span></div>';
           }
           $("shHist").innerHTML = html;
@@ -1582,6 +1635,43 @@
 
   /* ---------- MON PROGRAMME ---------- */
   let progObjectif = 10, progInitial = 10, progRole = "proprio";
+  /* mode points */
+  let modePoints = false, paliersPoints = [], ptEuro = 1;
+  const PAS_EURO = [0.5, 1, 2, 3, 4, 5, 10];
+
+  function lignePt(rec){
+    const d = document.createElement("div");
+    d.className = "pt-row";
+    d.setAttribute("data-id", (rec && rec.id) || "");
+    d.innerHTML = '<input class="pt-nom" maxlength="40" placeholder="Ex : Café offert">' +
+      '<input class="pt-cout" type="number" inputmode="numeric" min="1" placeholder="50">' +
+      '<span class="pt-u">pts</span><button class="pt-del" aria-label="Retirer">✕</button>';
+    d.querySelector(".pt-nom").value = (rec && rec.nom) || "";
+    d.querySelector(".pt-cout").value = (rec && rec.cout) || "";
+    d.querySelector(".pt-del").addEventListener("click", function(){ if(progRole === "proprio") d.remove(); });
+    if(progRole !== "proprio") d.querySelectorAll("input,button").forEach(function(x){ x.disabled = true; });
+    return d;
+  }
+  function dessinerEuro(){
+    $("ptVal").textContent = String(ptEuro).replace(".", ",") + (ptEuro > 1 ? " pts" : " pt") + " / €";
+    const i = PAS_EURO.indexOf(ptEuro);
+    $("ptMoins").disabled = progRole !== "proprio" || i <= 0;
+    $("ptPlus").disabled = progRole !== "proprio" || i === -1 || i >= PAS_EURO.length - 1;
+  }
+  function resumePoints(){
+    const rp = $("progResume");
+    if(rp) rp.textContent = "· " + String(ptEuro).replace(".", ",") + " pt/€ · " + paliersPoints.length + (paliersPoints.length > 1 ? " récompenses" : " récompense");
+  }
+  /* le dashboard passe en affichage points */
+  function appliquerModePoints(){
+    const lab = document.querySelector("#stPleines + .l");
+    if(lab) lab.textContent = "Clients avec une récompense à utiliser";
+    const min = paliersPoints.length ? paliersPoints[0].cout : Infinity;
+    $("stPleines").textContent = toutClients.filter(function(c){ return (c.points || 0) >= min; }).length;
+    const q = ($("search").value || "").trim().toLowerCase();
+    const filtres = q ? toutClients.filter(c => ((c.prenom||"") + " " + (c.email||"")).toLowerCase().includes(q)) : toutClients;
+    afficherClients(filtres, objectifCourant);
+  }
 
   function dessinerProg(){
     $("pVal").textContent = progObjectif;
@@ -1601,6 +1691,23 @@
     appelPro({ action:"get_programme" }).then(function(r){
       if(!r || !r.ok) return;
       progObjectif = r.objectif; progInitial = r.objectif; progRole = r.role;
+      if(r.mode === "points"){
+        modePoints = true;
+        paliersPoints = r.recompenses_points || [];
+        ptEuro = r.points_par_euro || 1;
+        if(PAS_EURO.indexOf(ptEuro) < 0){ PAS_EURO.push(ptEuro); PAS_EURO.sort(function(a,b){ return a - b; }); }
+        $("progTampons").style.display = "none";
+        $("progPoints").style.display = "block";
+        $("pDesc").textContent = "Combien de points vos clients gagnent par euro, et ce qu'ils peuvent s'offrir avec. Ils gardent leurs points et choisissent quand les utiliser.";
+        $("ptRecs").innerHTML = "";
+        paliersPoints.forEach(function(x){ $("ptRecs").appendChild(lignePt(x)); });
+        dessinerEuro();
+        resumePoints();
+        $("ptAjout").disabled = progRole !== "proprio";
+        if(progRole !== "proprio"){ $("pSave").disabled = true; $("pWarn").textContent = "Seul le propriétaire peut modifier le programme."; }
+        appliquerModePoints();
+        return;
+      }
       $("pRecompense").value = r.recompense || "";
       dessinerProg();
       const rp = $("progResume");
@@ -1613,12 +1720,41 @@
     }).catch(function(){});
   }
 
+  $("ptMoins").addEventListener("click", function(){ const i = PAS_EURO.indexOf(ptEuro); if(i > 0){ ptEuro = PAS_EURO[i-1]; dessinerEuro(); } });
+  $("ptPlus").addEventListener("click", function(){ const i = PAS_EURO.indexOf(ptEuro); if(i >= 0 && i < PAS_EURO.length - 1){ ptEuro = PAS_EURO[i+1]; dessinerEuro(); } });
+  $("ptAjout").addEventListener("click", function(){ if($("ptRecs").children.length < 10) $("ptRecs").appendChild(lignePt(null)); });
   $("pMoins").addEventListener("click", function(){ if(progObjectif > 4){ progObjectif--; dessinerProg(); } });
   $("pPlus").addEventListener("click", function(){ if(progObjectif < 12){ progObjectif++; dessinerProg(); } });
 
   $("pSave").addEventListener("click", async function(){
-    const rec = ($("pRecompense").value || "").trim();
     const msg = $("pMsg");
+    if(modePoints){
+      const recs = [];
+      $("ptRecs").querySelectorAll(".pt-row").forEach(function(row){
+        const nom = row.querySelector(".pt-nom").value.trim();
+        const cout = parseInt(row.querySelector(".pt-cout").value, 10);
+        if(nom && cout > 0) recs.push({ id: row.getAttribute("data-id") || "", nom: nom, cout: cout });
+      });
+      if(!recs.length){ msg.className = "prog-msg err"; msg.textContent = "Ajoutez au moins une récompense (un nom et un nombre de points)."; return; }
+      this.disabled = true; this.textContent = "…";
+      const rp = await appelPro({ action:"set_programme", mode:"points", points_par_euro: ptEuro, recompenses_points: recs });
+      this.disabled = false; this.textContent = "Enregistrer";
+      if(rp && rp.ok){
+        paliersPoints = rp.recompenses_points;
+        $("ptRecs").innerHTML = "";
+        paliersPoints.forEach(function(x){ $("ptRecs").appendChild(lignePt(x)); });
+        resumePoints();
+        appliquerModePoints();
+        msg.className = "prog-msg on";
+        msg.textContent = "Enregistré ✓ Les cartes de vos clients se mettent à jour.";
+        setTimeout(function(){ msg.className = "prog-msg"; }, 3500);
+      } else {
+        msg.className = "prog-msg err";
+        msg.textContent = (rp && rp.raison === "reserve_proprio") ? "Seul le propriétaire peut modifier le programme." : "Impossible d'enregistrer, réessayez.";
+      }
+      return;
+    }
+    const rec = ($("pRecompense").value || "").trim();
     if(!rec){ msg.className = "prog-msg err"; msg.textContent = "Indiquez ce que vous offrez."; return; }
     this.disabled = true; this.textContent = "…";
     const r = await appelPro({ action:"set_programme", objectif: progObjectif, recompense: rec });
