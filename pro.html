@@ -451,6 +451,23 @@
   .pli-corps .rbar{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;}
   .pli-corps .rmsg{margin-right:auto;}
   .pli-corps .prog-bar{margin-top:14px;}
+  /* ma caisse */
+  .ca-txt{font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin-bottom:14px;}
+  .ca-ligne{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line);}
+  .ca-ligne:first-child{border-top:none;}
+  .ca-ligne .ca-n{font-weight:700;font-size:14px;}
+  .ca-ligne .ca-s{font-size:12px;color:var(--ink-soft);}
+  .ca-ligne .ca-coupe{margin-left:auto;background:none;border:1px solid var(--line);border-radius:9px;padding:7px 11px;
+    font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
+  .ca-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .ca-actions .prog-save{width:100%;padding:13px;}
+  .ca-autre{background:none;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:13px;
+    font-weight:700;color:var(--ink);cursor:pointer;}
+  .ca-code{background:var(--cream);border:1px dashed var(--line);border-radius:14px;padding:16px;text-align:center;margin:12px 0;}
+  .ca-code .l{font-size:12.5px;color:var(--ink-soft);}
+  .ca-code .u{font-weight:700;font-size:15px;margin:2px 0 8px;}
+  .ca-code .c{font-family:'Fraunces',serif;font-weight:600;font-size:34px;letter-spacing:.18em;color:var(--terracotta-deep);}
+  .ca-code .e{font-size:12px;color:var(--ink-soft);margin-top:4px;}
   .prog-preview{gap:7px;margin-top:12px;}
 
   /* ---- fiche client (panneau) ---- */
@@ -871,6 +888,26 @@
     </div>
   </details>
 
+  <details class="pli" id="caisseCard">
+    <summary><svg class="luic"><use href="#ic-tap"/></svg> Ma caisse <span class="resume" id="caisseResume"></span><span class="chev">›</span></summary>
+    <div class="pli-corps">
+      <div class="ca-txt">Une petite fenêtre au comptoir, sur une tablette ou un téléphone : votre équipe y donne les tampons ou saisit le montant, le client tape la carte. Elle n'a accès à rien d'autre de votre espace.</div>
+      <div id="caisseListe"></div>
+      <div class="ca-code" id="caisseCode" style="display:none">
+        <div class="l">Sur l'appareil du comptoir, ouvrez</div>
+        <div class="u">lunat.fr/caisse.html</div>
+        <div class="l">puis tapez ce code</div>
+        <div class="c" id="ccCode">······</div>
+        <div class="e" id="ccExp"></div>
+      </div>
+      <div class="ca-actions">
+        <button class="prog-save" id="caisseIci">Ouvrir la caisse sur cet appareil</button>
+        <button class="ca-autre" id="caisseNouvelle">Connecter un autre appareil</button>
+      </div>
+      <div class="prog-msg" id="caisseMsg"></div>
+    </div>
+  </details>
+
   <div class="section-head">
     <h2><svg class="luic luic-lg"><use href="#ic-users"/></svg> Vos clients</h2>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -1188,6 +1225,83 @@
     afficherClients(filtres, window.__objectif || 10);
   });
 
+
+  /* ---------- MA CAISSE ---------- */
+  function depuisQuand(d){
+    if(!d) return "";
+    const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+    if(m < 2) return "utilisée à l'instant";
+    if(m < 60) return "utilisée il y a " + m + " min";
+    const hh = Math.floor(m / 60);
+    if(hh < 24) return "utilisée il y a " + hh + " h";
+    return "utilisée il y a " + Math.floor(hh / 24) + " j";
+  }
+  function caisseMsg(t, err){
+    const el = $("caisseMsg");
+    el.style.display = t ? "block" : "none";
+    el.style.color = err ? "var(--terracotta-deep)" : "var(--ink-soft)";
+    el.textContent = t || "";
+  }
+  async function chargerCaisses(){
+    const r = await appelPro({ action:"caisse_liste" });
+    if(!r.ok){ caisseMsg("Impossible de charger vos caisses.", true); return; }
+    const maintenant = Date.now();
+    const liste = (r.caisses || []).filter(function(c){
+      // un code jamais utilisé et expiré n'a plus d'intérêt
+      return c.dernier_usage || (c.code_expire && new Date(c.code_expire).getTime() > maintenant);
+    });
+    $("caisseResume").textContent = liste.filter(function(c){ return c.dernier_usage; }).length
+      ? liste.filter(function(c){ return c.dernier_usage; }).length + " connectée" + (liste.filter(function(c){ return c.dernier_usage; }).length > 1 ? "s" : "")
+      : "";
+    if(!liste.length){
+      $("caisseListe").innerHTML = '<div class="ca-s" style="padding:4px 0 2px;color:var(--ink-soft);font-size:13px;">Aucune caisse connectée pour l\u2019instant.</div>';
+      return;
+    }
+    $("caisseListe").innerHTML = liste.map(function(c){
+      const etat = c.dernier_usage ? depuisQuand(c.dernier_usage)
+        : "en attente de connexion, code valable jusqu\u2019à " + new Date(c.code_expire).toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+      return '<div class="ca-ligne"><div><div class="ca-n">' + (c.nom || "Caisse").replace(/[<>&]/g, "") + '</div><div class="ca-s">' + etat + '</div></div>' +
+        '<button class="ca-coupe" data-id="' + c.id + '">Couper</button></div>';
+    }).join("");
+    $("caisseListe").querySelectorAll(".ca-coupe").forEach(function(b){
+      b.addEventListener("click", async function(){
+        if(!confirm("Couper cette caisse ? Elle ne pourra plus rien saisir.")) return;
+        b.disabled = true;
+        const r2 = await appelPro({ action:"caisse_couper", caisse_id: b.getAttribute("data-id") });
+        if(r2.ok){ $("caisseCode").style.display = "none"; chargerCaisses(); }
+        else { b.disabled = false; caisseMsg("Seul le propriétaire peut couper une caisse.", true); }
+      });
+    });
+  }
+  $("caisseCard").addEventListener("toggle", function(){ if(this.open){ caisseMsg(""); chargerCaisses(); } });
+  $("caisseIci").addEventListener("click", async function(){
+    if(!confirm("Cet appareil va devenir la caisse du comptoir. Pour que l'équipe n'ait pas accès à votre espace, vous serez déconnecté ici (vos autres appareils restent connectés). Continuer ?")) return;
+    const nom = prompt("Nom de cette caisse (ex : Comptoir, Terrasse) ?", "Comptoir");
+    if(nom === null) return;
+    this.disabled = true;
+    const r = await appelPro({ action:"caisse_ouvrir", nom: nom });
+    if(!r.ok || !r.jeton){
+      this.disabled = false;
+      caisseMsg(r.raison === "reserve_proprio" ? "Seul le propriétaire peut ouvrir une caisse." : "Impossible d'ouvrir la caisse, réessayez.", true);
+      return;
+    }
+    try { await sb.auth.signOut(); } catch(e){}
+    location.replace("/caisse.html#k=" + encodeURIComponent(r.jeton));
+  });
+
+  $("caisseNouvelle").addEventListener("click", async function(){
+    const nom = prompt("Nom de cette caisse (ex : Comptoir, Terrasse) ?", "Comptoir");
+    if(nom === null) return;
+    this.disabled = true;
+    const r = await appelPro({ action:"caisse_code", nom: nom });
+    this.disabled = false;
+    if(!r.ok){ caisseMsg(r.raison === "reserve_proprio" ? "Seul le propriétaire peut connecter une caisse." : "Impossible de créer le code, réessayez.", true); return; }
+    $("ccCode").textContent = r.code;
+    $("ccExp").textContent = "Valable 15 minutes, une seule fois. Vous pouvez l'envoyer par message à votre équipe.";
+    $("caisseCode").style.display = "block";
+    caisseMsg("");
+    chargerCaisses();
+  });
 
   /* ---------- FICHE CLIENT ---------- */
   async function appelPro(payload){
