@@ -195,6 +195,14 @@
   }
   .w-btn:active{transform:scale(.98);}
   .w-btn:disabled{opacity:.5;}
+  /* récupération de carte par code email */
+  .w-recup{display:none;}
+  .welcome.recup #wForm{display:none;}
+  .welcome.recup .w-recup{display:block;}
+  .w-code{text-align:center;letter-spacing:8px;font-size:22px;font-weight:700;}
+  .w-links{display:flex;justify-content:space-between;margin-top:12px;}
+  .w-link{background:none;border:none;font:inherit;font-size:12.5px;color:var(--ink-soft);
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px;}
 
   .banner{
     position:fixed;top:10px;left:50%;transform:translate(-50%,-130%);
@@ -240,13 +248,25 @@
 <div class="welcome" id="welcome">
   <div class="w-card">
     <div class="logo">✦</div>
-    <div class="w-title" id="wTitle">Bienvenue ☕</div>
-    <div class="w-sub">Ta carte de fidélité se crée en 2 secondes — avec un tampon de bienvenue offert. Ta carte de fidélité se crée en quelques secondes.</div>
-    <input class="w-input" id="wName" type="text" maxlength="20" placeholder="Prénom" autocomplete="given-name">
-    <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom" autocomplete="family-name">
-    <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email" autocomplete="email">
-    <label class="w-consent"><input type="checkbox" id="wConsent"> OK pour recevoir les offres et nouveautés de ce commerce par email</label>
-    <button class="w-btn" id="wGo">Créer ma carte</button>
+    <div id="wForm">
+      <div class="w-title" id="wTitle">Bienvenue ☕</div>
+      <div class="w-sub">Ta carte de fidélité se crée en quelques secondes, avec un tampon de bienvenue offert. Déjà inscrit ? Mets le même email, on retrouve ta carte.</div>
+      <input class="w-input" id="wName" type="text" maxlength="20" placeholder="Prénom" autocomplete="given-name">
+      <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom" autocomplete="family-name">
+      <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email" autocomplete="email">
+      <label class="w-consent"><input type="checkbox" id="wConsent"> OK pour recevoir les offres et nouveautés de ce commerce par email</label>
+      <button class="w-btn" id="wGo">Créer ma carte</button>
+    </div>
+    <div class="w-recup" id="wRecup">
+      <div class="w-title">Te revoilà ☕</div>
+      <div class="w-sub" id="wRecupTxt">Tu as déjà une carte ici. On vient de t'envoyer un code par email.</div>
+      <input class="w-input w-code" id="wCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······">
+      <button class="w-btn" id="wRecupGo">Retrouver ma carte</button>
+      <div class="w-links">
+        <button class="w-link" id="wRenvoyer">Renvoyer le code</button>
+        <button class="w-link" id="wRetour">Changer d'email</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -331,8 +351,7 @@
   </div>
 
   <footer>
-    ✦ Studio Cancri — fidélité NFC<br>
-    <button class="reset" id="reset">réinitialiser (nouvelle carte)</button>
+    ✦ Lunat · propulsé par Studio Cancri
   </footer>
 
 </div>
@@ -350,8 +369,11 @@
   var P = params.get("p") || "";
   var M = params.get("m") || "";
   var CLE = "cancri-jeton-" + SLUG;
+  /* lien « Retrouver ma carte » (dos de la carte Wallet) : ?j=<jeton> */
+  var J_LIEN = params.get("j") || "";
+  if(/^[0-9a-fA-F-]{36}$/.test(J_LIEN)){ try { localStorage.setItem(CLE, J_LIEN); } catch(e){} }
 
-  /* on nettoie l'URL (garde le commerce, retire tap/p/m) */
+  /* on nettoie l'URL (garde le commerce, retire tap/p/m/j) */
   history.replaceState(null, "", location.pathname + "?c=" + SLUG);
 
   var etatCourant = null;
@@ -383,11 +405,14 @@
     wMail: document.getElementById("wMail"),
     wConsent: document.getElementById("wConsent"),
     wGo: document.getElementById("wGo"),
-    reset: document.getElementById("reset")
+    wCode: document.getElementById("wCode"),
+    wRecupGo: document.getElementById("wRecupGo"),
+    wRecupTxt: document.getElementById("wRecupTxt")
   };
+  var emailRecup = "";
 
   function jeton(){ try { return localStorage.getItem(CLE); } catch(e){ return null; } }
-  function garderJeton(j){ try { localStorage.setItem(CLE, j); } catch(e){} }
+  function garderJeton(j){ if(!j) return; try { localStorage.setItem(CLE, j); } catch(e){} }
 
   function api(donnees){
     return fetch(API, {
@@ -514,7 +539,7 @@
     var code = pin;
     pin = "";
     renderPin();
-    api({ action: "valider", jeton: jeton(), code: code }).then(function(r){
+    api({ action: "valider", jeton: jeton(), commerce: SLUG, code: code }).then(function(r){
       if(r.ok === false){
         if(r.raison === "code"){
           els.pinDots.classList.remove("shake");
@@ -547,7 +572,7 @@
   function creerCarte(){
     var n = (els.wName.value || "").trim();
     if(n) n = n.charAt(0).toUpperCase() + n.slice(1);
-    var mail = (els.wMail.value || "").trim();
+    var mail = (els.wMail.value || "").trim().toLowerCase();
     var nom = (els.wNom.value || "").trim();
     if(nom) nom = nom.charAt(0).toUpperCase() + nom.slice(1);
     // nom de famille et email obligatoires
@@ -567,9 +592,11 @@
       m: M
     }).then(function(r){
       els.wGo.disabled = false;
+      if(r.raison === "email_existant"){ montrerRecup(r, mail); return; }
       if(r.ok === false){
         var mn = messageNfc(r.raison);
-        if(r.raison === "commerce_inconnu") banner("Commerce introuvable — vérifie la puce");
+        if(r.raison === "email_requis") banner("Un email valide est requis");
+        else if(r.raison === "commerce_inconnu") banner("Commerce introuvable — vérifie la puce");
         else if(mn) banner(mn);
         else banner("Erreur serveur — réessaie dans un instant");
         return;
@@ -595,39 +622,81 @@
     if(e.key === "Enter") creerCarte();
   });
 
-  /* ----- reset démo ----- */
-  els.reset.addEventListener("click", function(){
-    if(confirm("Repartir avec une nouvelle carte ? (démo)")){
-      try { localStorage.removeItem(CLE); } catch(e){}
-      location.href = location.pathname + "?c=" + SLUG;
-    }
+  /* ----- récupération : l'email a déjà une carte ici ----- */
+  function montrerRecup(r, mail){
+    emailRecup = mail;
+    els.wRecupTxt.textContent = (r.envoye === false)
+      ? "Tu as déjà une carte ici, mais l'email n'a pas pu partir. Touche « Renvoyer le code »."
+      : "Tu as déjà une carte chez " + (r.commerce || "ce commerce") + ". On vient d'envoyer un code à " + (r.email_masque || "ton email") + ".";
+    els.wCode.value = "";
+    els.welcome.classList.add("recup");
+    setTimeout(function(){ try { els.wCode.focus(); } catch(e){} }, 250);
+  }
+
+  function recupererCarte(){
+    var code = (els.wCode.value || "").replace(/\D/g, "");
+    if(code.length !== 6){ banner("Entre le code à 6 chiffres reçu par email"); return; }
+    els.wRecupGo.disabled = true;
+    api({ action: "recuperer", commerce: SLUG, email: emailRecup, code: code, p: P, m: M, tap: isTap }).then(function(r){
+      els.wRecupGo.disabled = false;
+      if(r.ok === false){
+        if(r.raison === "recup_code") banner("Code incorrect, réessaie");
+        else if(r.raison === "recup_expire") banner("Code expiré, touche « Renvoyer le code »");
+        else if(r.raison === "recup_bloque") banner("Trop d'essais, touche « Renvoyer le code »");
+        else banner("Petit souci, réessaie dans un instant");
+        return;
+      }
+      garderJeton(r.jeton);
+      P = ""; M = "";
+      els.welcome.classList.remove("on", "recup");
+      render(r, r.gagne ? [r.tampons - 1] : null);
+      banner(r.gagne ? "Carte retrouvée ✓ +1 tampon ☕" : "Carte retrouvée ✓ Tes tampons sont là ☕");
+    }).catch(function(){
+      els.wRecupGo.disabled = false;
+      banner("Connexion impossible, réessaie");
+    });
+  }
+  els.wRecupGo.addEventListener("click", recupererCarte);
+  els.wCode.addEventListener("keydown", function(e){ if(e.key === "Enter") recupererCarte(); });
+  els.wCode.addEventListener("input", function(){
+    if((els.wCode.value || "").replace(/\D/g, "").length === 6) recupererCarte();
+  });
+  document.getElementById("wRenvoyer").addEventListener("click", function(){
+    api({ action: "envoyer_code", commerce: SLUG, email: emailRecup }).then(function(r){
+      banner(r.ok ? "Nouveau code envoyé ✉️" : "Envoi impossible, réessaie dans une minute");
+    }).catch(function(){ banner("Connexion impossible, réessaie"); });
+  });
+  document.getElementById("wRetour").addEventListener("click", function(){
+    els.welcome.classList.remove("recup");
   });
 
-  /* ----- démarrage ----- */
-  var j = jeton();
-  if(!j){
-    els.welcome.classList.add("on");
-  } else if(isTap){
-    api({ action: "tap", jeton: j, p: P, m: M }).then(function(r){
+  /* ----- démarrage -----
+     même sans jeton sur ce téléphone, on demande d'abord au serveur :
+     il peut reconnaître le client grâce à son cookie */
+  var j = jeton() || "";
+  function horsLigne(){
+    if(!j) els.welcome.classList.add("on");
+    else els.status.textContent = "Connexion impossible — vérifie ta connexion et recharge";
+  }
+  if(isTap){
+    api({ action: "tap", jeton: j, commerce: SLUG, p: P, m: M }).then(function(r){
       if(r.raison === "carte_inconnue"){
         els.welcome.classList.add("on");
         return;
       }
+      garderJeton(r.jeton);
       P = ""; M = "";
       gererReponseTap(r);
-    }).catch(function(){
-      els.status.textContent = "Connexion impossible — vérifie ta connexion et recharge";
-    });
+    }).catch(horsLigne);
   } else {
-    api({ action: "etat", jeton: j }).then(function(r){
+    api({ action: "etat", jeton: j, commerce: SLUG }).then(function(r){
       if(r.raison === "carte_inconnue"){
         els.welcome.classList.add("on");
         return;
       }
+      garderJeton(r.jeton);
       render(r);
-    }).catch(function(){
-      els.status.textContent = "Connexion impossible — vérifie ta connexion et recharge";
-    });
+    }).catch(horsLigne);
   }
 })();
 </script>
