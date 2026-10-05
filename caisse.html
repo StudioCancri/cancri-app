@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lunat caisse">
+<meta name="theme-color" content="#1B2027">
+<title>Caisse — Lunat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --orange:#FCA321; --orange-deep:#E8890A; --orange-pale:rgba(252,163,33,.14);
+    --sarcelle:#215E63; --nuit:#1B2027; --nuit-2:#262D36; --papier:#F2F2F0;
+    --encre:#1B2027; --encre-soft:rgba(27,32,39,.62); --ligne:rgba(27,32,39,.12);
+    --rouge:#C64B44;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:'Instrument Sans',system-ui,-apple-system,sans-serif;background:var(--papier);color:var(--encre);
+    -webkit-font-smoothing:antialiased;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+    user-select:none;-webkit-user-select:none;}
+  button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--orange);outline-offset:2px;}
+  .num{font-family:'Bricolage Grotesque',sans-serif;font-variant-numeric:tabular-nums;}
+  .app{max-width:440px;margin:0 auto;min-height:100%;display:flex;flex-direction:column;padding:12px 12px 16px;gap:10px;}
+
+  /* ---------- connexion ---------- */
+  #vConnexion{display:none;flex:1;flex-direction:column;justify-content:center;gap:14px;padding:12px 8px;}
+  #vConnexion img{height:26px;align-self:flex-start;}
+  #vConnexion h1{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:26px;letter-spacing:-.02em;line-height:1.1;}
+  #vConnexion p{font-size:14px;color:var(--encre-soft);line-height:1.5;}
+  .code-in{width:100%;background:#fff;border:1.5px solid var(--ligne);border-radius:14px;padding:16px;
+    font-family:'Bricolage Grotesque',sans-serif;font-size:28px;font-weight:800;letter-spacing:.3em;text-align:center;
+    text-transform:uppercase;color:var(--encre);user-select:text;-webkit-user-select:text;}
+  .code-in:focus{outline:none;border-color:var(--orange);}
+  .msg{font-size:13.5px;min-height:19px;}
+  .msg.err{color:var(--rouge);}
+
+  /* ---------- en-tête ---------- */
+  .tete{display:flex;align-items:center;gap:8px;}
+  .tete .qui{flex:1;min-width:0;}
+  .tete .nom{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:17px;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tete .sous{font-size:12px;color:var(--encre-soft);}
+  .ico{width:38px;height:38px;border-radius:11px;background:#fff;border:1px solid var(--ligne);
+    display:flex;align-items:center;justify-content:center;flex:none;}
+  .ico svg{width:19px;height:19px;}
+
+  /* ---------- onglets ---------- */
+  .onglets{display:flex;background:rgba(27,32,39,.06);border-radius:12px;padding:3px;}
+  .onglets button{flex:1;padding:9px 6px;border-radius:9px;font-size:14px;font-weight:600;color:var(--encre-soft);}
+  .onglets button.on{background:#fff;color:var(--encre);box-shadow:0 1px 3px rgba(27,32,39,.12);}
+
+  /* ---------- l'écran de caisse : la pièce maîtresse ---------- */
+  .ecran{background:var(--nuit);color:var(--papier);border-radius:18px;padding:16px 18px 14px;
+    position:relative;overflow:hidden;min-height:116px;display:flex;flex-direction:column;justify-content:flex-end;
+    border:2px solid var(--nuit);transition:border-color .3s;}
+  .ecran .grand{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1;text-align:right;color:var(--orange);
+    white-space:nowrap;overflow:hidden;}
+  .ecran .petit{font-size:13.5px;color:rgba(242,242,240,.65);text-align:right;margin-top:8px;min-height:18px;}
+  .ecran.attente{border-color:var(--orange);animation:pouls 1.6s ease-in-out infinite;}
+  .ecran.ok{background:var(--sarcelle);border-color:var(--sarcelle);}
+  .ecran.ok .grand{color:#fff;}
+  .ecran.ok .petit{color:rgba(255,255,255,.85);}
+  .ecran.refus .grand{color:#F2B8B4;}
+  @keyframes pouls{0%,100%{box-shadow:0 0 0 0 rgba(252,163,33,.0);}50%{box-shadow:0 0 0 6px rgba(252,163,33,.22);}}
+
+  /* ---------- pavé ---------- */
+  .pave{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .touche{background:#fff;border:1px solid var(--ligne);border-radius:14px;height:58px;
+    font-family:'Bricolage Grotesque',sans-serif;font-size:24px;font-weight:600;
+    box-shadow:0 2px 0 rgba(27,32,39,.08);transition:transform .06s;}
+  .touche:active{transform:translateY(2px);box-shadow:none;}
+  .touche.util{background:transparent;box-shadow:none;}
+  .touche svg{width:22px;height:22px;vertical-align:middle;}
+
+  /* ---------- tampons ---------- */
+  .tamp{display:flex;align-items:center;justify-content:center;gap:16px;padding:6px 0;}
+  .tamp .pm{width:62px;height:62px;border-radius:50%;background:#fff;border:1px solid var(--ligne);font-size:28px;font-weight:600;
+    box-shadow:0 2px 0 rgba(27,32,39,.08);}
+  .tamp .pm:active{transform:translateY(2px);box-shadow:none;}
+  .rapides{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .rapides button{background:#fff;border:1px solid var(--ligne);border-radius:12px;padding:12px;font-weight:700;font-size:15px;}
+  .rapides button.on{border-color:var(--orange);background:var(--orange-pale);}
+
+  /* ---------- récompenses ---------- */
+  .recs{display:flex;flex-direction:column;gap:8px;}
+  .rec{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--ligne);border-radius:14px;
+    padding:14px 16px;text-align:left;width:100%;}
+  .rec .n{flex:1;font-weight:600;font-size:15.5px;}
+  .rec .c{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:15px;color:var(--orange-deep);}
+  .rec:active{background:var(--orange-pale);}
+  .vide{font-size:13.5px;color:var(--encre-soft);padding:8px 2px;line-height:1.5;}
+
+  /* ---------- actions ---------- */
+  .valider{width:100%;background:var(--orange);color:var(--nuit);border-radius:14px;padding:17px;
+    font-size:17px;font-weight:700;margin-top:auto;}
+  .valider:disabled{opacity:.4;}
+  .valider:active{transform:scale(.99);}
+  .annuler{width:100%;background:#fff;border:1px solid var(--ligne);border-radius:14px;padding:15px;font-size:15.5px;font-weight:600;}
+  .aide{font-size:12.5px;color:var(--encre-soft);text-align:center;line-height:1.5;}
+  .zone{display:flex;flex-direction:column;gap:10px;flex:1;}
+  .grise{opacity:.35;pointer-events:none;}
+
+  /* ---------- guide fenêtre flottante ---------- */
+  .voile{position:fixed;inset:0;background:rgba(27,32,39,.45);display:none;align-items:flex-end;justify-content:center;z-index:50;}
+  .voile.on{display:flex;}
+  .feuille{background:var(--papier);width:100%;max-width:460px;border-radius:22px 22px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom));
+    max-height:88vh;overflow:auto;user-select:text;-webkit-user-select:text;}
+  .feuille h2{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:21px;letter-spacing:-.01em;margin-bottom:6px;}
+  .feuille .intro{font-size:14px;color:var(--encre-soft);margin-bottom:16px;line-height:1.5;}
+  .feuille ol{padding-left:20px;display:flex;flex-direction:column;gap:10px;font-size:14.5px;line-height:1.5;}
+  .feuille .astuce{margin-top:16px;background:#fff;border:1px solid var(--ligne);border-radius:12px;padding:12px 14px;font-size:13px;line-height:1.5;color:var(--encre-soft);}
+  .feuille .fermer{margin-top:18px;}
+  .menu-l{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== CONNEXION DE LA CAISSE ===== -->
+  <div id="vConnexion">
+    <img src="/assets/lunat-logo.png" alt="Lunat">
+    <h1>Connecter cette caisse</h1>
+    <p>Vous êtes le patron et vous êtes sur l'appareil du comptoir ? Ouvrez votre espace commerçant, rubrique « Ma caisse », et touchez « Ouvrir la caisse sur cet appareil ».</p>
+    <p>Sinon, tapez ici le code généré depuis l'espace commerçant :</p>
+    <input class="code-in" id="cCode" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="······">
+    <button class="valider" id="cGo">Connecter</button>
+    <div class="msg" id="cMsg"></div>
+  </div>
+
+  <!-- ===== CAISSE ===== -->
+  <div id="vCaisse" style="display:none;flex:1;flex-direction:column;gap:10px;">
+    <div class="tete">
+      <div class="qui"><div class="nom" id="tNom">Commerce</div><div class="sous" id="tSous">Caisse</div></div>
+      <button class="ico" id="bFenetre" aria-label="Afficher en fenêtre flottante">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><rect x="12" y="9" width="6.5" height="8" rx="1.5" fill="currentColor" stroke="none" opacity=".85"/></svg>
+      </button>
+      <button class="ico" id="bMenu" aria-label="Réglages de la caisse">
+        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
+      </button>
+    </div>
+
+    <div class="onglets" id="onglets">
+      <button data-o="gagner" class="on" id="oGagner">Points</button>
+      <button data-o="recompense" id="oRec">Récompense</button>
+    </div>
+
+    <div class="ecran" id="ecran">
+      <div class="grand num" id="eGrand">0 €</div>
+      <div class="petit" id="ePetit"></div>
+    </div>
+
+    <!-- points : pavé numérique -->
+    <div class="zone" id="zPoints">
+      <div class="pave" id="pave"></div>
+    </div>
+
+    <!-- tampons -->
+    <div class="zone" id="zTampons" style="display:none">
+      <div class="tamp">
+        <button class="pm" id="tMoins" aria-label="Un tampon de moins">−</button>
+        <button class="pm" id="tPlus" aria-label="Un tampon de plus">+</button>
+      </div>
+      <div class="rapides" id="rapides">
+        <button data-n="1" class="on">1 tampon</button>
+        <button data-n="2">2 tampons</button>
+        <button data-n="3">3 tampons</button>
+      </div>
+    </div>
+
+    <!-- récompenses -->
+    <div class="zone" id="zRec" style="display:none">
+      <div class="recs" id="recs"></div>
+    </div>
+
+    <button class="valider" id="bValider">Valider</button>
+    <button class="annuler" id="bAnnuler" style="display:none">Annuler</button>
+    <div class="aide" id="aide"></div>
+  </div>
+</div>
+
+<!-- guide fenêtre flottante -->
+<div class="voile" id="vGuide">
+  <div class="feuille">
+    <h2>Afficher en fenêtre flottante</h2>
+    <div class="intro" id="gIntro"></div>
+    <ol id="gEtapes"></ol>
+    <div class="astuce" id="gAstuce"></div>
+    <button class="annuler fermer" id="gFermer">J'ai compris</button>
+  </div>
+</div>
+
+<!-- menu -->
+<div class="voile" id="vMenu">
+  <div class="feuille">
+    <h2>Cette caisse</h2>
+    <div class="intro" id="mInfo"></div>
+    <div class="menu-l">
+      <button class="annuler" id="mRecharger">Recharger les réglages</button>
+      <button class="annuler" id="mDeco" style="color:var(--rouge)">Déconnecter cette caisse</button>
+      <button class="annuler" id="mFermer">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var API = "/api/caisse";
+  var CLE = "lunat-caisse-jeton";
+  var $ = function(id){ return document.getElementById(id); };
+
+  var jeton = null;
+  var C = null;                // infos du commerce
+  var onglet = "gagner";
+  var saisie = "";             // montant tapé, ex "12,5"
+  var nbTampons = 1;
+  var attente = null;          // { id, fin, resume }
+  var minuteur = null, sondage = null, retour = null;
+
+  function lireJeton(){ try { return localStorage.getItem(CLE); } catch(e){ return null; } }
+  function garderJeton(j){ try { localStorage.setItem(CLE, j); } catch(e){} }
+  function oublierJeton(){ try { localStorage.removeItem(CLE); } catch(e){} }
+  function esc(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  function api(d){
+    d.jeton = d.jeton || jeton;
+    return fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(d) })
+      .then(function(r){ return r.json(); });
+  }
+
+  /* l'écran reste allumé au comptoir */
+  var verrou = null;
+  function garderEcranAllume(){
+    try { if(navigator.wakeLock && !verrou) navigator.wakeLock.request("screen").then(function(v){ verrou = v; v.addEventListener("release", function(){ verrou = null; }); }).catch(function(){}); } catch(e){}
+  }
+  document.addEventListener("visibilitychange", function(){ if(document.visibilityState === "visible") garderEcranAllume(); });
+
+  /* ================= CONNEXION ================= */
+  function vueConnexion(msg){
+    $("vCaisse").style.display = "none";
+    $("vConnexion").style.display = "flex";
+    $("cMsg").className = "msg" + (msg ? " err" : "");
+    $("cMsg").textContent = msg || "";
+  }
+  function connecter(){
+    var code = ($("cCode").value || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if(code.length !== 6){ vueConnexion("Le code fait 6 caractères."); return; }
+    $("cGo").disabled = true;
+    fetch(API, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify({ action:"appairer", code: code }) })
+      .then(function(r){ return r.json(); })
+      .then(function(r){
+        $("cGo").disabled = false;
+        if(!r.ok){ vueConnexion("Code invalide ou expiré. Générez-en un nouveau dans l'espace commerçant."); return; }
+        jeton = r.jeton; garderJeton(jeton);
+        demarrer(r.commerce);
+      })
+      .catch(function(){ $("cGo").disabled = false; vueConnexion("Pas de connexion internet."); });
+  }
+  $("cGo").addEventListener("click", connecter);
+  $("cCode").addEventListener("keydown", function(e){ if(e.key === "Enter") connecter(); });
+
+  /* ================= CAISSE ================= */
+  function demarrer(com){
+    C = com;
+    $("vConnexion").style.display = "none";
+    $("vCaisse").style.display = "flex";
+    $("tNom").textContent = C.nom;
+    $("tSous").textContent = (C.caisse || "Caisse") + (C.mode === "points" ? ", mode points" : ", mode tampons");
+    $("oGagner").textContent = C.mode === "points" ? "Points" : "Tampons";
+    document.title = "Caisse " + C.nom;
+    rendreRecompenses();
+    choisirOnglet("gagner");
+    garderEcranAllume();
+  }
+
+  function choisirOnglet(o){
+    if(attente) return;
+    onglet = o;
+    $("onglets").querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-o") === o); });
+    var pts = C.mode === "points";
+    $("zPoints").style.display = (o === "gagner" && pts) ? "flex" : "none";
+    $("zTampons").style.display = (o === "gagner" && !pts) ? "flex" : "none";
+    $("zRec").style.display = o === "recompense" ? "flex" : "none";
+    $("bValider").style.display = o === "recompense" && pts ? "none" : "block";
+    majEcran();
+  }
+  $("onglets").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(b) choisirOnglet(b.getAttribute("data-o"));
+  });
+
+  function centimes(){
+    if(!saisie) return 0;
+    var v = parseFloat(saisie.replace(",", "."));
+    return isFinite(v) ? Math.round(v * 100) : 0;
+  }
+  function euros(c){ return (c / 100).toFixed(2).replace(".", ",").replace(",00", "") + " €"; }
+  function pointsPour(c){ return Math.floor((c / 100) * (C.points_par_euro || 1)); }
+
+  function majEcran(){
+    var e = $("ecran");
+    e.className = "ecran";
+    var pts = C.mode === "points";
+    if(onglet === "gagner" && pts){
+      $("eGrand").textContent = (saisie || "0") + " €";
+      var c = centimes();
+      $("ePetit").textContent = c ? pointsPour(c) + " point" + (pointsPour(c) > 1 ? "s" : "") + " pour le client" : "Tapez le montant payé";
+      $("bValider").disabled = c <= 0;
+      $("aide").textContent = "";
+    } else if(onglet === "gagner"){
+      $("eGrand").textContent = "+" + nbTampons;
+      $("ePetit").textContent = nbTampons > 1 ? nbTampons + " tampons à donner" : "1 tampon à donner";
+      $("bValider").disabled = false;
+      $("aide").textContent = "";
+    } else {
+      $("eGrand").textContent = pts ? "Récompense" : (C.recompense || "Récompense");
+      $("ePetit").textContent = pts ? "Choisissez ce que le client utilise" : "Le client utilise une récompense gagnée";
+      $("bValider").disabled = false;
+      $("bValider").textContent = "Valider";
+      $("aide").textContent = pts ? "" : "Elle est déduite au tap du client, s'il en a une en réserve.";
+    }
+    if(!attente) $("bValider").textContent = "Valider";
+  }
+
+  /* pavé numérique */
+  (function(){
+    var t = ["1","2","3","4","5","6","7","8","9",",","0","del"];
+    t.forEach(function(k){
+      var b = document.createElement("button");
+      b.className = "touche" + (k === "del" ? " util" : "");
+      if(k === "del"){
+        b.setAttribute("aria-label", "Effacer");
+        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7z"/><path d="M13 10l4 4M17 10l-4 4"/></svg>';
+      } else b.textContent = k;
+      b.addEventListener("click", function(){ touche(k); });
+      $("pave").appendChild(b);
+    });
+  })();
+  function touche(k){
+    if(attente) return;
+    if(k === "del"){ saisie = saisie.slice(0, -1); }
+    else if(k === ","){ if(saisie.indexOf(",") < 0) saisie = (saisie || "0") + ","; }
+    else {
+      var p = saisie.split(",");
+      if(p[1] !== undefined && p[1].length >= 2) return;
+      if(p[0].length >= 3 && p[1] === undefined) return;
+      if(saisie === "0") saisie = "";
+      saisie += k;
+    }
+    majEcran();
+  }
+  document.addEventListener("keydown", function(e){
+    if($("vCaisse").style.display === "none" || onglet !== "gagner" || !C || C.mode !== "points") return;
+    if(/^[0-9]$/.test(e.key)) touche(e.key);
+    else if(e.key === "," || e.key === ".") touche(",");
+    else if(e.key === "Backspace") touche("del");
+    else if(e.key === "Enter") valider();
+  });
+
+  /* tampons */
+  function majTampons(n){
+    nbTampons = Math.max(1, Math.min(5, n));
+    $("rapides").querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", +b.getAttribute("data-n") === nbTampons); });
+    majEcran();
+  }
+  $("tMoins").addEventListener("click", function(){ if(!attente) majTampons(nbTampons - 1); });
+  $("tPlus").addEventListener("click", function(){ if(!attente) majTampons(nbTampons + 1); });
+  $("rapides").addEventListener("click", function(e){ var b = e.target.closest("button"); if(b && !attente) majTampons(+b.getAttribute("data-n")); });
+
+  /* récompenses */
+  function rendreRecompenses(){
+    var z = $("recs");
+    if(C.mode !== "points"){ z.innerHTML = ""; return; }
+    if(!C.recompenses || !C.recompenses.length){
+      z.innerHTML = '<div class="vide">Aucune récompense définie pour l\'instant.</div>'; return;
+    }
+    z.innerHTML = C.recompenses.map(function(r){
+      return '<button class="rec" data-id="' + esc(r.id) + '"><span class="n">' + esc(r.nom) + '</span><span class="c">' + r.cout + ' pts</span></button>';
+    }).join("");
+    z.querySelectorAll(".rec").forEach(function(b){
+      b.addEventListener("click", function(){
+        var r = C.recompenses.find(function(x){ return x.id === b.getAttribute("data-id"); });
+        if(r) envoyer({ type:"recompense", recompense_id: r.id }, r.nom, r.cout + " points seront déduits");
+      });
+    });
+  }
+
+  /* ================= SAISIE → ATTENTE → RÉSULTAT ================= */
+  function valider(){
+    if(attente) return;
+    if(onglet === "gagner" && C.mode === "points"){
+      var c = centimes(); if(c <= 0) return;
+      envoyer({ type:"points", montant_cents: c }, euros(c), pointsPour(c) + " points pour le client");
+    } else if(onglet === "gagner"){
+      envoyer({ type:"tampons", nombre: nbTampons }, "+" + nbTampons, nbTampons > 1 ? nbTampons + " tampons" : "1 tampon");
+    } else {
+      envoyer({ type:"recompense" }, C.recompense || "Récompense", "Récompense utilisée");
+    }
+  }
+  $("bValider").addEventListener("click", valider);
+
+  function envoyer(d, grand, resume){
+    $("bValider").disabled = true;
+    d.action = "saisir";
+    api(d).then(function(r){
+      if(!r.ok){
+        $("bValider").disabled = false;
+        if(r.raison === "caisse_inconnue"){ oublierJeton(); vueConnexion("Cette caisse a été déconnectée. Entrez un nouveau code."); return; }
+        if(r.raison === "montant_trop_eleve"){ resultatTexte("refus", "Trop élevé", "Maximum " + r.max + " € par saisie"); return; }
+        resultatTexte("refus", "Pas envoyé", "Réessayez dans un instant");
+        return;
+      }
+      attente = { id: r.id, fin: Date.now() + (r.attente_s || 120) * 1000, grand: grand, resume: resume };
+      vueAttente();
+    }).catch(function(){
+      $("bValider").disabled = false;
+      resultatTexte("refus", "Hors ligne", "Vérifiez la connexion internet");
+    });
+  }
+
+  function vueAttente(){
+    $("ecran").className = "ecran attente";
+    $("eGrand").textContent = attente.grand;
+    [$("zPoints"), $("zTampons"), $("zRec"), $("onglets")].forEach(function(z){ z.classList.add("grise"); });
+    $("bValider").style.display = "none";
+    $("bAnnuler").style.display = "block";
+    var tic = function(){
+      var s = Math.max(0, Math.ceil((attente.fin - Date.now()) / 1000));
+      $("ePetit").textContent = attente.resume + ". Le client pose son téléphone sur la carte (" + Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0") + ")";
+      if(s <= 0) finAttente("expire");
+    };
+    tic();
+    minuteur = setInterval(tic, 500);
+    sondage = setInterval(sonder, 1500);
+  }
+
+  function sonder(){
+    if(!attente) return;
+    var id = attente.id;
+    api({ action:"statut", id: id }).then(function(r){
+      if(!attente || attente.id !== id || !r.ok) return;
+      if(r.statut === "consomme") finAttente("consomme", r.resultat);
+      else if(r.statut === "expire" || r.statut === "annule") finAttente(r.statut);
+    }).catch(function(){});
+  }
+
+  function nettoyerAttente(){
+    clearInterval(minuteur); clearInterval(sondage);
+    attente = null;
+    [$("zPoints"), $("zTampons"), $("zRec"), $("onglets")].forEach(function(z){ z.classList.remove("grise"); });
+    $("bAnnuler").style.display = "none";
+    $("bValider").style.display = (onglet === "recompense" && C.mode === "points") ? "none" : "block";
+    $("bValider").disabled = false;
+  }
+
+  function finAttente(statut, res){
+    nettoyerAttente();
+    if(statut === "consomme" && res){
+      var qui = res.prenom ? res.prenom : "Client";
+      if(res.ok === false){
+        if(res.raison === "points_insuffisants") resultatTexte("refus", "Pas assez", qui + " a " + res.points + " points sur " + res.cout + " nécessaires");
+        else if(res.raison === "aucune_recompense") resultatTexte("refus", "Rien à utiliser", qui + " n'a pas encore de récompense (" + res.tampons + "/" + res.objectif + ")");
+        else resultatTexte("refus", "Refusé", "Réessayez");
+        return;
+      }
+      /* on remet la caisse à zéro sans écraser l'écran de confirmation */
+      saisie = ""; nbTampons = 1;
+      $("rapides").querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-n") === "1"); });
+      if(res.type === "points") resultatTexte("ok", "+" + res.gagne + " pts", qui + " a maintenant " + res.points + " points");
+      else if(res.type === "tampons") resultatTexte("ok", "+" + res.gagne, qui + (res.debloquees ? " débloque une récompense, gardée en réserve" : " est à " + res.tampons + "/" + res.objectif));
+      else resultatTexte("ok", "Offert", (res.recompense || "Récompense") + " pour " + qui);
+      return;
+    }
+    if(statut === "expire") resultatTexte("refus", "Temps écoulé", "Le client n'a pas tapé. Revalidez quand il est prêt.");
+    else majEcran();
+  }
+
+  $("bAnnuler").addEventListener("click", function(){
+    if(!attente) return;
+    var id = attente.id;
+    nettoyerAttente();
+    majEcran();
+    api({ action:"annuler", id: id }).catch(function(){});
+  });
+
+  function resultatTexte(genre, grand, petit){
+    clearTimeout(retour);
+    $("ecran").className = "ecran " + genre;
+    $("eGrand").textContent = grand;
+    $("ePetit").textContent = petit;
+    retour = setTimeout(function(){ if(!attente) majEcran(); }, genre === "ok" ? 4000 : 5000);
+  }
+
+  /* ================= FENÊTRE FLOTTANTE ================= */
+  function appareil(){
+    var ua = navigator.userAgent;
+    var ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if(ipad) return "ipad";
+    if(/iPhone|iPod/.test(ua)) return "iphone";
+    if(/Android/.test(ua)) return /Mobile/.test(ua) ? "android-tel" : "android";
+    return "ordi";
+  }
+  function ouvrirGuide(){
+    var a = appareil(), intro, etapes, astuce;
+    if(a === "ipad"){
+      intro = "La caisse Lunat se pose par-dessus votre appli de paiement, sans la gêner.";
+      etapes = ["Ouvrez d'abord votre appli de paiement.",
+        "Ouvrez Safari avec cette page caisse.",
+        "Touchez les trois petits points en haut de la fenêtre Safari, puis choisissez la fenêtre flottante (« Slide Over » ou « Fenêtre » selon votre version d'iPad).",
+        "Pour la ranger, glissez-la vers le bord de l'écran. Un glissement depuis le bord la fait revenir."];
+      astuce = "Astuce : ajoutez cette page à l'écran d'accueil (bouton Partager, puis « Sur l'écran d'accueil »). Elle s'ouvrira comme une appli et restera connectée.";
+    } else if(a === "android"){
+      intro = "Sur la plupart des tablettes Android, la caisse peut flotter au-dessus de votre appli de paiement.";
+      etapes = ["Ouvrez cette page dans Chrome, puis le bouton des applis récentes (carré ou trois traits en bas).",
+        "Touchez l'icône de Chrome en haut de sa fenêtre.",
+        "Choisissez « Ouvrir en vue contextuelle » (Samsung) ou « Écran partagé ».",
+        "Ouvrez votre appli de paiement à côté."];
+      astuce = "Astuce : menu Chrome, puis « Ajouter à l'écran d'accueil », pour retrouver la caisse en un geste.";
+    } else if(a === "iphone" || a === "android-tel"){
+      intro = "Sur un téléphone, pas besoin de fenêtre flottante : posez-le au comptoir avec cette page ouverte.";
+      etapes = ["Ajoutez la page à l'écran d'accueil (Partager ou menu du navigateur, puis « Sur l'écran d'accueil »).",
+        "Ouvrez-la depuis l'icône : elle reste connectée.",
+        "L'écran reste allumé tant que la page est ouverte."];
+      astuce = "Un vieux téléphone posé à côté de la caisse fait parfaitement l'affaire.";
+    } else {
+      intro = "Sur ordinateur, gardez cette page dans une petite fenêtre à côté de votre logiciel de caisse.";
+      etapes = ["Réduisez la fenêtre du navigateur et placez-la sur le côté de l'écran.", "Elle reste utilisable même étroite."];
+      astuce = "Le pavé numérique du clavier fonctionne aussi, et Entrée valide.";
+    }
+    $("gIntro").textContent = intro;
+    $("gEtapes").innerHTML = etapes.map(function(t){ return "<li>" + esc(t) + "</li>"; }).join("");
+    $("gAstuce").textContent = astuce;
+    $("vGuide").classList.add("on");
+  }
+  $("bFenetre").addEventListener("click", ouvrirGuide);
+  $("gFermer").addEventListener("click", function(){ $("vGuide").classList.remove("on"); });
+  $("vGuide").addEventListener("click", function(e){ if(e.target === $("vGuide")) $("vGuide").classList.remove("on"); });
+
+  /* ================= MENU ================= */
+  $("bMenu").addEventListener("click", function(){
+    $("mInfo").textContent = (C ? C.nom + ", " + (C.caisse || "Caisse") : "") + ". Pour couper l'accès à distance : espace commerçant, rubrique « Ma caisse ».";
+    $("vMenu").classList.add("on");
+  });
+  $("mFermer").addEventListener("click", function(){ $("vMenu").classList.remove("on"); });
+  $("vMenu").addEventListener("click", function(e){ if(e.target === $("vMenu")) $("vMenu").classList.remove("on"); });
+  $("mRecharger").addEventListener("click", function(){ $("vMenu").classList.remove("on"); charger(); });
+  $("mDeco").addEventListener("click", function(){
+    if(!confirm("Déconnecter cette caisse ? Il faudra un nouveau code pour la reconnecter.")) return;
+    oublierJeton(); jeton = null; $("vMenu").classList.remove("on"); vueConnexion("");
+  });
+
+  /* ================= DÉMARRAGE ================= */
+  function charger(){
+    api({ action:"session" }).then(function(r){
+      if(!r.ok){
+        if(r.raison === "caisse_inconnue"){ oublierJeton(); vueConnexion("Cette caisse a été déconnectée. Entrez un nouveau code."); }
+        else vueConnexion("Impossible de charger la caisse. Rechargez la page.");
+        return;
+      }
+      demarrer(r.commerce);
+    }).catch(function(){ vueConnexion("Pas de connexion internet."); });
+  }
+  /* ouverte depuis l'espace commerçant : le jeton arrive dans l'adresse (#k=…) */
+  var m = /[#&]k=([^&]+)/.exec(location.hash || "");
+  if(m){
+    try { garderJeton(decodeURIComponent(m[1])); } catch(e){}
+    history.replaceState(null, "", location.pathname);
+  }
+  jeton = lireJeton();
+  if(jeton) charger(); else vueConnexion("");
+})();
+</script>
+</body>
+</html>
