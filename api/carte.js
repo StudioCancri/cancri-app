@@ -1,7 +1,9 @@
 /* ============================================================
    API CANCRI — /api/carte  (Vercel serverless)
-   Une seule porte d'entrée, 4 actions :
-   - creer   : nouvelle carte (tampon de bienvenue = 1)
+   Une seule porte d'entrée, 5 actions :
+   - creer     : nouvelle carte (tampon de bienvenue = 1)
+                 si l'email a déjà une carte ici → code envoyé par mail
+   - recuperer : le client retrouve sa carte avec le code reçu
    - etat    : lire l'état de la carte
    - tap     : +1 tampon (cooldown 15 s, 3/jour max, vérif NFC SDM)
    - valider : le staff offre la récompense (code), carte repart à 1
@@ -79,6 +81,10 @@ const TAPS_MAX_JOUR = 3;
 const TAMPON_DEPART = 1;
 /* jusqu'à combien de taps en arrière on accepte un compteur (file d'attente au comptoir) */
 const FENETRE_COMPTEUR = 50;
+/* récupération de carte par code email */
+const CODE_DUREE_MS = 10 * 60 * 1000;
+const CODE_ESSAIS_MAX = 5;
+const COOKIE_DUREE_S = 400 * 24 * 3600;
 
 /* ---------- petit client Supabase (API REST, zéro dépendance) ---------- */
 async function sb(chemin, options) {
@@ -231,6 +237,104 @@ async function consommerTapNfc(uid, compteur, commerce) {
   return { ok: true };
 }
 
+/* ---------- mémoire du téléphone : cookie posé par le serveur ----------
+   Safari efface la mémoire des pages (localStorage) au bout de 7 jours sans
+   interaction. Un cookie HttpOnly posé par le serveur résiste beaucoup mieux :
+   c'est notre filet de sécurité pour reconnaître le client au tap. */
+function lireCookies(req) {
+  const out = {};
+  (req.headers.cookie || "").split(";").forEach(function (morceau) {
+    const i = morceau.indexOf("=");
+    if (i > 0) {
+      try { out[morceau.slice(0, i).trim()] = decodeURIComponent(morceau.slice(i + 1).trim()); } catch (e) {}
+    }
+  });
+  return out;
+}
+function nomCookie(slug) {
+  return "lunat_j_" + String(slug || "").replace(/[^a-zA-Z0-9-]/g, "");
+}
+function poserCookie(res, slug, jeton) {
+  if (!slug || !jeton) return;
+  res.setHeader("Set-Cookie",
+    nomCookie(slug) + "=" + encodeURIComponent(jeton) +
+    "; Path=/; Max-Age=" + COOKIE_DUREE_S + "; Secure; HttpOnly; SameSite=Lax");
+}
+
+/* ---------- email ---------- */
+function normaliserEmail(v) {
+  const e = (v || "").toString().trim().toLowerCase().slice(0, 80);
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) ? e : null;
+}
+function masquerEmail(e) {
+  const i = e.indexOf("@");
+  if (i < 1) return e;
+  return e.charAt(0) + "***" + e.slice(i);
+}
+/* carte existante pour cet email chez ce commerce (la plus récente) */
+async function carteParEmail(commerceId, email) {
+  const motif = email.replace(/[\\%_]/g, "\\$&");
+  const rows = await sb(
+    "cartes?commerce_id=eq." + commerceId +
+    "&email=ilike." + encodeURIComponent(motif) +
+    "&select=*&order=cree_le.desc&limit=1"
+  );
+  return rows && rows[0] ? rows[0] : null;
+}
+
+/* ---------- code de récupération ---------- */
+function hacherCode(code, carteId) {
+  return crypto.createHash("sha256").update(String(code) + ":" + carteId).digest("hex");
+}
+async function envoyerMailCode(email, code, commerce) {
+  const cle = (process.env.RESEND_API_KEY || "").trim();
+  if (!cle) throw new Error("RESEND_API_KEY absente");
+  const de = (process.env.MAIL_EXPEDITEUR || "Lunat <bonjour@lunat.fr>").trim();
+  const html =
+    '<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:420px;margin:0 auto;padding:24px;color:#1B2027">' +
+    '<p style="font-size:15px;margin:0 0 12px">Bonjour,</p>' +
+    '<p style="font-size:15px;margin:0 0 18px">Voici ton code pour retrouver ta carte de fidélité <b>' + commerce.nom + '</b> :</p>' +
+    '<p style="font-size:34px;font-weight:700;letter-spacing:8px;margin:0 0 18px">' + code + '</p>' +
+    '<p style="font-size:13px;color:#666;margin:0">Il est valable 10 minutes. Si tu n\'as rien demandé, ignore ce message.</p>' +
+    '<p style="font-size:12px;color:#999;margin:24px 0 0">Lunat · propulsé par Studio Cancri</p></div>';
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + cle, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: de,
+      to: [email],
+      subject: code + " : ton code pour retrouver ta carte " + commerce.nom,
+      html: html,
+      text: "Ton code pour retrouver ta carte " + commerce.nom + " : " + code + " (valable 10 minutes).",
+    }),
+  });
+  if (!r.ok) throw new Error("Resend " + r.status + " : " + (await r.text()));
+}
+/* génère et envoie un code (pas plus d'un envoi par minute) */
+async function envoyerCodeRecup(carte, commerce, email) {
+  const maintenant = Date.now();
+  if (carte.recup_expire) {
+    const envoyeLe = new Date(carte.recup_expire).getTime() - CODE_DUREE_MS;
+    if (maintenant - envoyeLe < 60 * 1000) return { ok: true, deja: true };
+  }
+  const code = String(crypto.randomInt(0, 1000000)).padStart(6, "0");
+  await sb("cartes?id=eq." + carte.id, {
+    method: "PATCH",
+    body: {
+      recup_code: hacherCode(code, carte.id),
+      recup_expire: new Date(maintenant + CODE_DUREE_MS).toISOString(),
+      recup_essais: 0,
+    },
+  });
+  try {
+    await envoyerMailCode(email, code, commerce);
+    return { ok: true };
+  } catch (e) {
+    console.error("mail code:", e.message);
+    return { ok: false };
+  }
+}
+
 /* ---------- helpers ---------- */
 function aujourdhui() {
   return new Date().toISOString().slice(0, 10);
@@ -248,6 +352,7 @@ function etat(carte, commerce, extra) {
   );
   const base = {
     ok: true,
+    jeton: carte.jeton,
     prenom: carte.prenom || null,
     tampons: carte.tampons,
     objectif: commerce.objectif,
@@ -270,10 +375,39 @@ async function commerceParSlug(slug) {
 }
 
 async function carteParJeton(jeton) {
+  if (!jeton) return null;
   const rows = await sb(
     "cartes?jeton=eq." + encodeURIComponent(jeton) + "&select=*"
   );
   return rows && rows[0] ? rows[0] : null;
+}
+
+/* +1 tampon avec les garde-fous (pleine, cooldown, limite) → réponse à renvoyer */
+async function appliquerTap(carte, commerce) {
+  if (carte.tampons >= commerce.objectif) {
+    return etat(carte, commerce, { ok: false, raison: "pleine" });
+  }
+  const dernier = carte.dernier_tap ? new Date(carte.dernier_tap).getTime() : 0;
+  const ecart = Math.floor((Date.now() - dernier) / 1000);
+  if (dernier && ecart < COOLDOWN_S) {
+    return etat(carte, commerce, { ok: false, raison: "cooldown", secondes: COOLDOWN_S - ecart });
+  }
+  if (tapsDuJour(carte) >= TAPS_MAX_JOUR) {
+    return etat(carte, commerce, { ok: false, raison: "limite" });
+  }
+  const maj = await sb("cartes?id=eq." + carte.id, {
+    method: "PATCH",
+    body: {
+      tampons: Math.min(carte.tampons + 1, commerce.objectif),
+      dernier_tap: new Date().toISOString(),
+      taps_aujourdhui: tapsDuJour(carte) + 1,
+      jour_reference: aujourdhui(),
+    },
+  });
+  await sb("taps", { method: "POST", body: { carte_id: carte.id, valeur: 1 } });
+  /* mise à jour du pass Wallet */
+  try { await envoyerPush(carte.jeton); } catch (e) { console.error("push:", e.message); }
+  return etat(maj[0], commerce, { gagne: 1 });
 }
 
 /* ---------- handler ---------- */
@@ -299,6 +433,22 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: false, raison: "commerce_inconnu" });
       }
 
+      /* email obligatoire, et s'il a déjà une carte ici : pas de doublon,
+         on envoie un code pour qu'il la récupère (la preuve NFC n'est pas consommée) */
+      const emailNet = normaliserEmail(body.email);
+      if (!emailNet) return res.status(200).json({ ok: false, raison: "email_requis" });
+      const existante = await carteParEmail(commerce.id, emailNet);
+      if (existante) {
+        const envoi = await envoyerCodeRecup(existante, commerce, emailNet);
+        return res.status(200).json({
+          ok: false,
+          raison: "email_existant",
+          envoye: envoi.ok,
+          email_masque: masquerEmail(emailNet),
+          commerce: commerce.nom,
+        });
+      }
+
       /* si le commerce est passé en NFC obligatoire, la création aussi doit être prouvée */
       if (commerce.nfc_requis === true) {
         const v = verifierSdm(body.p, body.m);
@@ -309,8 +459,7 @@ module.exports = async (req, res) => {
 
       const prenom = (body.prenom || "").toString().trim().slice(0, 20) || null;
       const nom = (body.nom || "").toString().trim().slice(0, 30) || null;
-      const brut = (body.email || "").toString().trim().slice(0, 80);
-      const email = brut && brut.indexOf("@") > 0 ? brut : null;
+      const email = emailNet;
       const consentement = body.consentement === true && !!email;
       const jeton = randomUUID();
       const inseres = await sb("cartes", {
@@ -333,18 +482,80 @@ module.exports = async (req, res) => {
         method: "POST",
         body: { carte_id: carte.id, valeur: TAMPON_DEPART },
       });
+      poserCookie(res, commerce.slug, jeton);
       return res
         .status(200)
         .json(etat(carte, commerce, { jeton: jeton, bienvenue: true }));
     }
 
-    /* ----- toutes les autres actions demandent un jeton ----- */
-    const carte = await carteParJeton(body.jeton || "");
+    /* ----- ENVOYER_CODE : renvoyer un code de récupération ----- */
+    if (action === "envoyer_code") {
+      const commerce = await commerceParSlug(body.commerce || "");
+      if (!commerce) return res.status(200).json({ ok: false, raison: "commerce_inconnu" });
+      const email = normaliserEmail(body.email);
+      if (!email) return res.status(200).json({ ok: false, raison: "email_requis" });
+      const c = await carteParEmail(commerce.id, email);
+      if (!c) return res.status(200).json({ ok: false, raison: "recup_introuvable" });
+      const envoi = await envoyerCodeRecup(c, commerce, email);
+      return res.status(200).json({ ok: envoi.ok, raison: envoi.ok ? undefined : "envoi_impossible", email_masque: masquerEmail(email) });
+    }
+
+    /* ----- RECUPERER : le client retrouve sa carte avec le code reçu ----- */
+    if (action === "recuperer") {
+      const commerce = await commerceParSlug(body.commerce || "");
+      if (!commerce) return res.status(200).json({ ok: false, raison: "commerce_inconnu" });
+      const email = normaliserEmail(body.email);
+      if (!email) return res.status(200).json({ ok: false, raison: "email_requis" });
+      const c = await carteParEmail(commerce.id, email);
+      if (!c || !c.recup_code) return res.status(200).json({ ok: false, raison: "recup_introuvable" });
+      if ((c.recup_essais || 0) >= CODE_ESSAIS_MAX) return res.status(200).json({ ok: false, raison: "recup_bloque" });
+      if (!c.recup_expire || new Date(c.recup_expire).getTime() < Date.now()) {
+        return res.status(200).json({ ok: false, raison: "recup_expire" });
+      }
+      const code = (body.code || "").toString().replace(/\D/g, "");
+      if (hacherCode(code, c.id) !== c.recup_code) {
+        await sb("cartes?id=eq." + c.id, { method: "PATCH", body: { recup_essais: (c.recup_essais || 0) + 1 } });
+        return res.status(200).json({ ok: false, raison: "recup_code" });
+      }
+      await sb("cartes?id=eq." + c.id, {
+        method: "PATCH",
+        body: { recup_code: null, recup_expire: null, recup_essais: 0 },
+      });
+      poserCookie(res, commerce.slug, c.jeton);
+
+      /* le tampon de cette visite, si le client vient de taper la puce */
+      let visiteProuvee = false;
+      if (body.p && body.m) {
+        const v = verifierSdm(body.p, body.m);
+        if (v.ok) {
+          const k = await consommerTapNfc(v.uid, v.compteur, commerce);
+          visiteProuvee = k.ok;
+        }
+      } else if (commerce.nfc_requis !== true && body.tap === true) {
+        visiteProuvee = true;
+      }
+      if (visiteProuvee) {
+        const r = await appliquerTap(c, commerce);
+        if (r.ok === false) return res.status(200).json(etat(c, commerce, { recupere: true, tap_raison: r.raison }));
+        r.recupere = true;
+        return res.status(200).json(r);
+      }
+      return res.status(200).json(etat(c, commerce, { recupere: true }));
+    }
+
+    /* ----- toutes les autres actions : on retrouve la carte
+       par le jeton du téléphone, sinon par le cookie du commerce ----- */
+    let carte = await carteParJeton(body.jeton || "");
+    if (!carte && body.commerce) {
+      const cookies = lireCookies(req);
+      carte = await carteParJeton(cookies[nomCookie(body.commerce)] || "");
+    }
     if (!carte) {
       return res.status(200).json({ ok: false, raison: "carte_inconnue" });
     }
     const rows = await sb("commerces?id=eq." + carte.commerce_id + "&select=*");
     const commerce = rows[0];
+    poserCookie(res, commerce.slug, carte.jeton);
 
     /* ----- ETAT ----- */
     if (action === "etat") {
@@ -369,48 +580,7 @@ module.exports = async (req, res) => {
         }
       }
 
-      if (carte.tampons >= commerce.objectif) {
-        return res
-          .status(200)
-          .json(etat(carte, commerce, { ok: false, raison: "pleine" }));
-      }
-      const dernier = carte.dernier_tap
-        ? new Date(carte.dernier_tap).getTime()
-        : 0;
-      const ecart = Math.floor((Date.now() - dernier) / 1000);
-      if (dernier && ecart < COOLDOWN_S) {
-        return res.status(200).json(
-          etat(carte, commerce, {
-            ok: false,
-            raison: "cooldown",
-            secondes: COOLDOWN_S - ecart,
-          })
-        );
-      }
-      if (tapsDuJour(carte) >= TAPS_MAX_JOUR) {
-        return res
-          .status(200)
-          .json(etat(carte, commerce, { ok: false, raison: "limite" }));
-      }
-
-      const maj = await sb("cartes?id=eq." + carte.id, {
-        method: "PATCH",
-        body: {
-          tampons: Math.min(carte.tampons + 1, commerce.objectif),
-          dernier_tap: new Date().toISOString(),
-          taps_aujourdhui: tapsDuJour(carte) + 1,
-          jour_reference: aujourdhui(),
-        },
-      });
-      await sb("taps", {
-        method: "POST",
-        body: { carte_id: carte.id, valeur: 1 },
-      });
-      /* mise à jour du pass Wallet (silencieux, on n'attend pas) */
-      if (envoyerPush) { try { await envoyerPush(carte.jeton); } catch (e) { console.error("push:", e.message); } }
-      return res
-        .status(200)
-        .json(etat(maj[0], commerce, { gagne: 1 }));
+      return res.status(200).json(await appliquerTap(carte, commerce));
     }
 
     /* ----- VALIDER : le staff offre la récompense ----- */
