@@ -158,6 +158,8 @@
   var card = document.getElementById("card");
 
   function jeton(){ try { return localStorage.getItem(CLE); } catch(e){ return null; } }
+  /* le serveur renvoie toujours le jeton : on le re-mémorise (Safari peut l'avoir effacé) */
+  function garderJeton(j){ if(!j) return; try { localStorage.setItem(CLE, j); } catch(e){} }
 
   /* on emmène la preuve NFC avec nous quand on redirige vers l'inscription */
   function versInscription(){
@@ -198,9 +200,9 @@
     return "Reviens tout à l'heure pour ton prochain tampon \u2615";
   }
 
-  /* pas encore de carte → direction inscription */
-  var j = jeton();
-  if(!j){ versInscription(); return; }
+  /* pas de jeton sur ce téléphone ? on ne redirige plus tout de suite :
+     le serveur essaie de reconnaître le client grâce à son cookie */
+  var j = jeton() || "";
 
   /* garde-fou anti-refresh : inutile quand la puce fournit une preuve
      (le serveur détecte lui-même un rejeu, et un vrai 2e tap doit compter) */
@@ -211,8 +213,9 @@
   }
 
   if(dejaFait){
-    api({ action:"etat", jeton:j }).then(function(r){
+    api({ action:"etat", jeton:j, commerce:SLUG }).then(function(r){
       if(r.raison === "carte_inconnue"){ versInscription(); return; }
+      garderJeton(r.jeton);
       vue(
         '<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">\u2713</span></div>'+
         '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
@@ -226,9 +229,12 @@
   }
 
   /* on tente le +1, en transmettant la preuve de la puce */
-  api({ action:"tap", jeton:j, p:P, m:M }).then(function(r){
+  api({ action:"tap", jeton:j, commerce:SLUG, p:P, m:M }).then(function(r){
 
+    /* vraiment inconnu (ni jeton ni cookie) → inscription, avec la preuve NFC
+       intacte : le serveur ne la consomme pas tant qu'il n'a pas trouvé la carte */
     if(r.raison === "carte_inconnue"){ versInscription(); return; }
+    garderJeton(r.jeton);
 
     /* carte pleine */
     if(r.pleine){
