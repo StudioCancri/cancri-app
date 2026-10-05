@@ -457,6 +457,19 @@
     els.count.textContent = e.tampons;
     els.countMax.textContent = "/" + obj;
 
+    /* mode points : solde à la place de la grille de tampons */
+    if(e.mode === "points"){
+      var recs = (e.recompenses_points || []).slice().sort(function(a,b){ return a.cout - b.cout; });
+      var proche = recs.find(function(x){ return x.cout > e.points; }) || recs[recs.length - 1];
+      els.count.textContent = e.points;
+      els.countMax.textContent = "";
+      els.uniteLab.textContent = "POINTS";
+      els.grid.style.display = "none";
+      if(proche){ els.rewardField.textContent = proche.nom + " à " + proche.cout + " pts"; els.rewardBig.textContent = proche.nom; }
+    } else {
+      els.grid.style.display = "";
+    }
+
     var cols = obj <= 6 ? obj : Math.ceil(obj / 2);
     els.grid.style.gridTemplateColumns = "repeat(" + cols + ", 1fr)";
     els.grid.innerHTML = "";
@@ -479,8 +492,8 @@
       if(wb){ wb.style.display = "none"; }
       if(ab){ ab.style.display = "block"; }
     }
-    els.pass.classList.toggle("reward", e.pleine);
-    els.staffBox.classList.toggle("on", e.pleine);
+    els.pass.classList.toggle("reward", e.pleine && e.mode !== "points");
+    els.staffBox.classList.toggle("on", e.pleine && e.mode !== "points");
     renderStatus();
   }
 
@@ -512,6 +525,16 @@
   }
 
   function gererReponseTap(r){
+    if(r.caisse && r.resultat){
+      var x = r.resultat;
+      render(r);
+      if(x.ok === false) banner(x.raison === "points_insuffisants" ? "Pas encore assez de points" : "Pas encore de récompense");
+      else if(x.type === "points") banner("+" + x.gagne + " points ☕");
+      else if(x.type === "tampons") banner("+" + x.gagne + (x.gagne > 1 ? " tampons" : " tampon") + " ☕");
+      else banner((x.recompense || "Récompense") + " utilisée 🎁");
+      return;
+    }
+    if(r.solde){ render(r); banner(r.mode === "points" ? "Tu as " + r.points + " points" : "Demande ton tampon au comptoir ☕"); return; }
     if(r.ok === false){
       render(r);
       var mn = messageNfc(r.raison);
@@ -606,7 +629,9 @@
       P = ""; M = "";
       els.welcome.classList.remove("on");
       render(r, [0]);
-      banner("Carte créée — tampon de bienvenue offert ☕");
+      if(r.caisse && r.resultat && r.resultat.ok && r.resultat.type === "points") banner("Carte créée : +" + r.resultat.gagne + " points ☕");
+      else if(r.caisse && r.resultat && r.resultat.ok && r.resultat.type === "tampons") banner("Carte créée : +" + (r.resultat.gagne + 1) + " tampons ☕");
+      else banner("Carte créée — tampon de bienvenue offert ☕");
     }).catch(function(){
       els.wGo.disabled = false;
       banner("Connexion impossible — réessaie");
