@@ -200,6 +200,79 @@
     return "Reviens tout à l'heure pour ton prochain tampon \u2615";
   }
 
+  /* ---------- caisse : points, tampons multiples, récompenses ---------- */
+  function prochaineRecompense(r){
+    var recs = (r.recompenses_points || []).slice().sort(function(a,b){ return a.cout - b.cout; });
+    if(!recs.length) return "";
+    var dispo = recs.filter(function(x){ return x.cout <= r.points; });
+    if(dispo.length) return "Tu peux déjà utiliser : <b>" + dispo[dispo.length-1].nom + "</b>. Demande-la au comptoir quand tu veux.";
+    var p = recs[0];
+    return "Plus que <b>" + (p.cout - r.points) + " points</b> avant <b>" + p.nom + "</b>";
+  }
+  function reserve(r){
+    var n = r.recompenses_dispo || 0;
+    if(!n) return "";
+    return '<div class="sub show3" style="animation-delay:.5s">🎁 ' + n + (n > 1 ? " récompenses" : " récompense") +
+      " en réserve. Utilise-la au comptoir quand tu veux.</div>";
+  }
+  function vueCaisse(r){
+    var x = r.resultat || {};
+    if(x.ok === false){
+      var msg = x.raison === "points_insuffisants"
+        ? "Il te faut " + x.cout + " points pour " + (x.recompense || "cette récompense") + ", tu en as " + x.points + "."
+        : "Tu n'as pas encore de récompense à utiliser.";
+      vue('<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:40px">…</span></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">Pas encore</div>'+
+        '<div class="soft show3">'+ msg +'</div>');
+      return;
+    }
+    if(x.type === "points"){
+      vue('<div class="disc pop"><div class="halo"></div><span class="plus">+'+ x.gagne +'</span></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">'+ (x.gagne > 1 ? x.gagne + " points gagnés" : x.gagne + " point gagné") +'</div>'+
+        '<div class="sub show3">Tu as maintenant <b>'+ r.points +' points</b><br>'+ prochaineRecompense(r) +'</div>'+
+        walletLink(".9s"));
+      return;
+    }
+    if(x.type === "tampons"){
+      vue('<div class="disc pop"><div class="halo"></div><span class="plus">+'+ x.gagne +'</span></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">'+ (x.gagne > 1 ? "Tampons ajoutés ☕" : "Tampon ajouté ☕") +'</div>'+
+        (x.debloquees ? '<div class="sub show3"><b>Récompense débloquée !</b></div>' : '<div class="sub show3">Plus que <b>'+ (r.objectif - r.tampons) +'</b> avant <b>'+ r.recompense +'</b></div>')+
+        dots(r.tampons, r.objectif)+ reserve(r)+
+        walletLink(".9s"));
+      var d = document.getElementById("dots"); if(d){ d.classList.add("show3"); d.style.animationDelay=".6s"; }
+      return;
+    }
+    /* récompense utilisée */
+    vue('<div class="disc full pop"><div class="halo"></div><div class="gift">🎁</div></div>'+
+      '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+      '<div class="title show2">Bon appétit !</div>'+
+      '<div class="sub show3"><b>'+ (x.recompense || "Récompense") +'</b> utilisée'+
+      (r.mode === "points" ? '<br>Il te reste <b>'+ r.points +' points</b>' : "") +'</div>'+
+      (r.mode === "points" ? "" : reserve(r))+
+      walletLink(".9s"));
+  }
+  function vueSolde(r){
+    if(r.mode === "points"){
+      vue('<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:38px">'+ r.points +'</span></div>'+
+        '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+        '<div class="title show2">'+ r.points +' points</div>'+
+        '<div class="sub show3">'+ prochaineRecompense(r) +'</div>'+
+        '<div class="soft show3" style="animation-delay:.6s">Pour gagner des points, l\'équipe saisit ton achat, puis tu poses ton téléphone sur la carte.</div>'+
+        walletLink(".9s"));
+      return;
+    }
+    vue('<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">\u2713</span></div>'+
+      '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
+      '<div class="title show2">'+ r.tampons +'/'+ r.objectif +'</div>'+
+      '<div class="soft show3">Demande ton tampon au comptoir : l\'équipe le valide, puis tu reposes ton téléphone sur la carte \u2615</div>'+
+      dots(r.tampons, r.objectif)+ reserve(r)+
+      walletLink(".9s"));
+    var d = document.getElementById("dots"); if(d){ d.classList.add("show3"); d.style.animationDelay=".6s"; }
+  }
+
   /* pas de jeton sur ce téléphone ? on ne redirige plus tout de suite :
      le serveur essaie de reconnaître le client grâce à son cookie */
   var j = jeton() || "";
@@ -235,6 +308,10 @@
        intacte : le serveur ne la consomme pas tant qu'il n'a pas trouvé la carte */
     if(r.raison === "carte_inconnue"){ versInscription(); return; }
     garderJeton(r.jeton);
+
+    /* la caisse avait saisi quelque chose, ou on montre juste le solde */
+    if(r.caisse){ vueCaisse(r); return; }
+    if(r.solde){ vueSolde(r); return; }
 
     /* carte pleine */
     if(r.pleine){
