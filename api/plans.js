@@ -22,6 +22,7 @@ const PLANS = {
       segments: false,        // ciblage par catégorie de clients
       relances: false,        // relances automatiques des inactifs
       stats_avancees: false,
+      points: false,          // système de points (à la place des tampons)
     },
   },
 
@@ -41,6 +42,7 @@ const PLANS = {
       segments: true,
       relances: true,
       stats_avancees: true,
+      points: true,
     },
   },
 };
