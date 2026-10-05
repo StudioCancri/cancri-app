@@ -17,6 +17,7 @@
 const { randomUUID } = require("crypto");
 const crypto = require("crypto");
 const http2 = require("http2");
+const { capacites } = require("./plans");
 
 function certDepuisEnv(nom) {
   const b64 = (process.env[nom] || "").trim();
@@ -234,7 +235,7 @@ async function consommerTapNfc(uid, compteur, commerce) {
     if (e.statut === 409) return { ok: false, raison: "nfc_rejeu" };
     throw e;
   }
-  return { ok: true };
+  return { ok: true, appareil_id: puce.appareil_id || null };
 }
 
 /* ---------- mémoire du téléphone : cookie posé par le serveur ----------
@@ -363,6 +364,10 @@ function etat(carte, commerce, extra) {
     cooldown: cooldown,
     taps_aujourdhui: tapsDuJour(carte),
     taps_max: TAPS_MAX_JOUR,
+    mode: modeEffectif(commerce),
+    points: carte.points || 0,
+    recompenses_dispo: carte.recompenses_dispo || 0,
+    recompenses_points: modeEffectif(commerce) === "points" ? listeRecompenses(commerce) : [],
   };
   return Object.assign(base, extra || {});
 }
@@ -380,6 +385,103 @@ async function carteParJeton(jeton) {
     "cartes?jeton=eq." + encodeURIComponent(jeton) + "&select=*"
   );
   return rows && rows[0] ? rows[0] : null;
+}
+
+/* ============================================================
+   CAISSE : ce que l'employé a saisi, consommé au tap du client
+   ============================================================ */
+function listeRecompenses(commerce) {
+  let r = commerce.recompenses_points;
+  if (typeof r === "string") { try { r = JSON.parse(r); } catch (e) { r = []; } }
+  return Array.isArray(r) ? r : [];
+}
+function modeEffectif(commerce) {
+  return commerce.mode === "points" && capacites(commerce).points ? "points" : "tampons";
+}
+
+/* la saisie en attente : celle de la caisse liée à la puce, sinon la plus récente du commerce */
+async function attenteDuCommerce(commerce, appareilId) {
+  let q = "caisse_attente?commerce_id=eq." + commerce.id +
+    "&statut=eq.en_attente&expire_le=gt." + encodeURIComponent(new Date().toISOString());
+  if (appareilId) q += "&appareil_id=eq." + appareilId;
+  const rows = await sb(q + "&select=*&order=cree_le.desc&limit=1");
+  return rows && rows[0] ? rows[0] : null;
+}
+
+/* applique la saisie à la carte du client → { carte, resultat } (null si déjà prise) */
+async function appliquerAttente(a, carte, commerce) {
+  /* on la réserve d'abord : si deux téléphones tapent en même temps, un seul gagne */
+  const pris = await sb("caisse_attente?id=eq." + a.id + "&statut=eq.en_attente", {
+    method: "PATCH",
+    body: { statut: "consomme", carte_id: String(carte.id) },
+  });
+  if (!pris || !pris.length) return null;
+
+  const mode = modeEffectif(commerce);
+  const obj = commerce.objectif;
+  const maintenant = new Date().toISOString();
+  const base = {
+    dernier_tap: maintenant,
+    taps_aujourdhui: tapsDuJour(carte) + 1,
+    jour_reference: aujourdhui(),
+  };
+  let patch = null, tap = null, resultat = null;
+
+  if (a.type === "tampons") {
+    const n = a.valeur || 1;
+    let t = (carte.tampons || 0) + n;
+    let dispo = carte.recompenses_dispo || 0;
+    let debloquees = 0;
+    while (t >= obj) { t -= obj; dispo++; debloquees++; }
+    patch = Object.assign({ tampons: t, recompenses_dispo: dispo }, base);
+    tap = { carte_id: carte.id, valeur: n, type: "tampon" };
+    resultat = { ok: true, type: "tampons", gagne: n, tampons: t, objectif: obj, recompenses_dispo: dispo, debloquees: debloquees };
+
+  } else if (a.type === "points") {
+    const gagne = Math.floor((a.valeur / 100) * (Number(commerce.points_par_euro) || 1));
+    const total = (carte.points || 0) + gagne;
+    patch = Object.assign({ points: total }, base);
+    tap = { carte_id: carte.id, valeur: 1, type: "points", points: gagne, montant_cents: a.valeur };
+    resultat = { ok: true, type: "points", gagne: gagne, points: total, montant_cents: a.valeur };
+
+  } else if (a.type === "recompense") {
+    if (mode === "points") {
+      const rec = listeRecompenses(commerce).find(function (x) { return x.id === a.recompense_id; });
+      const solde = carte.points || 0;
+      if (!rec || solde < rec.cout) {
+        resultat = { ok: false, raison: "points_insuffisants", points: solde, cout: rec ? rec.cout : a.valeur, recompense: rec ? rec.nom : "" };
+      } else {
+        patch = { points: solde - rec.cout, dernier_tap: maintenant };
+        tap = { carte_id: carte.id, valeur: 0, type: "recompense", points: -rec.cout };
+        resultat = { ok: true, type: "recompense", recompense: rec.nom, points: solde - rec.cout };
+      }
+    } else {
+      const dispo = carte.recompenses_dispo || 0;
+      if (dispo > 0) {
+        patch = { recompenses_dispo: dispo - 1, dernier_tap: maintenant };
+      } else if ((carte.tampons || 0) >= obj) {
+        patch = { tampons: 0, dernier_tap: maintenant }; // ancienne carte pleine
+      }
+      if (patch) {
+        tap = { carte_id: carte.id, valeur: 0, type: "recompense" };
+        resultat = { ok: true, type: "recompense", recompense: commerce.recompense, recompenses_dispo: patch.recompenses_dispo !== undefined ? patch.recompenses_dispo : dispo };
+      } else {
+        resultat = { ok: false, raison: "aucune_recompense", tampons: carte.tampons || 0, objectif: obj };
+      }
+    }
+  }
+
+  let carteMaj = carte;
+  if (patch) {
+    const maj = await sb("cartes?id=eq." + carte.id, { method: "PATCH", body: patch });
+    carteMaj = maj[0];
+    await sb("taps", { method: "POST", body: tap });
+    try { await envoyerPush(carte.jeton); } catch (e) { console.error("push:", e.message); }
+  }
+  resultat = resultat || { ok: false, raison: "type_inconnu" };
+  resultat.prenom = carte.prenom || null;
+  await sb("caisse_attente?id=eq." + a.id, { method: "PATCH", body: { resultat: resultat } });
+  return { carte: carteMaj, resultat: resultat };
 }
 
 /* +1 tampon avec les garde-fous (pleine, cooldown, limite) → réponse à renvoyer */
@@ -404,7 +506,7 @@ async function appliquerTap(carte, commerce) {
       jour_reference: aujourdhui(),
     },
   });
-  await sb("taps", { method: "POST", body: { carte_id: carte.id, valeur: 1 } });
+  await sb("taps", { method: "POST", body: { carte_id: carte.id, valeur: 1, type: "tampon" } });
   /* mise à jour du pass Wallet */
   try { await envoyerPush(carte.jeton); } catch (e) { console.error("push:", e.message); }
   return etat(maj[0], commerce, { gagne: 1 });
@@ -450,11 +552,13 @@ module.exports = async (req, res) => {
       }
 
       /* si le commerce est passé en NFC obligatoire, la création aussi doit être prouvée */
+      let appareilPuce = null;
       if (commerce.nfc_requis === true) {
         const v = verifierSdm(body.p, body.m);
         if (!v.ok) return res.status(200).json({ ok: false, raison: v.raison });
         const c = await consommerTapNfc(v.uid, v.compteur, commerce);
         if (!c.ok) return res.status(200).json({ ok: false, raison: c.raison });
+        appareilPuce = c.appareil_id;
       }
 
       const prenom = (body.prenom || "").toString().trim().slice(0, 20) || null;
@@ -480,9 +584,17 @@ module.exports = async (req, res) => {
       const carte = inseres[0];
       await sb("taps", {
         method: "POST",
-        body: { carte_id: carte.id, valeur: TAMPON_DEPART },
+        body: { carte_id: carte.id, valeur: TAMPON_DEPART, type: "tampon" },
       });
       poserCookie(res, commerce.slug, jeton);
+      /* un nouveau client à la caisse : l'employé a peut-être déjà saisi son achat */
+      const attenteC = await attenteDuCommerce(commerce, appareilPuce);
+      if (attenteC) {
+        const out = await appliquerAttente(attenteC, carte, commerce);
+        if (out) {
+          return res.status(200).json(etat(out.carte, commerce, { jeton: jeton, bienvenue: true, caisse: true, resultat: out.resultat }));
+        }
+      }
       return res
         .status(200)
         .json(etat(carte, commerce, { jeton: jeton, bienvenue: true }));
@@ -525,16 +637,25 @@ module.exports = async (req, res) => {
 
       /* le tampon de cette visite, si le client vient de taper la puce */
       let visiteProuvee = false;
+      let appareilPuce = null;
       if (body.p && body.m) {
         const v = verifierSdm(body.p, body.m);
         if (v.ok) {
           const k = await consommerTapNfc(v.uid, v.compteur, commerce);
           visiteProuvee = k.ok;
+          appareilPuce = k.appareil_id || null;
         }
       } else if (commerce.nfc_requis !== true && body.tap === true) {
         visiteProuvee = true;
       }
       if (visiteProuvee) {
+        const attenteR = await attenteDuCommerce(commerce, appareilPuce);
+        if (attenteR) {
+          const out = await appliquerAttente(attenteR, c, commerce);
+          if (out) return res.status(200).json(etat(out.carte, commerce, { recupere: true, caisse: true, resultat: out.resultat }));
+        }
+      }
+      if (visiteProuvee && modeEffectif(commerce) === "tampons" && commerce.tap_auto !== false) {
         const r = await appliquerTap(c, commerce);
         if (r.ok === false) return res.status(200).json(etat(c, commerce, { recupere: true, tap_raison: r.raison }));
         r.recupere = true;
@@ -565,6 +686,7 @@ module.exports = async (req, res) => {
     /* ----- TAP : +1 tampon ----- */
     if (action === "tap") {
       /* --- porte d'entrée anti-triche : une vraie puce, un tap jamais rejoué --- */
+      let appareilPuce = null;
       if (commerce.nfc_requis === true) {
         const v = verifierSdm(body.p, body.m);
         if (!v.ok) {
@@ -578,8 +700,20 @@ module.exports = async (req, res) => {
             .status(200)
             .json(etat(carte, commerce, { ok: false, raison: c.raison }));
         }
+        appareilPuce = c.appareil_id;
       }
 
+      /* 1. l'employé a saisi quelque chose à la caisse → on l'applique */
+      const attente = await attenteDuCommerce(commerce, appareilPuce);
+      if (attente) {
+        const out = await appliquerAttente(attente, carte, commerce);
+        if (out) return res.status(200).json(etat(out.carte, commerce, { caisse: true, resultat: out.resultat }));
+      }
+      /* 2. rien en attente : en points (ou si la caisse est obligatoire), on montre juste le solde */
+      if (modeEffectif(commerce) === "points" || commerce.tap_auto === false) {
+        return res.status(200).json(etat(carte, commerce, { solde: true }));
+      }
+      /* 3. ancien fonctionnement : +1 automatique */
       return res.status(200).json(await appliquerTap(carte, commerce));
     }
 
