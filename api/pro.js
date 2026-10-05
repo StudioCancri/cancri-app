@@ -10,6 +10,22 @@
    ============================================================ */
 
 const http2 = require("http2");
+
+/* récompenses du mode points : nettoyées, triées, 10 max */
+function nettoyerRecompenses(liste) {
+  if (typeof liste === "string") { try { liste = JSON.parse(liste); } catch (e) { liste = []; } }
+  return (Array.isArray(liste) ? liste : [])
+    .map(function (x) {
+      const nom = ((x && x.nom) || "").toString().trim().slice(0, 40);
+      const cout = parseInt(x && x.cout, 10);
+      const id = ((x && x.id) || "").toString().replace(/[^a-z0-9]/gi, "").slice(0, 12)
+        || Math.random().toString(36).slice(2, 10);
+      return { id: id, nom: nom, cout: cout };
+    })
+    .filter(function (x) { return x.nom && x.cout > 0 && x.cout <= 100000; })
+    .sort(function (a, b) { return a.cout - b.cout; })
+    .slice(0, 10);
+}
 const { capacites, abonnement } = require("./plans");
 
 /* ============================================================
@@ -549,8 +565,15 @@ module.exports = async (req, res) => {
     if (action === "get_programme") {
       const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
-      const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=objectif,recompense,unite");
-      return res.status(200).json({ ok: true, objectif: c[0].objectif, recompense: c[0].recompense, unite: c[0].unite, role: m[0].role });
+      const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
+      const com = c[0];
+      const modeEff = com.mode === "points" && capacites(com).points ? "points" : "tampons";
+      return res.status(200).json({
+        ok: true, objectif: com.objectif, recompense: com.recompense, unite: com.unite, role: m[0].role,
+        mode: modeEff,
+        points_par_euro: Number(com.points_par_euro) || 1,
+        recompenses_points: nettoyerRecompenses(com.recompenses_points),
+      });
     }
 
     if (action === "set_programme") {
@@ -558,6 +581,27 @@ module.exports = async (req, res) => {
       if (!m || !m.length) return res.status(403).json({ ok: false });
       if (m[0].role !== "proprio") return res.status(200).json({ ok: false, raison: "reserve_proprio" });
       const commerceId = m[0].commerce_id;
+
+      /* ----- mode points : barème + récompenses ----- */
+      if (body.mode === "points") {
+        const cc = await sb("commerces?id=eq." + commerceId + "&select=*");
+        if (!(cc[0].mode === "points" && capacites(cc[0]).points)) {
+          return res.status(200).json({ ok: false, raison: "pas_en_points" });
+        }
+        const ppe = Math.max(0.1, Math.min(100, parseFloat(body.points_par_euro) || 1));
+        const recs = nettoyerRecompenses(body.recompenses_points);
+        if (!recs.length) return res.status(200).json({ ok: false, raison: "recompense_vide" });
+        await sb("commerces?id=eq." + commerceId, {
+          method: "PATCH",
+          body: { points_par_euro: ppe, recompenses_points: recs },
+        });
+        try {
+          const cartesP = await sb("cartes?commerce_id=eq." + commerceId + "&select=jeton");
+          const pushesP = (cartesP || []).map((c) => envoyerPush(c.jeton).catch(() => {}));
+          await Promise.race([Promise.allSettled(pushesP), new Promise((r) => setTimeout(r, 5000))]);
+        } catch (e) { console.log("set_programme points push:", e.message); }
+        return res.status(200).json({ ok: true, mode: "points", points_par_euro: ppe, recompenses_points: recs });
+      }
 
       const objectif = Math.max(4, Math.min(12, parseInt(body.objectif, 10) || 10));
       const recompense = (body.recompense || "").toString().trim().slice(0, 60);
@@ -625,7 +669,7 @@ module.exports = async (req, res) => {
 
     /* ---- HISTORIQUE / ÉTAT d'une carte ---- */
     if (action === "historique") {
-      const taps = await sb("taps?carte_id=eq." + carte.id + "&select=valeur,cree_le&order=cree_le.desc&limit=20");
+      const taps = await sb("taps?carte_id=eq." + carte.id + "&select=valeur,cree_le,type,points,montant_cents&order=cree_le.desc&limit=20");
       // totaux sur TOUT l'historique (pas seulement les 20 derniers)
       const tous = await sb("taps?carte_id=eq." + carte.id + "&select=valeur");
       let totalCartes = 0, totalPassages = 0;
