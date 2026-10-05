@@ -156,6 +156,72 @@ module.exports = async (req, res) => {
     const { action, carte_id } = body;
     console.log("[pro]", action, "| user:", userId, "| carte:", carte_id || "-");
 
+    /* ============================================================
+       MES CAISSES : connecter une tablette / un téléphone de comptoir
+       ============================================================ */
+    if (action === "caisse_code" || action === "caisse_liste" || action === "caisse_couper" || action === "caisse_ouvrir") {
+      const mbs = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      if (!mbs || !mbs.length) return res.status(403).json({ ok: false, raison: "acces_refuse" });
+      const mb = (body.commerce_id && mbs.find(function (x) { return x.commerce_id === body.commerce_id; })) || mbs[0];
+      const commerceId = mb.commerce_id;
+
+      if (action === "caisse_liste") {
+        const liste = await sb("appareils_caisse?commerce_id=eq." + commerceId +
+          "&actif=eq.true&select=id,nom,cree_le,dernier_usage,code_expire&order=cree_le.asc");
+        return res.status(200).json({ ok: true, caisses: liste || [] });
+      }
+
+      if (mb.role !== "proprio") return res.status(403).json({ ok: false, raison: "reserve_proprio" });
+
+      if (action === "caisse_code") {
+        const crypto = require("crypto");
+        const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sans 0/O ni 1/I
+        let code = "";
+        for (let i = 0; i < 6; i++) code += ALPHA[crypto.randomInt(0, ALPHA.length)];
+        const hache = function (v) { return crypto.createHash("sha256").update(String(v)).digest("hex"); };
+        const nom = (body.nom || "").toString().trim().slice(0, 30) || "Caisse";
+        const expire = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+        await sb("appareils_caisse", {
+          method: "POST",
+          body: {
+            commerce_id: commerceId,
+            nom: nom,
+            jeton_hash: hache(crypto.randomBytes(24).toString("hex")), // inutilisable tant que pas appairé
+            code_appairage: hache(code),
+            code_expire: expire,
+          },
+        });
+        return res.status(200).json({ ok: true, code: code, expire_le: expire });
+      }
+
+      /* ce téléphone / cette tablette devient la caisse, sans code à taper */
+      if (action === "caisse_ouvrir") {
+        const crypto = require("crypto");
+        const hache = function (v) { return crypto.createHash("sha256").update(String(v)).digest("hex"); };
+        const jetonCaisse = crypto.randomBytes(24).toString("base64url");
+        const nom = (body.nom || "").toString().trim().slice(0, 30) || "Caisse";
+        await sb("appareils_caisse", {
+          method: "POST",
+          body: {
+            commerce_id: commerceId,
+            nom: nom,
+            jeton_hash: hache(jetonCaisse),
+            dernier_usage: new Date().toISOString(),
+          },
+        });
+        return res.status(200).json({ ok: true, jeton: jetonCaisse });
+      }
+
+      if (action === "caisse_couper") {
+        await sb("appareils_caisse?id=eq." + encodeURIComponent(body.caisse_id || "") +
+          "&commerce_id=eq." + commerceId, {
+          method: "PATCH",
+          body: { actif: false, code_appairage: null, code_expire: null },
+        });
+        return res.status(200).json({ ok: true });
+      }
+    }
+
     /* ---- ENVOYER UNE CAMPAGNE (notif à tous les clients) ---- */
     if (action === "envoyer_campagne") {
       // vérifier le membre + récupérer le commerce depuis le membre (pas via une carte)
