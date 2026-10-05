@@ -15,6 +15,7 @@
 const path = require("path");
 const fs = require("fs");
 const { PKPass } = require("passkit-generator");
+const { capacites } = require("./plans");
 let sharp;
 try { sharp = require("sharp"); } catch (e) { sharp = null; }
 
@@ -49,6 +50,75 @@ function rgbArray(rgbStr, fallback) {
 }
 
 /* ---------- SVG de la grille de tampons ---------- */
+/* ============================================================
+   MODE POINTS : ce que la carte Wallet affiche à la place des tampons
+   ============================================================ */
+function listeRecompensesPass(commerce) {
+  let r = commerce.recompenses_points;
+  if (typeof r === "string") { try { r = JSON.parse(r); } catch (e) { r = []; } }
+  return (Array.isArray(r) ? r : []).filter(function (x) { return x && x.cout > 0; })
+    .sort(function (a, b) { return a.cout - b.cout; });
+}
+function estModePoints(commerce) {
+  return commerce.mode === "points" && capacites(commerce).points;
+}
+/* barre de progression vers les récompenses (aucun texte : rendu fiable partout) */
+function svgPoints(points, recs, fondRgb, labelRgb) {
+  const W = 1125, H = 432;
+  const fond = "rgb(" + fondRgb.join(",") + ")", label = "rgb(" + labelRgb.join(",") + ")";
+  const max = recs.length ? recs[recs.length - 1].cout : 100;
+  const x0 = 120, x1 = W - 120, y = H / 2, ep = 30, R = 44;
+  const ratio = Math.max(0, Math.min(1, points / max));
+  let els = '<rect width="' + W + '" height="' + H + '" fill="' + fond + '"/>';
+  els += '<rect x="' + x0 + '" y="' + (y - ep / 2) + '" width="' + (x1 - x0) + '" height="' + ep + '" rx="' + ep / 2 + '" fill="' + label + '" fill-opacity="0.25"/>';
+  if (ratio > 0) {
+    els += '<rect x="' + x0 + '" y="' + (y - ep / 2) + '" width="' + Math.max(ep, (x1 - x0) * ratio) + '" height="' + ep + '" rx="' + ep / 2 + '" fill="' + label + '"/>';
+  }
+  for (const r of recs) {
+    const cx = x0 + (x1 - x0) * (r.cout / max);
+    const atteint = points >= r.cout;
+    els += '<circle cx="' + cx + '" cy="' + y + '" r="' + R + '" fill="' + (atteint ? label : fond) + '" stroke="' + label + '" stroke-width="8"/>';
+    if (atteint) {
+      els += '<path d="M ' + (cx - R * 0.38) + ' ' + (y + R * 0.02) + ' L ' + (cx - R * 0.08) + ' ' + (y + R * 0.34) + ' L ' + (cx + R * 0.42) + ' ' + (y - R * 0.3) +
+        '" fill="none" stroke="' + fond + '" stroke-width="' + R * 0.26 + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    }
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + els + '</svg>';
+}
+/* les champs du recto, selon le mode */
+function champsRecto(pass, carte, commerce) {
+  const dispo = carte.recompenses_dispo || 0;
+  if (estModePoints(commerce)) {
+    const recs = listeRecompensesPass(commerce);
+    const pts = carte.points || 0;
+    const utilisables = recs.filter(function (x) { return x.cout <= pts; });
+    const prochaine = recs.find(function (x) { return x.cout > pts; });
+    pass.headerFields.push({ key: "solde", label: "POINTS", value: pts, changeMessage: "Tu as maintenant %@ points" });
+    pass.secondaryFields.push({ key: "membre", label: "MEMBRE", value: carte.prenom || "Client" });
+    if (utilisables.length) {
+      pass.secondaryFields.push({ key: "reward", label: "À UTILISER", value: utilisables[utilisables.length - 1].nom, changeMessage: "Récompense disponible : %@" });
+    } else if (prochaine) {
+      pass.secondaryFields.push({ key: "reward", label: "PROCHAINE RÉCOMPENSE", value: prochaine.nom + " à " + prochaine.cout + " pts" });
+    }
+    return;
+  }
+  pass.headerFields.push({ key: "solde", label: commerce.unite, value: carte.tampons + "/" + commerce.objectif });
+  pass.secondaryFields.push(
+    { key: "membre", label: "MEMBRE", value: carte.prenom || "Client" },
+    { key: "reward", label: "RÉCOMPENSE", value: commerce.recompense }
+  );
+  if (dispo > 0) {
+    pass.auxiliaryFields.push({ key: "reserve", label: "EN RÉSERVE", value: dispo + (dispo > 1 ? " récompenses" : " récompense"),
+      changeMessage: "Récompense débloquée, tu en as %@" });
+  }
+}
+function texteRegle(commerce) {
+  if (estModePoints(commerce)) {
+    return "Au comptoir, l'équipe saisit votre achat, puis vous posez votre téléphone sur la pastille : vous gagnez vos points. Utilisez-les quand vous voulez contre une récompense.";
+  }
+  return "Posez votre téléphone sur la pastille au comptoir pour gagner vos tampons. À " + commerce.objectif + ", votre récompense vous attend, et vous pouvez la garder pour plus tard.";
+}
+
 function svgStrip(tampons, objectif, fondRgb, labelRgb) {
   const W = 1125, H = 432;
   const fond = "rgb(" + fondRgb.join(",") + ")";
@@ -111,7 +181,9 @@ module.exports = async (req, res) => {
 
     /* strip = grille dessinée à la volée */
     if (sharp) {
-      const svg = Buffer.from(svgStrip(carte.tampons, commerce.objectif, fondRgb, labelRgb));
+      const svg = Buffer.from(estModePoints(commerce)
+      ? svgPoints(carte.points || 0, listeRecompensesPass(commerce), fondRgb, labelRgb)
+      : svgStrip(carte.tampons, commerce.objectif, fondRgb, labelRgb));
       buffers["strip.png"] = await sharp(svg).resize(375, 144).png().toBuffer();
       buffers["strip@2x.png"] = await sharp(svg).resize(750, 288).png().toBuffer();
       buffers["strip@3x.png"] = await sharp(svg).resize(1125, 432).png().toBuffer();
@@ -143,11 +215,7 @@ module.exports = async (req, res) => {
     });
 
     /* champs */
-    pass.headerFields.push({ key: "solde", label: commerce.unite, value: carte.tampons + "/" + commerce.objectif });
-    pass.secondaryFields.push(
-      { key: "membre", label: "MEMBRE", value: carte.prenom || "Client" },
-      { key: "reward", label: "RÉCOMPENSE", value: commerce.recompense }
-    );
+    champsRecto(pass, carte, commerce);
 
     /* message affiché au dos : celui de la carte prime, sinon celui du commerce */
     const messageCarte = (carte.message_perso && carte.message_perso.trim())
@@ -160,7 +228,7 @@ module.exports = async (req, res) => {
     const lienRetrouver = "https://lunat.fr" +
       "/carte.html?c=" + encodeURIComponent(commerce.slug) + "&j=" + encodeURIComponent(carte.jeton);
     pass.backFields.push(
-      { key: "regle", label: "Comment ça marche", value: "Posez votre téléphone sur la pastille au comptoir : +1 tampon. À " + commerce.objectif + ", votre récompense vous attend." },
+      { key: "regle", label: "Comment ça marche", value: texteRegle(commerce) },
       { key: "retrouver", label: "Votre carte sur ce téléphone",
         value: "Si on vous redemande de vous inscrire, touchez ce lien : " + lienRetrouver,
         attributedValue: 'Si on vous redemande de vous inscrire : <a href="' + lienRetrouver + '">Retrouver ma carte</a>' },
