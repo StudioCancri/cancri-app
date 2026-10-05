@@ -279,6 +279,22 @@
   .plan-opt.on{border-color:var(--gold);background:rgba(224,169,109,.14);color:var(--gold);}
   .plan-prix{font-family:'JetBrains Mono',monospace;font-size:12px;opacity:.75;display:block;font-weight:500;margin-top:2px;}
 
+  /* système de fidélité (tampons / points) */
+  .mode-note{font-size:12.5px;color:var(--text-soft);margin-top:10px;line-height:1.45;}
+  .mode-note.warn{color:#E8A04A;}
+  .mini-lab{display:block;font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text-faint);margin:16px 0 8px;}
+  .rec-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+  .rec-row input{border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;background:transparent;
+    color:var(--text);font:inherit;font-size:14px;min-width:0;}
+  .rec-row input:focus{outline:none;border-color:var(--gold);}
+  .rec-row .rec-nom{flex:1;}
+  .rec-row .rec-cout{width:84px;flex:none;text-align:right;}
+  .rec-row .rec-u{font-size:12px;color:var(--text-faint);flex:none;}
+  .rec-row .rec-del{background:none;border:1px solid var(--line-2);color:var(--text-soft);border-radius:9px;
+    width:34px;height:34px;flex:none;cursor:pointer;font-size:14px;}
+  .addbtn-sm{background:none;border:1px dashed var(--line-2);color:var(--gold);border-radius:10px;padding:10px 14px;
+    font:inherit;font-size:13px;font-weight:700;cursor:pointer;width:100%;}
   .caps{display:grid;grid-template-columns:1fr;gap:9px;margin-top:6px;}
   @media(min-width:560px){.caps{grid-template-columns:1fr 1fr;}}
   .cap{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);
@@ -490,6 +506,33 @@
           <button class="save" id="saveFid">Enregistrer</button><span class="saved" id="savedFid">Enregistré</span>
         </div>
       </div>
+    </div>
+
+    <div class="card">
+      <h3>Système de fidélité</h3>
+      <div class="c-sub">Tampons ou points, et comment les clients les gagnent.</div>
+
+      <div class="plan-pick" id="modePick">
+        <button class="plan-opt" data-mode="tampons">Tampons<span class="plan-prix">tous forfaits</span></button>
+        <button class="plan-opt" data-mode="points">Points<span class="plan-prix">forfait Pro</span></button>
+      </div>
+      <div class="mode-note" id="modeNote"></div>
+
+      <div id="zonePoints" style="display:none">
+        <div class="grid2" style="margin-top:14px;">
+          <div class="fld"><label>Points gagnés par euro dépensé</label><input id="fPtsEuro" type="number" min="0.1" max="100" step="0.5"></div>
+        </div>
+        <span class="mini-lab">Récompenses (le client choisit quand les utiliser)</span>
+        <div id="recZone"></div>
+        <button class="addbtn-sm" id="recAdd">+ Ajouter une récompense</button>
+      </div>
+
+      <label class="cap" style="margin-top:16px;">
+        <input type="checkbox" id="fTapAuto">
+        <span class="cap-n">Tap automatique : +1 tampon sans passer par la caisse. À décocher une fois la caisse installée.</span>
+      </label>
+
+      <button class="save" id="saveMode">Enregistrer</button><span class="saved" id="savedMode">Enregistré</span>
     </div>
 
     <div class="card">
@@ -828,6 +871,7 @@
     $("kConditions").value = k ? (k.conditions||"") : "";
 
     rendreForfait(r);
+    rendreMode(r);
     renderDemandes(r.demandes || []);
     renderMini(cartes.slice(0,10), c.objectif);
   }
@@ -949,9 +993,99 @@
     programme: "Modifier son programme",
     tampons: "Ajuster les tampons",
     recompenses: "Valider les récompenses",
+    points: "Système de points",
   };
   let planCourant = "pro";
   let defPlans = null;
+
+  /* ---------- SYSTÈME DE FIDÉLITÉ (tampons / points) ---------- */
+  let modeCourant = "tampons";
+  let pointsAutorises = true;
+
+  function ligneRecompense(rec){
+    const d = document.createElement("div");
+    d.className = "rec-row";
+    d.setAttribute("data-id", (rec && rec.id) || "");
+    d.innerHTML = '<input class="rec-nom" maxlength="40" placeholder="Ex : Café offert">'+
+      '<input class="rec-cout" type="number" min="1" placeholder="50">'+
+      '<span class="rec-u">pts</span>'+
+      '<button class="rec-del" aria-label="Supprimer">✕</button>';
+    d.querySelector(".rec-nom").value = (rec && rec.nom) || "";
+    d.querySelector(".rec-cout").value = (rec && rec.cout) || "";
+    d.querySelector(".rec-del").addEventListener("click", function(){ d.remove(); });
+    return d;
+  }
+
+  function majModeVue(){
+    $("modePick").querySelectorAll(".plan-opt").forEach(function(b){
+      b.classList.toggle("on", b.getAttribute("data-mode") === modeCourant);
+    });
+    $("zonePoints").style.display = modeCourant === "points" ? "block" : "none";
+    const note = $("modeNote");
+    note.classList.remove("warn");
+    if(modeCourant === "points" && !pointsAutorises){
+      note.classList.add("warn");
+      note.textContent = "Ce commerce n'a pas accès aux points : passe-le en Pro, ou coche l'exception « Système de points » dans le forfait.";
+    } else if(modeCourant === "points"){
+      note.textContent = "L'employé tape le montant dans la caisse, le client tape la carte et gagne ses points.";
+    } else {
+      note.textContent = "L'objectif et la récompense se règlent dans le bloc programme au-dessus.";
+    }
+  }
+
+  function rendreMode(r){
+    const c = r.commerce || {};
+    modeCourant = c.mode === "points" ? "points" : "tampons";
+    pointsAutorises = !!(r.capacites && r.capacites.points);
+    $("fPtsEuro").value = (c.points_par_euro !== null && c.points_par_euro !== undefined) ? c.points_par_euro : 1;
+    $("fTapAuto").checked = c.tap_auto !== false;
+    let recs = c.recompenses_points;
+    if(typeof recs === "string"){ try { recs = JSON.parse(recs); } catch(e){ recs = []; } }
+    $("recZone").innerHTML = "";
+    (Array.isArray(recs) ? recs : []).forEach(function(x){ $("recZone").appendChild(ligneRecompense(x)); });
+    majModeVue();
+  }
+
+  $("modePick").addEventListener("click", function(e){
+    const b = e.target.closest(".plan-opt");
+    if(!b) return;
+    modeCourant = b.getAttribute("data-mode");
+    if(modeCourant === "points" && !$("recZone").children.length){
+      $("recZone").appendChild(ligneRecompense({ nom:"Café offert", cout:50 }));
+    }
+    majModeVue();
+  });
+  $("recAdd").addEventListener("click", function(){
+    if($("recZone").children.length >= 10) return;
+    $("recZone").appendChild(ligneRecompense(null));
+  });
+
+  $("saveMode").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    if(modeCourant === "points" && !$("recZone").querySelector(".rec-row")){
+      alert("Ajoute au moins une récompense pour le mode points."); return;
+    }
+    const recs = [];
+    $("recZone").querySelectorAll(".rec-row").forEach(function(row){
+      const nom = row.querySelector(".rec-nom").value.trim();
+      const cout = parseInt(row.querySelector(".rec-cout").value, 10);
+      if(nom && cout > 0) recs.push({ id: row.getAttribute("data-id") || "", nom: nom, cout: cout });
+    });
+    this.disabled = true;
+    const r = await call({ action:"maj_commerce", commerce_id:commerceOuvert.id,
+      mode: modeCourant,
+      points_par_euro: parseFloat($("fPtsEuro").value) || 1,
+      recompenses_points: recs,
+      tap_auto: $("fTapAuto").checked });
+    this.disabled = false;
+    if(r.ok){
+      commerceOuvert = Object.assign(commerceOuvert, r.commerce || {});
+      rendreMode({ commerce: commerceOuvert, capacites: { points: pointsAutorises } });
+      flash("savedMode");
+    } else {
+      alert("Erreur : " + (r.raison || r.message || "inconnue"));
+    }
+  });
 
   function rendreCaps(capEffectives){
     const base = (defPlans && defPlans[planCourant]) ? defPlans[planCourant].capacites : {};
