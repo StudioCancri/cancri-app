@@ -70,6 +70,39 @@ async function envoyerPush(jetonCarte) {
   return ok;
 }
 
+/* ============================================================
+   RGPD : ménage automatique, une fois par jour
+   - cartes sans aucun passage depuis 3 ans (et leur historique)
+   - saisies de caisse de plus de 12 mois
+   Ne bloque jamais les relances en cas de souci.
+   ============================================================ */
+async function purgerDonnees() {
+  const bilan = { cartes: 0, saisies: 0 };
+  try {
+    const seuil3ans = new Date(Date.now() - 3 * 365 * 24 * 3600 * 1000).toISOString();
+    const vieilles = await sb(
+      "cartes?or=(dernier_tap.lt." + seuil3ans + ",and(dernier_tap.is.null,cree_le.lt." + seuil3ans + "))" +
+      "&select=id,jeton&limit=500"
+    );
+    for (let i = 0; i < (vieilles || []).length; i += 100) {
+      const lot = vieilles.slice(i, i + 100);
+      const ids = lot.map((c) => c.id).join(",");
+      const jetons = lot.map((c) => '"' + c.jeton + '"').join(",");
+      await sb("taps?carte_id=in.(" + ids + ")", { method: "DELETE" });
+      await sb("coupons_cartes?carte_id=in.(" + ids + ")", { method: "DELETE" });
+      await sb("appareils?jeton=in.(" + encodeURIComponent(jetons) + ")", { method: "DELETE" });
+      await sb("cartes?id=in.(" + ids + ")", { method: "DELETE" });
+      bilan.cartes += lot.length;
+    }
+  } catch (e) { console.error("purge cartes:", e.message); }
+  try {
+    const seuil12mois = new Date(Date.now() - 365 * 24 * 3600 * 1000).toISOString();
+    const r = await sb("caisse_attente?cree_le=lt." + seuil12mois + "&select=id", { method: "DELETE" });
+    bilan.saisies = Array.isArray(r) ? r.length : 0;
+  } catch (e) { console.error("purge caisse:", e.message); }
+  return bilan;
+}
+
 module.exports = async (req, res) => {
   // sécurité : seul Vercel Cron (avec le secret) peut déclencher
   const secret = process.env.CRON_SECRET;
@@ -79,6 +112,7 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const purge = await purgerDonnees();
     const maintenant = Date.now();
     const seuilInactif = new Date(maintenant - JOURS_INACTIF * 24 * 3600 * 1000).toISOString();
     const seuilRelance = new Date(maintenant - JOURS_AVANT_NOUVELLE_RELANCE * 24 * 3600 * 1000).toISOString();
@@ -88,7 +122,7 @@ module.exports = async (req, res) => {
     /* seuls les forfaits qui incluent les relances sont traités */
     const commerces = (tous || []).filter((c) => capacites(c).relances === true);
     if (!commerces || !commerces.length) {
-      return res.status(200).json({ ok: true, info: "aucun commerce à relancer", total: 0 });
+      return res.status(200).json({ ok: true, info: "aucun commerce à relancer", total: 0, purge: purge });
     }
 
     let totalRelances = 0;
@@ -121,7 +155,7 @@ module.exports = async (req, res) => {
       detail.push({ commerce: commerce.nom, relances: aRelancer.length });
     }
 
-    return res.status(200).json({ ok: true, total: totalRelances, detail: detail });
+    return res.status(200).json({ ok: true, total: totalRelances, detail: detail, purge: purge });
   } catch (e) {
     console.error("relances error:", e.message || e);
     return res.status(500).json({ ok: false, raison: "erreur_serveur", message: e.message });
