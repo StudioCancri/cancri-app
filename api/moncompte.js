@@ -8,6 +8,14 @@
    - rattacher   : lie des cartes (jetons locaux) à cet email
    ============================================================ */
 
+const { capacites } = require("./plans");
+function listeRecompenses(com) {
+  let r = com.recompenses_points;
+  if (typeof r === "string") { try { r = JSON.parse(r); } catch (e) { r = []; } }
+  return (Array.isArray(r) ? r : []).filter(function (x) { return x && x.cout > 0; })
+    .sort(function (a, b) { return a.cout - b.cout; });
+}
+
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
 }
@@ -77,18 +85,22 @@ module.exports = async (req, res) => {
     if (action === "mes_cartes") {
       const cartes = await sb(
         "cartes?email=ilike." + encodeURIComponent(email) +
-        "&select=id,jeton,prenom,tampons,dernier_tap,message_perso,commerce_id&order=dernier_tap.desc"
+        "&select=id,jeton,prenom,tampons,points,recompenses_dispo,dernier_tap,message_perso,commerce_id&order=dernier_tap.desc"
       );
       const liste = [];
       for (const c of (cartes || [])) {
         const com = await sb("commerces?id=eq." + c.commerce_id +
-          "&select=nom,slug,unite,objectif,recompense,couleur_fond,couleur_texte,couleur_label,adresse,message_actuel");
+          "&select=*");
         if (!com || !com[0]) continue;
         const m = com[0];
         liste.push({
           jeton: c.jeton,
           prenom: c.prenom,
           tampons: c.tampons,
+          points: c.points || 0,
+          recompenses_dispo: c.recompenses_dispo || 0,
+          mode: (m.mode === "points" && capacites(m).points) ? "points" : "tampons",
+          recompenses_points: listeRecompenses(m),
           dernier_tap: c.dernier_tap,
           commerce: m.nom,
           slug: m.slug,
