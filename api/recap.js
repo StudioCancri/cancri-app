@@ -40,7 +40,7 @@ async function envoyerMail(to, sujet, html) {
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: "Bearer " + RESEND_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: EXPEDITEUR, to: [to], subject: sujet, html: html }),
+    body: JSON.stringify({ from: EXPEDITEUR, to: [to], reply_to: "contact@lunat.fr", subject: sujet, html: html }),
   });
   if (!r.ok) { console.log("[recap] resend", r.status, await r.text()); return false; }
   return true;
