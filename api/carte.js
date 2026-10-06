@@ -304,6 +304,7 @@ async function envoyerMailCode(email, code, commerce) {
     body: JSON.stringify({
       from: de,
       to: [email],
+      reply_to: "contact@lunat.fr",
       subject: code + " : ton code pour retrouver ta carte " + commerce.nom,
       html: html,
       text: "Ton code pour retrouver ta carte " + commerce.nom + " : " + code + " (valable 10 minutes).",
