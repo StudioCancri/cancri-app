@@ -101,6 +101,14 @@
   .c-grid{display:grid;gap:8px;margin-bottom:16px;}
   .c-dot{aspect-ratio:1;border-radius:50%;}
   .c-dot.off{border:1.5px dashed;background:transparent;opacity:.5;}
+  .c-recs{margin-bottom:16px;display:flex;flex-direction:column;gap:9px;}
+  .c-recl{display:flex;align-items:center;gap:10px;font-size:13px;}
+  .c-recl .rn{flex:1;min-width:0;font-weight:600;}
+  .c-recl .rb{height:5px;border-radius:3px;margin-top:5px;overflow:hidden;}
+  .c-recl .rb span{display:block;height:100%;border-radius:3px;}
+  .c-recl .rc{font-size:11.5px;font-weight:700;flex:none;text-align:right;opacity:.8;}
+  .c-reserve{font-size:13px;font-weight:700;padding:10px 12px;border-radius:12px;margin-bottom:14px;}
+  .c-ouvrir{display:block;text-align:center;font-size:12.5px;font-weight:700;text-decoration:none;margin-top:12px;opacity:.75;}
   .c-plein{text-align:center;padding:14px 10px;border:1.5px dashed;border-radius:14px;margin-bottom:16px;}
   .c-plein .big{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:19px;letter-spacing:-.02em;}
   .c-plein .sml{font-size:12px;opacity:.7;margin-top:2px;}
@@ -284,7 +292,23 @@
 
     let h = "";
     r.cartes.forEach(function(c, i){
-      const plein = c.tampons >= c.objectif;
+      const pts = c.mode === "points";
+      const plein = !pts && c.tampons >= c.objectif;
+      const echap = function(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(x){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[x]; }); };
+      let milieu = "";
+      if(pts){
+        const recs = c.recompenses_points || [];
+        milieu = '<div class="c-recs">' + recs.map(function(rc){
+          const ok = c.points >= rc.cout;
+          return '<div class="c-recl"><div class="rn">' + echap(rc.nom) +
+            (ok ? '' : '<div class="rb" style="background:'+rgbSoft(c.label,.2)+'"><span style="width:'+Math.round(c.points/rc.cout*100)+'%;background:'+c.label+'"></span></div>') +
+            '</div><div class="rc">' + (ok ? '✓ dispo' : 'encore ' + (rc.cout - c.points)) + '<br>' + rc.cout + ' pts</div></div>';
+        }).join("") + '</div>';
+      }
+      const reserve = (!pts && c.recompenses_dispo > 0)
+        ? '<div class="c-reserve" style="background:'+rgbSoft(c.label,.16)+'">🎁 ' + c.recompenses_dispo + (c.recompenses_dispo > 1 ? ' récompenses' : ' récompense') + ' en réserve, à utiliser au comptoir quand vous voulez</div>'
+        : '';
+      const prochaine = pts ? ((c.recompenses_points || []).find(function(x){ return x.cout > c.points; }) || (c.recompenses_points || []).slice(-1)[0]) : null;
       const cols = c.objectif <= 6 ? c.objectif : Math.ceil(c.objectif/2);
       let dots = "";
       for(let k=0;k<c.objectif;k++){
@@ -299,17 +323,19 @@
           '<div class="c-adr">'+(c.adresse || jour(c.dernier_tap))+'</div></div>'+
         '</div>'+
         (c.message ? '<div class="c-msg" style="background:'+rgbSoft(c.label,.14)+'">'+c.message+'</div>' : '')+
-        '<div class="c-num"><div class="c-n">'+c.tampons+'</div><div class="c-max">/'+c.objectif+'</div></div>'+
-        '<div class="c-unite">'+c.unite+'</div>'+
-        (plein
+        '<div class="c-num"><div class="c-n">'+(pts ? c.points : c.tampons)+'</div><div class="c-max">'+(pts ? '' : '/'+c.objectif)+'</div></div>'+
+        '<div class="c-unite">'+(pts ? 'POINTS' : c.unite)+'</div>'+
+        reserve +
+        (pts ? milieu : plein
           ? '<div class="c-plein" style="border-color:'+rgbSoft(c.label,.6)+'"><div class="big">'+c.recompense+'</div><div class="sml">Montrez cette carte au comptoir.</div></div>'
           : '<div class="c-grid" style="grid-template-columns:repeat('+cols+',1fr)">'+dots+'</div>')+
         '<div class="c-bas">'+
-          '<div class="c-rec"><span>Récompense</span>'+c.recompense+'</div>'+
+          '<div class="c-rec"><span>'+(pts ? 'Prochaine récompense' : 'Récompense')+'</span>'+(pts ? (prochaine ? echap(prochaine.nom) : '') : c.recompense)+'</div>'+
           '<a class="c-wallet" href="/api/pass?jeton='+encodeURIComponent(c.jeton)+'">'+
             '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h12A2.5 2.5 0 0 1 20.5 7v10a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 17V7Zm2.5-.5A.5.5 0 0 0 5.5 7v10a.5.5 0 0 0 .5.5h12a.5.5 0 0 0 .5-.5v-10a.5.5 0 0 0-.5-.5H6Z"/></svg>'+
             'Dans Wallet</a>'+
         '</div>'+
+        '<a class="c-ouvrir" style="color:'+c.texte+'" href="/carte.html?c='+encodeURIComponent(c.slug)+'&j='+encodeURIComponent(c.jeton)+'">Ouvrir ma carte sur ce téléphone</a>'+
       '</div>';
     });
     $("listeZone").innerHTML = h;
