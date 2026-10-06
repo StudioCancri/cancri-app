@@ -130,6 +130,21 @@
     box-shadow:0 14px 32px -20px rgba(35,42,44,.28);
   }
   .staff.on{display:block;}
+  /* mon programme (récompenses, réserve) */
+  .monprog{display:none;margin-top:18px;background:var(--foam);border:1px solid var(--line);border-radius:16px;padding:18px;
+    box-shadow:0 14px 32px -20px rgba(35,42,44,.28);}
+  .monprog.on{display:block;}
+  .monprog .mp-t{font-weight:700;font-size:14px;margin-bottom:12px;}
+  .monprog .mp-r{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
+  .monprog .mp-r:first-of-type{border-top:none;padding-top:2px;}
+  .monprog .mp-n{flex:1;min-width:0;}
+  .monprog .mp-nom{font-weight:600;font-size:14px;}
+  .monprog .mp-bar{height:6px;border-radius:3px;background:rgba(35,42,44,.1);margin-top:6px;overflow:hidden;}
+  .monprog .mp-bar span{display:block;height:100%;background:var(--sage-deep);border-radius:3px;}
+  .monprog .mp-c{font-size:12.5px;font-weight:700;color:var(--ink-soft);flex:none;text-align:right;}
+  .monprog .mp-c.ok{color:var(--sage-deep);}
+  .monprog .mp-pied{font-size:12px;color:var(--ink-soft);line-height:1.5;margin-top:12px;}
+  .monprog .mp-reserve{font-size:15px;font-weight:700;}
   .staff .s-title{font-weight:700;font-size:13.5px;margin-bottom:3px;text-align:center;}
   .staff .s-desc{font-size:12px;color:var(--ink-soft);text-align:center;margin-bottom:16px;}
   .pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:16px;}
@@ -328,6 +343,8 @@
 
   <div class="status" id="status"></div>
 
+  <div class="monprog" id="monProg"></div>
+
   <div class="staff" id="staffBox">
     <div class="s-title">Validation staff</div>
     <div class="s-desc">Le barista entre son code pour offrir la récompense</div>
@@ -494,7 +511,39 @@
     }
     els.pass.classList.toggle("reward", e.pleine && e.mode !== "points");
     els.staffBox.classList.toggle("on", e.pleine && e.mode !== "points");
+    renderProgramme(e);
     renderStatus();
+  }
+
+  /* ----- mon programme : ce que le client peut s'offrir, ce qu'il garde en réserve ----- */
+  function echapper(s){ return String(s == null ? "" : s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function renderProgramme(e){
+    var z = document.getElementById("monProg");
+    if(!z) return;
+    if(e.mode === "points"){
+      var recs = (e.recompenses_points || []).slice().sort(function(a,b){ return a.cout - b.cout; });
+      if(!recs.length){ z.classList.remove("on"); return; }
+      var pts = e.points || 0;
+      var html = '<div class="mp-t">Mon programme</div>';
+      recs.forEach(function(r){
+        var ok = pts >= r.cout;
+        html += '<div class="mp-r"><div class="mp-n"><div class="mp-nom">' + echapper(r.nom) + '</div>' +
+          (ok ? '' : '<div class="mp-bar"><span style="width:' + Math.round(pts / r.cout * 100) + '%"></span></div>') + '</div>' +
+          '<div class="mp-c' + (ok ? ' ok' : '') + '">' + (ok ? '✓ Disponible' : 'encore ' + (r.cout - pts) + ' pts') + '<br><span style="font-weight:500">' + r.cout + ' pts</span></div></div>';
+      });
+      html += '<div class="mp-pied">Pour en profiter, demandez-la au comptoir : l\'équipe la choisit dans la caisse et vous posez votre téléphone. Rien ne presse, vos points restent.</div>';
+      z.innerHTML = html;
+      z.classList.add("on");
+      return;
+    }
+    var n = e.recompenses_dispo || 0;
+    if(n > 0){
+      z.innerHTML = '<div class="mp-reserve">🎁 ' + n + (n > 1 ? ' récompenses' : ' récompense') + ' en réserve</div>' +
+        '<div class="mp-pied">' + echapper(e.recompense) + '. Utilisez-la quand vous voulez : demandez-la au comptoir, puis posez votre téléphone sur la carte.</div>';
+      z.classList.add("on");
+    } else {
+      z.classList.remove("on");
+    }
   }
 
   function renderStatus(){
