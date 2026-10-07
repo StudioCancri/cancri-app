@@ -72,6 +72,23 @@
   .demo-card.full .dc-grid{display:none;}
   .demo-card.full .dc-win{display:block;}
   .tapper{margin-top:20px;text-align:center;}
+  .mode-tog{display:flex;max-width:260px;margin:0 auto 16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+    border-radius:100px;padding:4px;}
+  .mode-tog button{flex:1;border:none;background:none;color:#F2F2F0;opacity:.75;font:inherit;font-weight:700;font-size:14px;
+    padding:9px 10px;border-radius:100px;cursor:pointer;}
+  .mode-tog button.on{background:var(--orange);color:var(--nuit);opacity:1;}
+  .dc-pts{display:none;margin-bottom:18px;}
+  .demo-card.points .dc-grid{display:none;}
+  .demo-card.points .dc-pts{display:block;}
+  .demo-card.points.full .dc-win{display:none;}
+  .pt-track{height:10px;border-radius:6px;background:rgba(27,32,39,.08);overflow:hidden;margin-bottom:14px;}
+  .pt-fill{height:100%;width:0;background:var(--orange);border-radius:6px;transition:width .5s cubic-bezier(.3,1,.4,1);}
+  .pt-rec{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:14px;color:var(--nuit);}
+  .pt-rec b{flex:1;font-weight:600;}
+  .pt-rec span:last-child{font-size:12.5px;opacity:.6;font-weight:700;}
+  .pt-o{width:20px;height:20px;border-radius:50%;border:2px solid rgba(27,32,39,.2);flex:none;transition:all .3s;}
+  .pt-rec.ok .pt-o{background:var(--orange);border-color:var(--orange);box-shadow:0 0 0 4px rgba(252,163,33,.2);}
+  .pt-rec.ok b{color:var(--orange-deep);}
   .tap-btn{display:inline-flex;align-items:center;gap:10px;background:var(--orange);color:var(--nuit);border:none;
     border-radius:100px;padding:15px 28px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;
     box-shadow:0 12px 30px -8px rgba(252,163,33,.6);transition:transform .12s;-webkit-tap-highlight-color:transparent;}
@@ -354,14 +371,23 @@
         <h2 class="disp">Appuyez. Regardez.</h2>
         <p>C'est exactement ce que vit votre client au comptoir.</p>
       </div>
+      <div class="mode-tog" id="modeTog">
+        <button class="on" data-m="tampons">Tampons</button>
+        <button data-m="points">Points</button>
+      </div>
       <div class="demo-card" id="card">
         <div class="dc-head">
           <div class="dc-logo">☕</div>
           <div><div class="dc-nom">Votre commerce</div><div class="dc-sub">Carte de fidélité</div></div>
         </div>
-        <div class="dc-count"><span class="dc-n" id="dcN">0</span><span class="dc-max">/10</span></div>
-        <div class="dc-lab">Passages</div>
+        <div class="dc-count"><span class="dc-n" id="dcN">0</span><span class="dc-max" id="dcMax">/10</span></div>
+        <div class="dc-lab" id="dcLab">Passages</div>
         <div class="dc-grid" id="grid"></div>
+        <div class="dc-pts" id="pts">
+          <div class="pt-track"><div class="pt-fill" id="ptFill"></div></div>
+          <div class="pt-rec" id="ptR1"><span class="pt-o"></span><b>Café offert</b><span>50 pts</span></div>
+          <div class="pt-rec" id="ptR2"><span class="pt-o"></span><b>Pâtisserie offerte</b><span>80 pts</span></div>
+        </div>
         <div class="dc-win"><div class="b">Récompense offerte 🎉</div><div class="s">Le client vous montre sa carte.</div></div>
       </div>
       <div class="tapper">
@@ -396,8 +422,8 @@
         <div class="sh reveal"><span class="eyebrow">Comment ça marche</span><h2 class="disp">Trois gestes.</h2></div>
         <div class="flow">
           <div class="fstep reveal"><span class="fico"><svg><use href="#ic-tap"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 1</div><h3>Il pose son téléphone</h3><p>Sur une pastille au comptoir. Sa carte se crée en 2 secondes, sans rien installer.</p></div></div>
-          <div class="fstep reveal d1"><span class="fico"><svg><use href="#ic-stamp"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 2</div><h3>Sa carte se remplit</h3><p>Un tampon de plus à chaque passage, automatiquement.</p></div></div>
-          <div class="fstep reveal d2"><span class="fico"><svg><use href="#ic-gift"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 3</div><h3>Il revient la chercher</h3><p>Pour sa récompense. Et s'il s'éloigne, Lunat le relance tout seul.</p></div></div>
+          <div class="fstep reveal d1"><span class="fico"><svg><use href="#ic-stamp"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 2</div><h3>Sa carte se remplit</h3><p>Un tampon ou des points à chaque passage, validés par votre équipe sur la caisse Lunat.</p></div></div>
+          <div class="fstep reveal d2"><span class="fico"><svg><use href="#ic-gift"/></svg></span><div class="fbody"><div class="fnum">ÉTAPE 3</div><h3>Il revient en profiter</h3><p>Sa récompense l'attend, maintenant ou plus tard. Et s'il s'éloigne, Lunat le relance tout seul.</p></div></div>
         </div>
       </div>
     </section>
@@ -480,6 +506,8 @@
           <div class="bx reveal d1"><span class="bi"><svg><use href="#ic-bell"/></svg></span><h4>Les absents reviennent</h4><p>Relancés automatiquement. Vous ne faites rien.</p></div>
           <div class="bx reveal"><span class="bi"><svg><use href="#ic-tag"/></svg></span><h4>Vos coupons</h4><p>Vos offres, votre marge. Pas de commission.</p></div>
           <div class="bx reveal d1"><span class="bi"><svg><use href="#ic-palette"/></svg></span><h4>À vos couleurs</h4><p>La carte est dessinée à votre image, par nos soins.</p></div>
+          <div class="bx reveal"><span class="bi"><svg><use href="#ic-stamp"/></svg></span><h4>Tampons ou points</h4><p>Une visite = un tampon, ou chaque euro compte. À vous de choisir.</p></div>
+          <div class="bx reveal d1"><span class="bi"><svg><use href="#ic-tap"/></svg></span><h4>Une caisse au comptoir</h4><p>Sur une tablette ou un vieux téléphone. Votre équipe valide, sans voir vos chiffres.</p></div>
         </div>
       </div>
     </section>
@@ -513,7 +541,7 @@
             <div class="detail"><ul>
               <li><span class="ck">✓</span> La carte de fidélité dans le téléphone</li>
               <li><span class="ck">✓</span> Vos clients et leur progression en direct</li>
-              <li><span class="ck">✓</span> Ajout et correction des tampons</li>
+              <li><span class="ck">✓</span> La carte à tampons + la caisse Lunat</li>
               <li><span class="ck">✓</span> Validation des récompenses</li>
               <li><span class="ck">✓</span> Les chiffres de votre semaine</li>
             </ul></div>
@@ -530,6 +558,7 @@
               <li><span class="ck">✓</span> Le ciblage : qui reçoit quoi</li>
               <li><span class="ck">✓</span> Les absents relancés automatiquement</li>
               <li><span class="ck">✓</span> Les coupons (offres, réductions)</li>
+              <li><span class="ck">✓</span> Ou le système de points</li>
             </ul></div>
           </div>
         </div>
@@ -581,7 +610,48 @@
     document.getElementById("dcN").textContent = n;
     card.classList.toggle("full", n>=TOTAL);
   }
+  /* mode points */
+  var mode = "tampons", pts = 0, MAXP = 80;
+  function drawPts(){
+    document.getElementById("dcN").textContent = pts;
+    document.getElementById("ptFill").style.width = Math.min(100, pts / MAXP * 100) + "%";
+    document.getElementById("ptR1").classList.toggle("ok", pts >= 50);
+    document.getElementById("ptR2").classList.toggle("ok", pts >= 80);
+  }
+  function choisirMode(m){
+    mode = m;
+    document.getElementById("modeTog").querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-m") === m); });
+    card.classList.toggle("points", m === "points");
+    card.classList.remove("full");
+    if(m === "points"){
+      pts = 0;
+      document.getElementById("dcMax").textContent = "pts";
+      document.getElementById("dcLab").textContent = "Points";
+      btn.textContent = "💳 Payer 12 € et poser le téléphone";
+      hint.textContent = "L'équipe tape 12 € sur la caisse, le client pose son téléphone.";
+      drawPts();
+    } else {
+      n = 0;
+      document.getElementById("dcMax").textContent = "/10";
+      document.getElementById("dcLab").textContent = "Passages";
+      btn.textContent = "👆 Poser le téléphone";
+      hint.textContent = "Appuyez pour ajouter un passage.";
+      draw(false);
+    }
+  }
+  document.getElementById("modeTog").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(b) choisirMode(b.getAttribute("data-m"));
+  });
+
   btn.addEventListener("click", function(){
+    if(mode === "points"){
+      if(pts >= MAXP){ pts = 0; hint.textContent = "Il a utilisé ses points. Et ça repart !"; drawPts(); return; }
+      pts += 12; drawPts();
+      if(pts >= 80) hint.textContent = "La pâtisserie est débloquée. Il choisit : maintenant, ou il garde ses points.";
+      else if(pts >= 50) hint.textContent = "Café disponible ! Il peut le prendre, ou continuer vers la pâtisserie.";
+      else hint.textContent = "+12 points. Plus que " + (50 - pts) + " avant le café.";
+      return;
+    }
     if(n>=TOTAL){ n=0; hint.textContent="Et ça repart ! Une nouvelle carte."; draw(false); return; }
     n++; draw(true);
     if(n>=TOTAL) hint.textContent="Carte pleine ! Récompense offerte 🎉";
