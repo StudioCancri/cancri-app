@@ -179,6 +179,23 @@
   .dark .wrap{position:relative;z-index:1;}
   .dark .sec-h p{color:rgba(242,242,240,.6);}
   .dark .eyebrow{color:var(--orange);}
+  .modes{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:760px){.modes{grid-template-columns:1fr 1fr;}}
+  .mode{background:#fff;border:1px solid var(--line);border-radius:26px;padding:32px 28px;position:relative;}
+  .mode h3,.caisse-band h3{font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:23px;letter-spacing:-.02em;margin:16px 0 8px;}
+  .mode p,.caisse-band p{font-size:15.5px;color:var(--encre-soft);line-height:1.55;}
+  .mode-ic{width:52px;height:52px;border-radius:15px;background:var(--orange-pale,rgba(252,163,33,.13));padding:11px;flex:none;}
+  .mode-ic svg{display:block;}
+  .mode-ex{margin-top:18px;font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px;color:var(--orange-deep);}
+  .mode-pour{margin-top:8px;font-size:13.5px;color:var(--encre-soft);}
+  .mode-badge{position:absolute;top:24px;right:24px;background:var(--nuit);color:var(--papier);font-size:11px;font-weight:700;
+    letter-spacing:.06em;padding:6px 11px;border-radius:100px;}
+  .caisse-band{display:flex;gap:18px;align-items:flex-start;margin-top:16px;background:var(--nuit);color:var(--papier);
+    border-radius:26px;padding:28px;}
+  .caisse-band h3{margin-top:0;color:var(--papier);}
+  .caisse-band p{color:rgba(242,242,240,.7);}
+  .caisse-band .mode-ic{background:rgba(252,163,33,.16);}
+  @media(max-width:600px){.caisse-band{flex-direction:column;gap:14px;}}
   .feats{display:grid;grid-template-columns:1fr;gap:16px;}
   @media(min-width:700px){.feats{grid-template-columns:1fr 1fr;}}
   .feat{background:rgba(255,255,255,.04);border:1px solid var(--line-dark);border-radius:20px;padding:30px 28px;
@@ -447,17 +464,17 @@
       <div class="step reveal d1">
         <div class="num">1</div>
         <h3>Il pose son téléphone</h3>
-        <p>Une pastille discrète sur le comptoir. Le client l'effleure avec son téléphone, comme un paiement sans contact.</p>
+        <p>Votre équipe valide l'achat sur la petite caisse Lunat. Le client effleure la pastille du comptoir avec son téléphone, comme un paiement sans contact.</p>
       </div>
       <div class="step reveal d2">
         <div class="num">2</div>
         <h3>Sa carte se remplit</h3>
-        <p>Un tampon de plus, tout de suite. La carte se met à jour dans son téléphone sans qu'il ouvre quoi que ce soit.</p>
+        <p>Un tampon ou des points, tout de suite. La carte se met à jour dans son téléphone sans qu'il ouvre quoi que ce soit.</p>
       </div>
       <div class="step reveal d3">
         <div class="num">3</div>
-        <h3>Il revient la chercher</h3>
-        <p>À la carte pleine, vous offrez la récompense. Vous validez d'un geste, la carte repart à zéro.</p>
+        <h3>Il choisit son moment</h3>
+        <p>Sa récompense l'attend : il en profite tout de suite, ou la garde pour plus tard. De quoi lui donner une bonne raison de revenir.</p>
       </div>
     </div>
   </div>
@@ -500,20 +517,56 @@
   </div>
 </section>
 
+<!-- TAMPONS OU POINTS -->
+<section id="modes">
+  <div class="wrap">
+    <div class="sec-h reveal">
+      <div class="eyebrow">Deux façons de fidéliser</div>
+      <h2 class="disp">Tampons ou points, à vous de choisir.</h2>
+      <p>Le même outil, deux programmes. Vous prenez celui qui colle à votre commerce, et vos clients s'y retrouvent tout de suite.</p>
+    </div>
+    <div class="modes reveal">
+      <div class="mode">
+        <div class="mode-ic"><svg width="100%" height="100%"><use href="#ic-stamp"/></svg></div>
+        <h3>Les tampons</h3>
+        <p>Une visite, un tampon. À la carte pleine, la récompense. Simple, et tout le monde comprend.</p>
+        <div class="mode-ex">10 cafés achetés, le 11<sup>e</sup> offert</div>
+        <div class="mode-pour">Idéal quand le panier change peu : café, boulangerie, bubble tea</div>
+      </div>
+      <div class="mode">
+        <div class="mode-badge">Forfait Pro</div>
+        <div class="mode-ic"><svg width="100%" height="100%"><use href="#ic-gift"/></svg></div>
+        <h3>Les points</h3>
+        <p>Chaque euro dépensé rapporte des points. Vous fixez plusieurs récompenses, le client choisit laquelle et quand.</p>
+        <div class="mode-ex">1 € = 1 point · un café à 50, une pâtisserie à 80</div>
+        <div class="mode-pour">Idéal quand l'addition varie : épicerie fine, restaurant, coiffeur, caviste</div>
+      </div>
+    </div>
+    <div class="caisse-band reveal">
+      <div class="mode-ic"><svg width="100%" height="100%"><use href="#ic-tap"/></svg></div>
+      <div>
+        <h3>La caisse Lunat, au comptoir</h3>
+        <p>Sur une tablette ou un vieux téléphone posé à côté de votre caisse. L'équipe donne les tampons ou tape le montant, le client pose son téléphone, c'est fait. Elle n'a accès à rien d'autre : ni vos clients, ni vos chiffres.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- POUR QUI -->
 <section>
   <div class="wrap">
     <div class="sec-h reveal">
       <div class="eyebrow">Pour qui</div>
       <h2 class="disp">Les commerces où l'on revient souvent.</h2>
-      <p>Le principe marche quand une visite vaut un tampon, quel que soit le montant.</p>
+      <p>Les tampons pour les passages réguliers, les points quand le montant compte. Il y a forcément une formule pour vous.</p>
     </div>
     <div class="pills reveal">
       <span class="pill">Cafés</span><span class="pill">Pâtisseries</span><span class="pill">Boulangeries</span>
       <span class="pill">Coiffeurs</span><span class="pill">Barbiers</span><span class="pill">Instituts</span>
       <span class="pill">Fleuristes</span><span class="pill">Cavistes</span>
+      <span class="pill">Épiceries fines</span><span class="pill">Restaurants</span><span class="pill">Concept stores</span>
     </div>
-    <p class="note reveal">Si votre addition change du tout au tout d'un client à l'autre, dites-le-nous : on regardera ensemble si la carte a du sens chez vous, quitte à vous dire non.</p>
+    <p class="note reveal">Vous hésitez entre tampons et points ? On regarde ensemble ce qui colle à votre commerce, quitte à vous dire que ce n'est pas pour vous.</p>
   </div>
 </section>
 
@@ -534,7 +587,7 @@
         <ul>
           <li><span class="chk">✓</span> La carte de fidélité dans le téléphone de vos clients</li>
           <li><span class="chk">✓</span> Vos clients et leur progression, en direct</li>
-          <li><span class="chk">✓</span> Ajout et correction des tampons</li>
+          <li><span class="chk">✓</span> La carte à tampons, avec la caisse Lunat au comptoir</li>
           <li><span class="chk">✓</span> Validation des récompenses au comptoir</li>
           <li><span class="chk">✓</span> Les chiffres de votre semaine</li>
         </ul>
@@ -551,6 +604,7 @@
           <li><span class="chk">✓</span> Vos offres sur l'écran verrouillé de vos clients</li>
           <li><span class="chk">✓</span> Le choix de qui reçoit quoi : proches de la récompense, absents, nouveaux…</li>
           <li><span class="chk">✓</span> Les clients qui s'éloignent relancés automatiquement</li>
+          <li><span class="chk">✓</span> Ou le système de points, avec plusieurs récompenses au choix</li>
           <li><span class="chk">✓</span> Les fonctionnalités qu'on ajoutera ensuite</li>
         </ul>
         <a class="go plein" href="#contact">Choisir le Pro</a>
