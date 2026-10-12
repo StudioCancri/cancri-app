@@ -138,7 +138,7 @@ async function construirePass(jeton) {
   if (sharp) {
     const svg = Buffer.from(estModePoints(commerce)
       ? svgPoints(carte.points || 0, listeRecompensesPass(commerce), fondRgb, labelRgb)
-      : svgStrip(carte.tampons, commerce.objectif, fondRgb, labelRgb));
+      : svgStrip(carte.tampons, commerce.objectif, fondRgb, labelRgb, commerce.forme_tampon));
     buffers["strip.png"] = await sharp(svg).resize(375, 144).png().toBuffer();
     buffers["strip@2x.png"] = await sharp(svg).resize(750, 288).png().toBuffer();
     buffers["strip@3x.png"] = await sharp(svg).resize(1125, 432).png().toBuffer();
@@ -257,7 +257,32 @@ function texteRegle(commerce) {
   return "Posez votre téléphone sur la pastille au comptoir pour gagner vos tampons. À " + commerce.objectif + ", votre récompense vous attend, et vous pouvez la garder pour plus tard.";
 }
 
-function svgStrip(tampons, objectif, fondRgb, labelRgb) {
+/* ============================================================
+   FORMES DE TAMPONS (réglage « forme_tampon » du commerce)
+   Dessinées dans une boîte 100 x 100, puis placées dans le bandeau.
+   ============================================================ */
+const FORMES_TAMPON = {
+  coeur: { plein: ["M50 88 C46 84 10 62 10 34 C10 20 21 11 33 11 C41 11 47 15 50 21 C53 15 59 11 67 11 C79 11 90 20 90 34 C90 62 54 84 50 88 Z"], trait: [] },
+  etoile: { plein: ["M50 6 L61.8 36.8 L94.7 38.5 L69 59.2 L77.6 91 L50 73 L22.4 91 L31 59.2 L5.3 38.5 L38.2 36.8 Z"], trait: [] },
+  cafe: { plein: ["M12 34 H68 V56 C68 72 56 84 41 84 H39 C24 84 12 72 12 56 Z"], trait: ["M68 42 C82 42 88 48 88 55 C88 63 80 67 68 66", "M30 8 C26 14 34 18 30 24", "M48 8 C44 14 52 18 48 24"] }
+};
+function formeTampon(forme, cx, cy, taille, plein, fond, label) {
+  const f = FORMES_TAMPON[forme];
+  const k = taille / 100;
+  let g = '<g transform="translate(' + (cx - taille / 2) + ' ' + (cy - taille / 2) + ') scale(' + k + ')">';
+  if (plein) {
+    for (const d of f.plein) g += '<path d="' + d + '" fill="' + label + '"/>';
+    for (const d of f.trait) g += '<path d="' + d + '" fill="none" stroke="' + label + '" stroke-width="8" stroke-linecap="round"/>';
+  } else {
+    for (const d of f.plein.concat(f.trait)) {
+      g += '<path d="' + d + '" fill="none" stroke="' + label + '" stroke-opacity="0.5" stroke-width="' + (7 / k) +
+        '" stroke-dasharray="' + (16 / k) + ' ' + (13 / k) + '" stroke-linecap="round" stroke-linejoin="round"/>';
+    }
+  }
+  return g + '</g>';
+}
+
+function svgStrip(tampons, objectif, fondRgb, labelRgb, forme) {
   const W = 1125, H = 432;
   const fond = "rgb(" + fondRgb.join(",") + ")", label = "rgb(" + labelRgb.join(",") + ")";
   const rows = objectif <= 6 ? 1 : 2, cols = Math.ceil(objectif / rows);
@@ -266,7 +291,9 @@ function svgStrip(tampons, objectif, fondRgb, labelRgb) {
   for (let i = 0; i < objectif; i++) {
     const row = Math.floor(i / cols), col = i % cols;
     const cx = col * cellW + cellW / 2, cy = row * cellH + cellH / 2;
-    if (i < tampons) {
+    if (FORMES_TAMPON[forme]) {
+      els += formeTampon(forme, cx, cy, D * 1.12, i < tampons, fond, label);
+    } else if (i < tampons) {
       els += '<circle cx="' + cx + '" cy="' + cy + '" r="' + R + '" fill="' + label + '"/>';
       els += '<path d="M ' + (cx - R * 0.38) + ' ' + (cy + R * 0.02) + ' L ' + (cx - R * 0.08) + ' ' + (cy + R * 0.34) + ' L ' + (cx + R * 0.42) + ' ' + (cy - R * 0.3) + '" fill="none" stroke="' + fond + '" stroke-width="' + D * 0.13 + '" stroke-linecap="round" stroke-linejoin="round"/>';
     } else {
