@@ -162,7 +162,7 @@ module.exports = async (req, res) => {
                       "statut","notes_admin","contact_nom","contact_email","contact_tel","adresse",
                       "latitude","longitude","texte_geoloc","message_relance","relances_actives",
                       "plan","plan_extras","abonnement_statut","essai_debut","essai_fin",
-                      "mode","points_par_euro","recompenses_points","tap_auto"];
+                      "mode","points_par_euro","recompenses_points","tap_auto","forme_tampon"];
       for (const k of permis) if (body[k] !== undefined) champs[k] = body[k];
 
       /* système de fidélité : on nettoie ce qui arrive */
@@ -172,6 +172,7 @@ module.exports = async (req, res) => {
         champs.points_par_euro = isFinite(v) ? Math.max(0.1, Math.min(100, v)) : 1;
       }
       if (champs.tap_auto !== undefined) champs.tap_auto = champs.tap_auto === true;
+      if (champs.forme_tampon !== undefined && !["rond", "coeur", "etoile", "cafe"].includes(champs.forme_tampon)) champs.forme_tampon = "rond";
       if (champs.recompenses_points !== undefined) {
         const liste = Array.isArray(champs.recompenses_points) ? champs.recompenses_points : [];
         champs.recompenses_points = liste
