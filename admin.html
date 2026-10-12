@@ -293,6 +293,11 @@
   .rec-row .rec-u{font-size:12px;color:var(--text-faint);flex:none;}
   .rec-row .rec-del{background:none;border:1px solid var(--line-2);color:var(--text-soft);border-radius:9px;
     width:34px;height:34px;flex:none;cursor:pointer;font-size:14px;}
+  .forme-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .forme-pick button{height:58px;border:1px solid var(--line-2);border-radius:12px;background:transparent;color:var(--gold);
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;}
+  .forme-pick button.on{border-color:var(--gold);background:rgba(224,169,109,.14);}
+  .forme-pick button span{width:20px;height:20px;display:block;}
   .addbtn-sm{background:none;border:1px dashed var(--line-2);color:var(--gold);border-radius:10px;padding:10px 14px;
     font:inherit;font-size:13px;font-weight:700;cursor:pointer;width:100%;}
   .caps{display:grid;grid-template-columns:1fr;gap:9px;margin-top:6px;}
@@ -525,6 +530,16 @@
         <span class="mini-lab">Récompenses (le client choisit quand les utiliser)</span>
         <div id="recZone"></div>
         <button class="addbtn-sm" id="recAdd">+ Ajouter une récompense</button>
+      </div>
+
+      <div id="zoneForme">
+        <span class="mini-lab">Forme des tampons</span>
+        <div class="forme-pick" id="formePick">
+          <button data-f="rond" aria-label="Rond coché"></button>
+          <button data-f="coeur" aria-label="Cœur"></button>
+          <button data-f="etoile" aria-label="Étoile"></button>
+          <button data-f="cafe" aria-label="Tasse"></button>
+        </div>
       </div>
 
       <label class="cap" style="margin-top:16px;">
@@ -998,7 +1013,41 @@
   let planCourant = "pro";
   let defPlans = null;
 
+  /* formes de tampons (réglage du commerce) */
+  var FORMES_TAMPON = {
+    coeur: { plein: ["M50 88 C46 84 10 62 10 34 C10 20 21 11 33 11 C41 11 47 15 50 21 C53 15 59 11 67 11 C79 11 90 20 90 34 C90 62 54 84 50 88 Z"], trait: [] },
+    etoile: { plein: ["M50 6 L61.8 36.8 L94.7 38.5 L69 59.2 L77.6 91 L50 73 L22.4 91 L31 59.2 L5.3 38.5 L38.2 36.8 Z"], trait: [] },
+    cafe: { plein: ["M12 34 H68 V56 C68 72 56 84 41 84 H39 C24 84 12 72 12 56 Z"], trait: ["M68 42 C82 42 88 48 88 55 C88 63 80 67 68 66", "M30 8 C26 14 34 18 30 24", "M48 8 C44 14 52 18 48 24"] }
+  };
+  function svgForme(forme, plein){
+    var f = FORMES_TAMPON[forme]; if(!f) return "";
+    var s = '<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" style="display:block;overflow:visible">';
+    if(plein){
+      f.plein.forEach(function(d){ s += '<path d="'+d+'" fill="currentColor"/>'; });
+      f.trait.forEach(function(d){ s += '<path d="'+d+'" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>'; });
+    } else {
+      f.plein.concat(f.trait).forEach(function(d){ s += '<path d="'+d+'" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-width="5" stroke-dasharray="9 7" stroke-linecap="round" stroke-linejoin="round"/>'; });
+    }
+    return s + '</svg>';
+  }
+
   /* ---------- SYSTÈME DE FIDÉLITÉ (tampons / points) ---------- */
+  let formeCourante = "rond";
+  function apercuForme(f){
+    if(f === "rond"){
+      return '<span><svg viewBox="0 0 100 100" width="100%" height="100%"><circle cx="50" cy="50" r="44" fill="currentColor"/><path d="M31 51 L45 65 L70 37" fill="none" stroke="#1B2024" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+        '<span><svg viewBox="0 0 100 100" width="100%" height="100%"><circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-width="5" stroke-dasharray="9 7"/></svg></span>';
+    }
+    return '<span>' + svgForme(f, true) + '</span><span>' + svgForme(f, false) + '</span>';
+  }
+  $("formePick").querySelectorAll("button").forEach(function(b){ b.innerHTML = apercuForme(b.getAttribute("data-f")); });
+  function majForme(){
+    $("formePick").querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", b.getAttribute("data-f") === formeCourante); });
+  }
+  $("formePick").addEventListener("click", function(e){
+    const b = e.target.closest("button"); if(!b) return;
+    formeCourante = b.getAttribute("data-f"); majForme();
+  });
   let modeCourant = "tampons";
   let pointsAutorises = true;
 
@@ -1021,6 +1070,7 @@
       b.classList.toggle("on", b.getAttribute("data-mode") === modeCourant);
     });
     $("zonePoints").style.display = modeCourant === "points" ? "block" : "none";
+    $("zoneForme").style.display = modeCourant === "points" ? "none" : "block";
     const note = $("modeNote");
     note.classList.remove("warn");
     if(modeCourant === "points" && !pointsAutorises){
@@ -1039,6 +1089,8 @@
     pointsAutorises = !!(r.capacites && r.capacites.points);
     $("fPtsEuro").value = (c.points_par_euro !== null && c.points_par_euro !== undefined) ? c.points_par_euro : 1;
     $("fTapAuto").checked = c.tap_auto !== false;
+    formeCourante = c.forme_tampon || "rond";
+    majForme();
     let recs = c.recompenses_points;
     if(typeof recs === "string"){ try { recs = JSON.parse(recs); } catch(e){ recs = []; } }
     $("recZone").innerHTML = "";
@@ -1076,7 +1128,8 @@
       mode: modeCourant,
       points_par_euro: parseFloat($("fPtsEuro").value) || 1,
       recompenses_points: recs,
-      tap_auto: $("fTapAuto").checked });
+      tap_auto: $("fTapAuto").checked,
+      forme_tampon: formeCourante });
     this.disabled = false;
     if(r.ok){
       commerceOuvert = Object.assign(commerceOuvert, r.commerce || {});
