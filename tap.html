@@ -99,6 +99,7 @@
   }
   .dot{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--crema-soft);}
   .dot.on{background:var(--crema);border-color:var(--crema);}
+  .dot.forme{width:16px;height:16px;border:none;border-radius:0;background:none;color:var(--crema);}
 
   /* état plein */
   .full-msg{
@@ -148,6 +149,24 @@
 
 <script>
 (function(){
+  /* formes de tampons (réglage du commerce) */
+  var FORMES_TAMPON = {
+    coeur: { plein: ["M50 88 C46 84 10 62 10 34 C10 20 21 11 33 11 C41 11 47 15 50 21 C53 15 59 11 67 11 C79 11 90 20 90 34 C90 62 54 84 50 88 Z"], trait: [] },
+    etoile: { plein: ["M50 6 L61.8 36.8 L94.7 38.5 L69 59.2 L77.6 91 L50 73 L22.4 91 L31 59.2 L5.3 38.5 L38.2 36.8 Z"], trait: [] },
+    cafe: { plein: ["M12 34 H68 V56 C68 72 56 84 41 84 H39 C24 84 12 72 12 56 Z"], trait: ["M68 42 C82 42 88 48 88 55 C88 63 80 67 68 66", "M30 8 C26 14 34 18 30 24", "M48 8 C44 14 52 18 48 24"] }
+  };
+  function svgForme(forme, plein){
+    var f = FORMES_TAMPON[forme]; if(!f) return "";
+    var s = '<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true" style="display:block;overflow:visible">';
+    if(plein){
+      f.plein.forEach(function(d){ s += '<path d="'+d+'" fill="currentColor"/>'; });
+      f.trait.forEach(function(d){ s += '<path d="'+d+'" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>'; });
+    } else {
+      f.plein.concat(f.trait).forEach(function(d){ s += '<path d="'+d+'" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-width="5" stroke-dasharray="9 7" stroke-linecap="round" stroke-linejoin="round"/>'; });
+    }
+    return s + '</svg>';
+  }
+
   var API = "/api/carte";
   var params = new URLSearchParams(location.search);
   var SLUG = params.get("c") || "cafe-chartrons";
@@ -175,9 +194,13 @@
     }).then(function(r){ return r.json(); });
   }
 
+  var FORME = "rond";
   function dots(n, total){
     var h = '<div class="dots" id="dots">';
-    for(var i=0;i<total;i++){ h += '<span class="dot'+(i<n?' on':'')+'"></span>'; }
+    for(var i=0;i<total;i++){
+      if(FORME !== "rond" && FORMES_TAMPON[FORME]) h += '<span class="dot forme">'+svgForme(FORME, i<n)+'</span>';
+      else h += '<span class="dot'+(i<n?' on':'')+'"></span>';
+    }
     h += '</div>';
     return h;
   }
@@ -288,7 +311,7 @@
   if(dejaFait){
     api({ action:"etat", jeton:j, commerce:SLUG }).then(function(r){
       if(r.raison === "carte_inconnue"){ versInscription(); return; }
-      garderJeton(r.jeton);
+      garderJeton(r.jeton); if(r.forme) FORME = r.forme;
       vue(
         '<div class="disc pop"><div class="halo"></div><span class="plus" style="font-size:44px">\u2713</span></div>'+
         '<div class="brand show1">'+ (r.commerce||"") +'</div>'+
@@ -307,7 +330,7 @@
     /* vraiment inconnu (ni jeton ni cookie) → inscription, avec la preuve NFC
        intacte : le serveur ne la consomme pas tant qu'il n'a pas trouvé la carte */
     if(r.raison === "carte_inconnue"){ versInscription(); return; }
-    garderJeton(r.jeton);
+    garderJeton(r.jeton); if(r.forme) FORME = r.forme;
 
     /* la caisse avait saisi quelque chose, ou on montre juste le solde */
     if(r.caisse){ vueCaisse(r); return; }
