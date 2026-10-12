@@ -100,6 +100,7 @@ module.exports = async (req, res) => {
           points: c.points || 0,
           recompenses_dispo: c.recompenses_dispo || 0,
           mode: (m.mode === "points" && capacites(m).points) ? "points" : "tampons",
+          forme: m.forme_tampon || "rond",
           recompenses_points: listeRecompenses(m),
           dernier_tap: c.dernier_tap,
           commerce: m.nom,
