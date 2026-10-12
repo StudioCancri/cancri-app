@@ -366,6 +366,7 @@ function etat(carte, commerce, extra) {
     taps_aujourdhui: tapsDuJour(carte),
     taps_max: TAPS_MAX_JOUR,
     mode: modeEffectif(commerce),
+    forme: commerce.forme_tampon || "rond",
     points: carte.points || 0,
     recompenses_dispo: carte.recompenses_dispo || 0,
     recompenses_points: modeEffectif(commerce) === "points" ? listeRecompenses(commerce) : [],
