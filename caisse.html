@@ -66,6 +66,17 @@
   .ecran.ok .grand{color:#fff;}
   .ecran.ok .petit{color:rgba(255,255,255,.85);}
   .ecran.refus .grand{color:#F2B8B4;}
+  /* anniversaire du client qui vient de taper */
+  .anniv-c{display:none;align-items:center;gap:12px;margin-top:10px;border-radius:16px;padding:12px 12px 12px 14px;
+    background:var(--orange-pale);border:1.5px solid var(--orange);color:var(--encre);}
+  .anniv-c.on{display:flex;animation:annivC .45s cubic-bezier(.3,1.3,.4,1);}
+  @keyframes annivC{from{transform:scale(.96);opacity:0;}to{transform:none;opacity:1;}}
+  .anniv-c svg{width:28px;height:28px;flex:none;color:var(--orange-deep);}
+  .anniv-c .ac-t{flex:1;min-width:0;font-size:14px;line-height:1.35;}
+  .anniv-c .ac-t b{display:block;font-size:15px;}
+  .anniv-c button{border:none;border-radius:12px;font:inherit;font-weight:700;cursor:pointer;}
+  .anniv-c .ac-ok{background:var(--orange);color:var(--nuit);padding:11px 14px;font-size:14px;}
+  .anniv-c .ac-x{background:none;color:var(--encre-soft);font-size:18px;padding:6px 8px;}
   @keyframes pouls{0%,100%{box-shadow:0 0 0 0 rgba(252,163,33,.0);}50%{box-shadow:0 0 0 6px rgba(252,163,33,.22);}}
 
   /* ---------- pavé ---------- */
@@ -153,6 +164,13 @@
     <div class="ecran" id="ecran">
       <div class="grand num" id="eGrand">0 €</div>
       <div class="petit" id="ePetit"></div>
+    </div>
+
+    <div class="anniv-c" id="annivC" role="status">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="M5 21v-7.5A1.5 1.5 0 0 1 6.5 12h11a1.5 1.5 0 0 1 1.5 1.5V21"/><path d="M5 16.2c1.2 0 1.2 1 2.3 1s1.2-1 2.3-1 1.2 1 2.4 1 1.2-1 2.3-1 1.2 1 2.4 1 1.1-1 2.3-1"/><path d="M8 12V9.5M12 12V9.5M16 12V9.5"/><path d="M8 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3zM12 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3zM16 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3z" fill="currentColor"/></svg>
+      <div class="ac-t" id="acTxt"></div>
+      <button class="ac-ok" id="acOk">Offert</button>
+      <button class="ac-x" id="acX" aria-label="Fermer">✕</button>
     </div>
 
     <!-- points : pavé numérique -->
@@ -403,7 +421,28 @@
   }
   $("bValider").addEventListener("click", valider);
 
+  /* ---------- anniversaire ---------- */
+  var annivId = null;
+  function montrerAnniv(res, id){
+    if(!res || !res.anniv || !res.anniv.cadeau){ return; }
+    annivId = id;
+    $("acTxt").innerHTML = "<b>C'est l'anniversaire de " + esc(res.prenom || "ce client") + " !</b>Cadeau : " + esc(res.anniv.cadeau);
+    $("acOk").disabled = false; $("acOk").textContent = "Offert";
+    $("annivC").classList.add("on");
+  }
+  function cacherAnniv(){ $("annivC").classList.remove("on"); annivId = null; }
+  $("acX").addEventListener("click", cacherAnniv);
+  $("acOk").addEventListener("click", function(){
+    if(!annivId) return;
+    var b = this; b.disabled = true;
+    api({ action:"anniv_offert", id: annivId }).then(function(r){
+      if(r.ok){ b.textContent = "✓"; setTimeout(cacherAnniv, 900); }
+      else { b.disabled = false; }
+    }).catch(function(){ b.disabled = false; });
+  });
+
   function envoyer(d, grand, resume){
+    cacherAnniv();
     $("bValider").disabled = true;
     d.action = "saisir";
     api(d).then(function(r){
@@ -443,7 +482,7 @@
     var id = attente.id;
     api({ action:"statut", id: id }).then(function(r){
       if(!attente || attente.id !== id || !r.ok) return;
-      if(r.statut === "consomme") finAttente("consomme", r.resultat);
+      if(r.statut === "consomme") finAttente("consomme", r.resultat, id);
       else if(r.statut === "expire" || r.statut === "annule") finAttente(r.statut);
     }).catch(function(){});
   }
@@ -457,10 +496,11 @@
     $("bValider").disabled = false;
   }
 
-  function finAttente(statut, res){
+  function finAttente(statut, res, id){
     nettoyerAttente();
     if(statut === "consomme" && res){
       var qui = res.prenom ? res.prenom : "Client";
+      montrerAnniv(res, id);
       if(res.ok === false){
         if(res.raison === "points_insuffisants") resultatTexte("refus", "Pas assez", qui + " a " + res.points + " points sur " + res.cout + " nécessaires");
         else if(res.raison === "aucune_recompense") resultatTexte("refus", "Rien à utiliser", qui + " n'a pas encore de récompense (" + res.tampons + "/" + res.objectif + ")");
@@ -508,10 +548,10 @@
     var a = appareil(), intro, etapes, astuce;
     if(a === "ipad"){
       intro = "La caisse Lunat se pose par-dessus votre appli de paiement, sans la gêner.";
-      etapes = ["Ouvrez d'abord votre appli de paiement.",
-        "Ouvrez Safari avec cette page caisse.",
-        "Touchez les trois petits points en haut de la fenêtre Safari, puis choisissez la fenêtre flottante (« Slide Over » ou « Fenêtre » selon votre version d'iPad).",
-        "Pour la ranger, glissez-la vers le bord de l'écran. Un glissement depuis le bord la fait revenir."];
+      etapes = ["Vérifiez que l'iPad est à jour (iPadOS 26.1 ou plus) et en mode fenêtres : Réglages, Multitâche et gestes.",
+        "Ouvrez votre appli de paiement, puis cette page caisse dans Safari.",
+        "Restez appuyé sur le bouton vert en haut à gauche de la fenêtre Safari, puis choisissez « Accéder à Slide Over ».",
+        "La caisse flotte par-dessus la caisse de paiement. Glissez-la vers la droite pour la cacher, depuis le bord pour la faire revenir."];
       astuce = "Astuce : ajoutez cette page à l'écran d'accueil (bouton Partager, puis « Sur l'écran d'accueil »). Elle s'ouvrira comme une appli et restera connectée.";
     } else if(a === "android"){
       intro = "Sur la plupart des tablettes Android, la caisse peut flotter au-dessus de votre appli de paiement.";
@@ -521,7 +561,7 @@
         "Ouvrez votre appli de paiement à côté."];
       astuce = "Astuce : menu Chrome, puis « Ajouter à l'écran d'accueil », pour retrouver la caisse en un geste.";
     } else if(a === "iphone" || a === "android-tel"){
-      intro = "Sur un téléphone, pas besoin de fenêtre flottante : posez-le au comptoir avec cette page ouverte.";
+      intro = "Sur iPhone, aucune appli ne peut flotter par-dessus une autre : Apple ne le permet pas. Le plus simple est un téléphone dédié, posé au comptoir avec cette page ouverte.";
       etapes = ["Ajoutez la page à l'écran d'accueil (Partager ou menu du navigateur, puis « Sur l'écran d'accueil »).",
         "Ouvrez-la depuis l'icône : elle reste connectée.",
         "L'écran reste allumé tant que la page est ouverte."];
