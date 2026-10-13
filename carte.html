@@ -223,6 +223,46 @@
   .w-link{background:none;border:none;font:inherit;font-size:12.5px;color:var(--ink-soft);
     text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px;}
 
+  /* anniversaire : sélecteurs jour / mois */
+  .w-anniv{text-align:left;margin:-2px 0 12px;}
+  .w-anniv-l{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin:0 0 6px 4px;}
+  .w-anniv-l em{font-style:normal;font-weight:500;opacity:.75;}
+  .w-anniv-r{display:grid;grid-template-columns:1fr 1.6fr;gap:8px;}
+  .w-sel{
+    width:100%;border:1.5px solid var(--line);border-radius:12px;padding:12px 10px;
+    font:inherit;font-size:15px;background:#fff;color:var(--ink);
+    -webkit-appearance:none;appearance:none;text-align:center;text-align-last:center;
+  }
+  .w-sel:focus{outline:2px solid var(--sage-deep);border-color:transparent;}
+
+  /* bandeau d'anniversaire sur la carte */
+  .anniv{display:none;position:relative;overflow:hidden;margin:0 0 16px;border-radius:18px;
+    padding:18px 30px 16px 70px;background:var(--espresso);color:var(--crema);
+    box-shadow:0 14px 30px -16px rgba(42,29,20,.55);}
+  .anniv.on{display:block;animation:annivIn .5s cubic-bezier(.3,1.3,.4,1);}
+  @keyframes annivIn{from{transform:translateY(-8px) scale(.97);opacity:0;}to{transform:none;opacity:1;}}
+  .anniv .an-ic{position:absolute;left:16px;top:16px;width:40px;height:40px;border-radius:12px;
+    background:rgba(240,223,198,.14);display:flex;align-items:center;justify-content:center;}
+  .anniv .an-ic svg{width:24px;height:24px;}
+  .anniv .an-t{font-family:'Fraunces',serif;font-style:italic;font-weight:600;font-size:19px;line-height:1.2;}
+  .anniv .an-c{font-size:14px;margin-top:6px;line-height:1.4;}
+  .anniv .an-c b{color:#fff;}
+  .anniv .an-p{font-size:12px;margin-top:8px;opacity:.75;display:flex;align-items:center;gap:6px;}
+  .anniv .confetti{position:absolute;top:0;right:0;bottom:0;width:120px;height:100%;pointer-events:none;opacity:.5;}
+
+  /* ajouter son anniversaire (clients déjà inscrits) */
+  .ajanniv{display:none;margin-top:18px;background:var(--foam);border:1px solid var(--line);border-radius:16px;padding:16px 18px;}
+  .ajanniv.on{display:block;}
+  .ajanniv .aa-t{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;}
+  .ajanniv .aa-t svg{width:18px;height:18px;flex:none;}
+  .ajanniv .aa-s{font-size:12.5px;color:var(--ink-soft);margin:4px 0 12px;line-height:1.4;}
+  .ajanniv .aa-r{display:grid;grid-template-columns:1fr 1.6fr auto;gap:8px;}
+  .ajanniv .aa-go{border:none;border-radius:12px;padding:0 16px;background:var(--espresso);color:var(--crema);
+    font:inherit;font-size:14px;font-weight:700;cursor:pointer;}
+  .ajanniv .aa-go:disabled{opacity:.5;}
+  .ajanniv .aa-plus-tard{background:none;border:none;font:inherit;font-size:12px;color:var(--ink-soft);
+    text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:8px 0 0;}
+
   .banner{
     position:fixed;top:10px;left:50%;transform:translate(-50%,-130%);
     width:min(92vw,380px);z-index:70;
@@ -273,9 +313,16 @@
       <input class="w-input" id="wName" type="text" maxlength="20" placeholder="Prénom" autocomplete="given-name">
       <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom" autocomplete="family-name">
       <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email" autocomplete="email">
+      <div class="w-anniv">
+        <span class="w-anniv-l">Anniversaire <em>(facultatif, pour être gâté le jour J)</em></span>
+        <div class="w-anniv-r">
+          <select class="w-sel" id="wJour" aria-label="Jour de naissance"></select>
+          <select class="w-sel" id="wMois" aria-label="Mois de naissance"></select>
+        </div>
+      </div>
       <label class="w-consent"><input type="checkbox" id="wConsent"> OK pour recevoir les offres et nouveautés de ce commerce par email</label>
       <button class="w-btn" id="wGo">Créer ma carte</button>
-      <div class="w-legal">En créant ta carte, ce commerce enregistre tes passages (et le montant de tes achats si sa carte fonctionne aux points) pour gérer ta fidélité. <a href="/confidentialite.html" target="_blank" rel="noopener">Tes données</a></div>
+      <div class="w-legal">En créant ta carte, ce commerce enregistre tes passages (et le montant de tes achats si sa carte fonctionne aux points) pour gérer ta fidélité. Ton anniversaire, si tu le donnes, sert uniquement à te souhaiter ce jour-là. <a href="/confidentialite.html" target="_blank" rel="noopener">Tes données</a></div>
     </div>
     <div class="w-recup" id="wRecup">
       <div class="w-title">Te revoilà ☕</div>
@@ -293,6 +340,20 @@
 <div class="wrap">
 
   <div class="greet" id="greet">Salut <span>☕</span></div>
+
+  <div class="anniv" id="annivBox" role="status">
+    <svg class="confetti" viewBox="0 0 120 120" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+      <circle cx="104" cy="12" r="3" fill="#F0DFC6"/><circle cx="114" cy="40" r="2.2" fill="#E5527A"/>
+      <circle cx="96" cy="108" r="2.6" fill="#7C9C8C"/><circle cx="114" cy="96" r="2" fill="#E0A526"/>
+      <rect x="80" y="8" width="7" height="3" rx="1.5" fill="#E0A526" transform="rotate(30 83 9)"/>
+      <rect x="106" y="66" width="7" height="3" rx="1.5" fill="#F0DFC6" transform="rotate(-25 109 67)"/>
+      <rect x="70" y="112" width="6" height="3" rx="1.5" fill="#E5527A" transform="rotate(50 73 113)"/>
+    </svg>
+    <div class="an-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="M5 21v-7.5A1.5 1.5 0 0 1 6.5 12h11a1.5 1.5 0 0 1 1.5 1.5V21"/><path d="M5 16.2c1.2 0 1.2 1 2.3 1s1.2-1 2.3-1 1.2 1 2.4 1 1.2-1 2.3-1 1.2 1 2.4 1 1.1-1 2.3-1"/><path d="M8 12V9.5M12 12V9.5M16 12V9.5"/><path d="M8 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3zM12 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3zM16 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3z" fill="currentColor"/></svg></div>
+    <div class="an-t" id="anTitre">Joyeux anniversaire !</div>
+    <div class="an-c" id="anCorps"></div>
+    <div class="an-p" id="anPied"></div>
+  </div>
 
   <div class="pass" id="pass">
     <div class="pass-top">
@@ -349,6 +410,17 @@
   <div class="status" id="status"></div>
 
   <div class="monprog" id="monProg"></div>
+
+  <div class="ajanniv" id="ajAnniv">
+    <div class="aa-t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16"/><path d="M5 21v-7.5A1.5 1.5 0 0 1 6.5 12h11a1.5 1.5 0 0 1 1.5 1.5V21"/><path d="M5 16.2c1.2 0 1.2 1 2.3 1s1.2-1 2.3-1 1.2 1 2.4 1 1.2-1 2.3-1 1.2 1 2.4 1 1.1-1 2.3-1"/><path d="M8 12V9.5M12 12V9.5M16 12V9.5"/><path d="M8 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3zM12 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3zM16 6.8c-.6-.6-.6-1.6 0-2.3.6.7.6 1.7 0 2.3z" fill="currentColor"/></svg> Ton anniversaire</div>
+    <div class="aa-s" id="aaSous">Ajoute-le pour qu'on pense à toi le jour J.</div>
+    <div class="aa-r">
+      <select class="w-sel" id="aaJour" aria-label="Jour"></select>
+      <select class="w-sel" id="aaMois" aria-label="Mois"></select>
+      <button class="aa-go" id="aaGo">OK</button>
+    </div>
+    <button class="aa-plus-tard" id="aaPlusTard">Plus tard</button>
+  </div>
 
   <div class="staff" id="staffBox">
     <div class="s-title">Validation staff</div>
@@ -452,6 +524,61 @@
   };
   var emailRecup = "";
 
+  /* ----- anniversaire ----- */
+  var MOIS_NOMS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  function remplirAnniv(selJ, selM){
+    var hj = '<option value="">Jour</option>', hm = '<option value="">Mois</option>';
+    for(var d = 1; d <= 31; d++) hj += '<option value="' + d + '">' + d + '</option>';
+    for(var m = 0; m < 12; m++) hm += '<option value="' + (m + 1) + '">' + MOIS_NOMS[m] + '</option>';
+    selJ.innerHTML = hj; selM.innerHTML = hm;
+  }
+  /* "" si rien choisi, null si incomplet ou impossible, sinon "MM-JJ" */
+  function lireAnniv(selJ, selM){
+    var j = parseInt(selJ.value, 10), m = parseInt(selM.value, 10);
+    if(!j && !m) return "";
+    if(!j || !m) return null;
+    var max = [31,29,31,30,31,30,31,31,30,31,30,31][m - 1];
+    if(j > max) return null;
+    return (m < 10 ? "0" : "") + m + "-" + (j < 10 ? "0" : "") + j;
+  }
+  remplirAnniv(document.getElementById("wJour"), document.getElementById("wMois"));
+  remplirAnniv(document.getElementById("aaJour"), document.getElementById("aaMois"));
+
+  var CLE_ANNIV_PLUS_TARD = "lunat-anniv-plus-tard-" + SLUG;
+  function renderAnniv(e){
+    var box = document.getElementById("annivBox");
+    var a = e.anniv;
+    if(a){
+      document.getElementById("anTitre").textContent = "Joyeux anniversaire" + (e.prenom ? " " + e.prenom : "") + " !";
+      var corps = document.getElementById("anCorps"), pied = document.getElementById("anPied");
+      if(a.cadeau && !a.offert){
+        corps.innerHTML = echapper(e.commerce) + " t'offre : <b>" + echapper(a.cadeau) + "</b>";
+        pied.innerHTML = '<span class="pulse-dot"></span> Montre cet écran au comptoir, valable jusqu\u2019au ' + echapper(a.fin);
+      } else if(a.cadeau && a.offert){
+        corps.textContent = "Ton cadeau t'a bien été offert. Belle journée !";
+        pied.textContent = "";
+      } else {
+        corps.textContent = "Toute l'équipe de " + e.commerce + " te souhaite une belle journée.";
+        pied.textContent = "";
+      }
+      box.classList.add("on");
+    } else {
+      box.classList.remove("on");
+    }
+
+    var aj = document.getElementById("ajAnniv");
+    var plusTard = false;
+    try { plusTard = localStorage.getItem(CLE_ANNIV_PLUS_TARD) === "1"; } catch(x){}
+    if(!e.anniversaire && !plusTard){
+      document.getElementById("aaSous").textContent = e.cadeau_anniv
+        ? "Ajoute-le : " + e.commerce + " t'offre une petite attention le jour J."
+        : "Ajoute-le pour qu'on pense à toi le jour J.";
+      aj.classList.add("on");
+    } else {
+      aj.classList.remove("on");
+    }
+  }
+
   function jeton(){ try { return localStorage.getItem(CLE); } catch(e){ return null; } }
   function garderJeton(j){ if(!j) return; try { localStorage.setItem(CLE, j); } catch(e){} }
 
@@ -537,6 +664,7 @@
     els.pass.classList.toggle("reward", e.pleine && e.mode !== "points");
     els.staffBox.classList.toggle("on", e.pleine && e.mode !== "points");
     renderProgramme(e);
+    renderAnniv(e);
     renderStatus();
   }
 
@@ -676,6 +804,8 @@
     if(!nom){ banner("Ton nom de famille est requis"); els.wNom.focus(); return; }
     var mailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail);
     if(!mailOk){ banner("Un email valide est requis"); els.wMail.focus(); return; }
+    var anniv = lireAnniv(document.getElementById("wJour"), document.getElementById("wMois"));
+    if(anniv === null){ banner("Choisis le jour et le mois de ton anniversaire"); return; }
     els.wGo.disabled = true;
     api({
       action: "creer",
@@ -684,6 +814,7 @@
       nom: nom,
       email: mail,
       consentement: els.wConsent.checked,
+      anniversaire: anniv || null,
       /* preuve NFC : indispensable quand le commerce est en nfc_requis */
       p: P,
       m: M
@@ -712,6 +843,23 @@
     });
   }
   els.wGo.addEventListener("click", creerCarte);
+
+  document.getElementById("aaGo").addEventListener("click", function(){
+    var b = this;
+    var a = lireAnniv(document.getElementById("aaJour"), document.getElementById("aaMois"));
+    if(!a){ banner("Choisis le jour et le mois"); return; }
+    b.disabled = true;
+    api({ action: "anniversaire", jeton: jeton(), commerce: SLUG, anniversaire: a }).then(function(r){
+      b.disabled = false;
+      if(r.anniv_ajoute){ render(r); banner("Anniversaire enregistré 🎂"); }
+      else if(r.raison === "anniv_deja"){ render(r); }
+      else banner("Petit souci, réessaie");
+    }).catch(function(){ b.disabled = false; banner("Connexion impossible, réessaie"); });
+  });
+  document.getElementById("aaPlusTard").addEventListener("click", function(){
+    try { localStorage.setItem(CLE_ANNIV_PLUS_TARD, "1"); } catch(x){}
+    document.getElementById("ajAnniv").classList.remove("on");
+  });
   var asave = document.getElementById("androidSave");
   if(asave) asave.addEventListener("click", function(){
     var help = document.getElementById("androidHelp");
