@@ -1824,12 +1824,34 @@
   });
 
   /* ---------- FICHE CLIENT ---------- */
-  async function appelPro(payload){
-    const r = await fetch(API_PRO, {
+  /* le jeton de connexion expire au bout d'une heure : on prend toujours le plus récent,
+     et si le serveur le refuse quand même, on le renouvelle puis on réessaie une fois */
+  async function jetonFrais(forcer){
+    try {
+      const res = forcer ? await sb.auth.refreshSession() : await sb.auth.getSession();
+      const s = res && res.data && res.data.session;
+      if(s && s.access_token) sessionToken = s.access_token;
+    } catch(e){}
+    return sessionToken;
+  }
+  async function envoiPro(payload, jeton){
+    return fetch(API_PRO, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + sessionToken },
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + jeton },
       body: JSON.stringify(payload)
     });
+  }
+  async function appelPro(payload){
+    let r = await envoiPro(payload, await jetonFrais(false));
+    if(r.status === 401){
+      r = await envoiPro(payload, await jetonFrais(true));
+      if(r.status === 401){
+        alert("Votre session a expiré. Reconnectez-vous.");
+        try { await sb.auth.signOut(); } catch(e){}
+        location.reload();
+        return { ok:false, raison:"non_connecte" };
+      }
+    }
     return r.json();
   }
 
@@ -2563,6 +2585,7 @@
   });
 
   sb.auth.onAuthStateChange((event, session) => {
+    if(session && session.access_token) sessionToken = session.access_token;
     if(session && event === "SIGNED_IN"){
       sb.from("commerces").select("objectif").then(({data:d}) => {
         window.__objectif = (d && d[0]) ? d[0].objectif : 10;
