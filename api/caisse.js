@@ -12,11 +12,13 @@
                   une récompense → en attente du tap client
      - statut   : la caisse demande si le client a tapé
      - annuler  : l'employé annule la saisie en cours
+     - anniv_offert : le cadeau d'anniversaire du client vient d'être donné
    Le tap du client (api/carte.js) consomme la saisie en attente.
    ============================================================ */
 
 const crypto = require("crypto");
 const { capacites } = require("./plans");
+const { fenetreAnniv } = require("./anniv");
 
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
@@ -200,6 +202,22 @@ module.exports = async (req, res) => {
         method: "PATCH",
         body: { statut: "annule" },
       });
+      return res.status(200).json({ ok: true });
+    }
+
+    /* ---------- ANNIVERSAIRE : cadeau donné au client qui vient de taper ---------- */
+    if (action === "anniv_offert") {
+      const rows = await sb("caisse_attente?id=eq." + encodeURIComponent(body.id || "") +
+        "&appareil_id=eq." + appareil.id + "&statut=eq.consomme&select=carte_id");
+      const cid = rows && rows[0] && rows[0].carte_id;
+      if (!cid) return res.status(200).json({ ok: false, raison: "introuvable" });
+      const cs = await sb("cartes?id=eq." + encodeURIComponent(cid) + "&commerce_id=eq." + commerce.id + "&select=id,anniversaire,message_perso");
+      const carte = cs && cs[0];
+      const f = carte && fenetreAnniv(carte.anniversaire);
+      if (!f) return res.status(200).json({ ok: false, raison: "pas_anniversaire" });
+      const patch = { anniv_offert_annee: f.annee };
+      if (carte.message_perso && /^Joyeux anniversaire/.test(carte.message_perso)) patch.message_perso = null;
+      await sb("cartes?id=eq." + carte.id, { method: "PATCH", body: patch });
       return res.status(200).json({ ok: true });
     }
 
