@@ -476,6 +476,88 @@
     font:inherit;font-size:12.5px;font-weight:700;color:var(--ink-soft);cursor:pointer;}
   .ca-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
   .ca-actions .prog-save{width:100%;padding:13px;}
+  /* ---- anniversaires ---- */
+  .an-in{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:12px 14px;font:inherit;
+    font-size:14.5px;background:var(--cream);color:var(--ink);}
+  .an-in:focus{outline:none;border-color:var(--terracotta);}
+  .an-bar{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:12px;}
+  .an-bar .prog-msg{margin:0 auto 0 0;}
+  .an-ligne{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer;}
+  .an-ligne:first-child{border-top:none;}
+  .an-date{width:44px;flex:none;text-align:center;border-radius:10px;background:var(--cream);border:1px solid var(--line);padding:5px 0 4px;line-height:1.05;}
+  .an-date b{display:block;font-family:'Fraunces',serif;font-size:17px;}
+  .an-date span{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);}
+  .an-ligne.jourj .an-date{background:var(--terracotta);border-color:var(--terracotta);color:#fff;}
+  .an-ligne.jourj .an-date span{color:rgba(255,255,255,.85);}
+  .an-qui{flex:1;min-width:0;}
+  .an-qui .n{font-weight:700;font-size:14px;}
+  .an-qui .s{font-size:12px;color:var(--ink-soft);}
+  .an-vide{font-size:13px;color:var(--ink-soft);padding:4px 0;}
+
+  /* ---- tri, filtres, niveaux, pastilles ---- */
+  .recherche{display:flex;gap:8px;margin-bottom:10px;}
+  .recherche .search{margin-bottom:0;flex:1;min-width:0;}
+  .tri{flex:none;border:1.5px solid var(--line);border-radius:12px;padding:0 30px 0 12px;font:inherit;font-size:13px;
+    font-weight:600;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%232A2018' stroke-opacity='.5' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 11px center;
+    color:var(--ink);-webkit-appearance:none;appearance:none;cursor:pointer;max-width:44%;}
+  .tri:focus{outline:none;border-color:var(--terracotta);}
+  .filtres{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;margin:0 -2px;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .filtres::-webkit-scrollbar{display:none;}
+  .fch{flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);
+    color:var(--ink);font:inherit;font-size:12.5px;font-weight:600;border-radius:99px;padding:7px 12px;cursor:pointer;
+    white-space:nowrap;-webkit-tap-highlight-color:transparent;}
+  .fch small{font-size:11px;font-weight:700;color:var(--ink-faint);}
+  .fch.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .fch.on small{color:rgba(255,255,255,.6);}
+  .fch i{width:9px;height:9px;border-radius:50%;display:block;}
+  .fch svg{width:14px;height:14px;}
+  .legende{font-size:12px;color:var(--ink-soft);margin:-2px 2px 10px;line-height:1.45;display:none;}
+  .legende.on{display:block;}
+  .client .cn{display:flex;align-items:center;gap:6px;min-width:0;}
+  .client .cn .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .client .pp{display:inline-flex;gap:3px;flex:none;}
+  .client .pp i{width:9px;height:9px;border-radius:50%;display:block;box-shadow:0 0 0 1.5px var(--card);}
+  .client .cd{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .client .tags{display:flex;flex-wrap:wrap;gap:4px;margin:3px 0 3px;}
+  @media(max-width:420px){ .client{gap:12px;} .client .bar{width:40px;} .client .frac{min-width:34px;} }
+  .niv{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;letter-spacing:.01em;
+    padding:2px 7px;border-radius:99px;line-height:1.4;white-space:nowrap;}
+  .niv svg{width:11px;height:11px;}
+  .niv.top{background:rgba(224,165,38,.16);color:#9A6A08;}
+  .niv.regulier{background:rgba(47,158,110,.13);color:#21754F;}
+  .niv.endormi{background:rgba(42,32,24,.07);color:var(--ink-soft);}
+  .niv.nouveau{background:rgba(59,130,196,.12);color:#2A6599;}
+  .niv.anniv{background:var(--terracotta-soft);color:var(--terracotta-deep);}
+  .client .ini.rang{font-size:13px;font-family:'Instrument Sans',sans-serif;}
+
+  /* fiche : profil (niveau, pastilles, anniversaire) */
+  .profil{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px;}
+  .pf-niv{font-size:13px;color:var(--ink-soft);line-height:1.45;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .pf-niv b{color:var(--ink);}
+  .pf-l{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-soft);margin:14px 0 8px;}
+  .pf-pastilles{display:flex;flex-wrap:wrap;gap:6px;}
+  .pst{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);background:var(--cream);color:var(--ink-soft);
+    font:inherit;font-size:12.5px;font-weight:600;border-radius:99px;padding:6px 11px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    transition:background .12s,border-color .12s,color .12s;}
+  .pst i{width:10px;height:10px;border-radius:50%;display:block;opacity:.45;}
+  .pst.on{color:var(--ink);background:#fff;border-color:var(--c);}
+  .pst.on i{opacity:1;}
+  .pst:disabled{opacity:.6;}
+  .pf-anniv{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;}
+  .pf-anniv .vide{color:var(--ink-faint);}
+  .pf-lien{background:none;border:none;font:inherit;font-size:13px;font-weight:700;color:var(--terracotta-deep);cursor:pointer;padding:4px 0;margin-left:auto;}
+  .pf-edit{display:grid;grid-template-columns:1fr 1.5fr auto;gap:8px;width:100%;}
+  .pf-edit select{border:1.5px solid var(--line);border-radius:10px;padding:10px 8px;font:inherit;font-size:14px;background:var(--cream);color:var(--ink);min-width:0;}
+  .pf-edit .prog-save{padding:10px 14px;}
+  .pf-edit-bas{display:flex;gap:14px;width:100%;}
+  .pf-edit-bas button{background:none;border:none;font:inherit;font-size:12.5px;color:var(--ink-soft);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:2px 0;}
+  .pf-cadeau{width:100%;margin-top:10px;display:flex;align-items:center;gap:10px;border-radius:12px;padding:11px 12px;
+    background:var(--terracotta-soft);border:1px solid var(--terracotta);}
+  .pf-cadeau .t{flex:1;font-size:13px;line-height:1.35;}
+  .pf-cadeau .t b{display:block;font-size:13.5px;}
+  .pf-cadeau .prog-save{background:var(--terracotta);}
+  .pf-cadeau.fait{background:rgba(122,139,111,.12);border-color:transparent;}
+
   .ca-autre{background:none;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:13px;
     font-weight:700;color:var(--ink);cursor:pointer;}
   .ca-code{background:var(--cream);border:1px dashed var(--line);border-radius:14px;padding:16px;text-align:center;margin:12px 0;}
@@ -743,6 +825,22 @@
     <rect x="28.4" y="10" width="3.6" height="8" rx="1.8" fill="url(#gO)"/>
     <text x="24" y="33.5" font-size="11" font-weight="800" fill="url(#gO)" text-anchor="middle" font-family="'Instrument Sans',sans-serif">31</text>
   </symbol>
+  <symbol id="ic-cake" viewBox="0 0 48 48">
+    <rect x="10" y="22" width="28" height="16" rx="4.5" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
+    <path d="M10.5 28.5 c3 3 6 3 9.2 0 s6.2 3 9.3 0 s6.2 3 8.5 .5" fill="none" stroke="url(#gO)" stroke-width="3" stroke-linecap="round"/>
+    <rect x="17" y="14.5" width="3" height="7.5" rx="1.5" fill="url(#gO)"/>
+    <rect x="28" y="14.5" width="3" height="7.5" rx="1.5" fill="url(#gO)"/>
+    <circle cx="18.5" cy="10.5" r="2.3" fill="url(#gO)"/>
+    <circle cx="29.5" cy="10.5" r="2.3" fill="url(#gO)"/>
+  </symbol>
+  <symbol id="ic-cake-l" viewBox="0 0 24 24">
+    <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 21h16M5 21v-7.5A1.5 1.5 0 0 1 6.5 12h11a1.5 1.5 0 0 1 1.5 1.5V21"/>
+      <path d="M5 16.5c1.2 0 1.2 1 2.3 1s1.2-1 2.3-1 1.2 1 2.4 1 1.2-1 2.3-1 1.2 1 2.4 1 1.1-1 2.3-1"/>
+      <path d="M9 12V9M15 12V9"/>
+    </g>
+    <path d="M9 7.3c-.7-.6-.7-1.8 0-2.6.7.8.7 2 0 2.6zM15 7.3c-.7-.6-.7-1.8 0-2.6.7.8.7 2 0 2.6z" fill="currentColor"/>
+  </symbol>
   <symbol id="ic-spark" viewBox="0 0 48 48">
     <circle cx="21" cy="25" r="12" fill="#FCA321" fill-opacity=".32" filter="url(#frost)"/>
     <path d="M31 10 l2.1 5.2 5.2 2.1 -5.2 2.1 -2.1 5.2 -2.1-5.2 -5.2-2.1 5.2-2.1z" fill="url(#gO)"/>
@@ -934,6 +1032,27 @@
     </div>
   </details>
 
+  <details class="pli" id="annivCard">
+    <summary><svg class="luic"><use href="#ic-cake"/></svg> Anniversaires <span class="resume" id="annivResume"></span><span class="chev">›</span></summary>
+    <div class="pli-corps">
+      <div class="rel-switch">
+        <span class="rl">Offrir un cadeau d'anniversaire<small>Le client le voit sur sa carte et reçoit une notif le jour J. Valable 7 jours.</small></span>
+        <label class="switch"><input type="checkbox" id="anToggle"><span class="slider"></span></label>
+      </div>
+      <div id="anCadeauZone" style="display:none">
+        <label class="pt-lab">Ce que vous offrez</label>
+        <input type="text" class="an-in" id="anCadeau" maxlength="60" placeholder="Ex : Un café offert">
+      </div>
+      <div class="an-bar">
+        <span class="prog-msg" id="anMsg"></span>
+        <button class="prog-save" id="anSave">Enregistrer</button>
+      </div>
+      <label class="pt-lab" style="margin-top:20px">Les 30 prochains jours</label>
+      <div id="anListe"><div class="an-vide">Chargement…</div></div>
+      <div class="ca-txt" id="anInfo" style="margin:12px 0 0"></div>
+    </div>
+  </details>
+
   <div class="section-head">
     <h2><svg class="luic luic-lg"><use href="#ic-users"/></svg> Vos clients</h2>
     <div style="display:flex;align-items:center;gap:10px;">
@@ -942,7 +1061,16 @@
     </div>
   </div>
 
-  <input class="search" id="search" type="text" placeholder="Rechercher un prénom ou un email…">
+  <div class="recherche">
+    <input class="search" id="search" type="text" placeholder="Rechercher un client…">
+    <select class="tri" id="triSel" aria-label="Trier">
+      <option value="recents">Vus récemment</option>
+      <option value="fideles">Plus fidèles</option>
+      <option value="moins">Moins fidèles</option>
+    </select>
+  </div>
+  <div class="filtres" id="filtres"></div>
+  <div class="legende" id="legende"></div>
 
   <div id="clientsZone">
     <div class="loading">Chargement…</div>
@@ -981,6 +1109,14 @@
     <div class="sheet-stats" id="shStats">
       <div class="ss-box"><div class="ss-n" id="shNbPassages">0</div><div class="ss-l">passages au total</div></div>
       <div class="ss-box"><div class="ss-n" id="shNbCartes">0</div><div class="ss-l">cartes validées</div></div>
+    </div>
+
+    <div class="profil" id="shProfil">
+      <div class="pf-niv" id="shNiv"></div>
+      <div class="pf-l">Pastilles</div>
+      <div class="pf-pastilles" id="shPastilles"></div>
+      <div class="pf-l">Anniversaire</div>
+      <div class="pf-anniv" id="shAnniv"></div>
     </div>
 
     <div class="sheet-prog">
@@ -1161,7 +1297,7 @@
 
     // les cartes de ce commerce
     const { data: cartes } = await sb.from("cartes")
-      .select("id, prenom, nom, email, tampons, points, recompenses_dispo, dernier_tap, cree_le")
+      .select("id, prenom, nom, email, tampons, points, recompenses_dispo, dernier_tap, cree_le, anniversaire, anniv_offert_annee, pastilles")
       .eq("commerce_id", commerce.id)
       .order("dernier_tap", { ascending: false });
 
@@ -1185,6 +1321,8 @@
     $("stPleines").textContent = pleines;
 
     afficherClients(liste, objectif);
+    chargerFidelite();
+    chargerAnniv();
     majQuota();
     chargerRelances();
     chargerProgramme();
@@ -1193,12 +1331,20 @@
     chargerCoupons();
   }
 
-  function afficherClients(liste, objectif){
-    $("clientCount").textContent = liste.length + (liste.length > 1 ? " clients" : " client");
-    if(!liste.length){
+  function afficherClients(_liste, objectif){
+    const liste = listeVisible();
+    rendreFiltres();
+    const total = toutClients.length;
+    $("clientCount").textContent = (liste.length !== total ? liste.length + " sur " + total : total + (total > 1 ? " clients" : " client"));
+    if(!total){
       $("clientsZone").innerHTML = '<div class="empty"><div class="big">Pas encore de client</div>Dès que quelqu\'un scanne la puce, il apparaîtra ici.</div>';
       return;
     }
+    if(!liste.length){
+      $("clientsZone").innerHTML = '<div class="empty"><div class="big">Personne ici</div>Aucun client ne correspond.</div>';
+      return;
+    }
+    const triFidele = triCourant === "fideles";
     let html = '<div class="clients">';
     for(const c of liste){
       let plein = c.tampons >= objectif || (c.recompenses_dispo || 0) > 0;
@@ -1214,10 +1360,11 @@
       }
       html += '<div class="client' + (plein ? ' full' : '') + (selection.has(c.id) ? ' pick' : '') + '" data-id="' + c.id + '">'+
         '<div class="coche">✓</div>'+
-        '<div class="ini">' + initiales(c.prenom) + '</div>'+
+        (triFidele && rangs[c.id] ? '<div class="ini rang">' + rangs[c.id] + '</div>' : '<div class="ini">' + initiales(c.prenom) + '</div>')+
         '<div class="info">'+
-          '<div class="cn">' + ((c.prenom || "Client") + (c.nom ? " " + c.nom : "")) + '</div>'+
-          '<div class="cd">' + derniereVisite(c.dernier_tap) + (c.email ? ' · ' + c.email : '') + '</div>'+
+          '<div class="cn"><span class="nm">' + esc((c.prenom || "Client") + (c.nom ? " " + c.nom : "")) + '</span>' + pastillesMini(c) + '</div>'+
+          chipsClient(c) +
+          '<div class="cd">' + derniereVisite(c.dernier_tap) + (c.email ? ' · ' + esc(c.email) : '') + '</div>'+
         '</div>'+
         '<div class="prog">'+
           '<div class="bar"><span style="width:' + pct + '%"></span></div>'+
@@ -1253,11 +1400,349 @@
   }
 
   /* recherche */
-  $("search").addEventListener("input", function(){
-    const q = this.value.trim().toLowerCase();
-    const filtres = q ? toutClients.filter(c => ((c.prenom || "") + " " + (c.nom || "") + " " + (c.email || "")).toLowerCase().includes(q)) : toutClients;
-    // on relit l'objectif depuis le premier rendu — stocké sur le commerce, on le récupère via un attribut
-    afficherClients(filtres, window.__objectif || 10);
+  $("search").addEventListener("input", function(){ afficherClients(null, window.__objectif || 10); });
+
+  /* ================= FIDÉLITÉ, PASTILLES, ANNIVERSAIRES ================= */
+  function esc(t){ return String(t == null ? "" : t).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  const PASTILLES = [
+    { k:"fidele",   nom:"Fidèle",        c:"#E0A526" },
+    { k:"vip",      nom:"VIP",           c:"#8B5CF6" },
+    { k:"habitue",  nom:"Habitué",       c:"#2F9E6E" },
+    { k:"ami",      nom:"Ami·e",         c:"#E5527A" },
+    { k:"equipe",   nom:"Équipe",        c:"#3B82C4" },
+    { k:"chouchou", nom:"À chouchouter", c:"#F08A3C" }
+  ];
+  const NIVEAUX = {
+    top:      { nom:"Top client", filtre:"Top clients", aide:"Les 10 % qui viennent le plus souvent ces 3 derniers mois (3 passages minimum)." },
+    regulier: { nom:"Régulier",   filtre:"Réguliers",   aide:"Au moins 2 passages ces 3 derniers mois." },
+    nouveau:  { nom:"Nouveau",    filtre:"Nouveaux",    aide:"Inscrits il y a moins de 30 jours." },
+    endormi:  { nom:"Endormi",    filtre:"Endormis",    aide:"Pas revenus depuis plus de 45 jours. Une notif ou un coupon peut les faire revenir." }
+  };
+  const JOUR = 24 * 3600 * 1000;
+  let fidelite = null;          // { carte_id: { total, recents } }
+  let niveaux = {}, rangs = {};
+  let triCourant = "recents", filtreCourant = "tous";
+  let cadeauAnniv = "";
+
+  function statF(c){ return (fidelite && fidelite[c.id]) || { total: 0, recents: 0 }; }
+  function cmpFidele(a, b){
+    const x = statF(a), y = statF(b);
+    if(y.recents !== x.recents) return y.recents - x.recents;
+    if(y.total !== x.total) return y.total - x.total;
+    return new Date(b.dernier_tap || 0) - new Date(a.dernier_tap || 0);
+  }
+  function calculerNiveaux(){
+    niveaux = {}; rangs = {};
+    if(!fidelite) return;
+    const now = Date.now();
+    const tri = toutClients.slice().sort(cmpFidele);
+    tri.forEach(function(c, i){ rangs[c.id] = i + 1; });
+    const actifs = toutClients.filter(function(c){ return c.dernier_tap && now - new Date(c.dernier_tap).getTime() <= 45 * JOUR; });
+    const forts = actifs.map(function(c){ return statF(c).recents; }).filter(function(n){ return n >= 3; }).sort(function(a, b){ return b - a; });
+    const nTop = Math.max(1, Math.ceil(actifs.length * 0.1));
+    const seuilTop = forts.length ? forts[Math.min(nTop, forts.length) - 1] : Infinity;
+    toutClients.forEach(function(c){
+      const st = statF(c);
+      const vu = c.dernier_tap ? new Date(c.dernier_tap).getTime() : 0;
+      const cree = c.cree_le ? new Date(c.cree_le).getTime() : 0;
+      let n = "occasionnel";
+      if(!vu || now - vu > 45 * JOUR) n = "endormi";
+      else if(cree && now - cree < 30 * JOUR && st.total <= 2) n = "nouveau";
+      else if(st.recents >= 3 && st.recents >= seuilTop) n = "top";
+      else if(st.recents >= 2) n = "regulier";
+      niveaux[c.id] = n;
+    });
+  }
+  function chargerFidelite(){
+    appelPro({ action:"fidelite" }).then(function(r){
+      if(!r || !r.ok) return;
+      fidelite = r.stats || {};
+      calculerNiveaux();
+      afficherClients(null, window.__objectif || 10);
+      if(carteOuverte) rendreProfil(carteOuverte);
+    }).catch(function(){});
+  }
+
+  /* ---- anniversaires (même logique que le serveur, à l'heure de Paris) ---- */
+  const MOIS_C = ["janv.","févr.","mars","avril","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+  const MOIS_L = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  function jourParis(){
+    try { return new Intl.DateTimeFormat("fr-CA", { timeZone:"Europe/Paris", year:"numeric", month:"2-digit", day:"2-digit" }).format(new Date()); }
+    catch(e){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  }
+  function bissextile(a){ return (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0; }
+  function partsAnniv(a){
+    const m = /^(\d{2})-(\d{2})$/.exec(a || ""); if(!m) return null;
+    return { m: parseInt(m[1], 10), j: parseInt(m[2], 10) };
+  }
+  function infoAnniv(c){
+    const p = partsAnniv(c.anniversaire); if(!p) return null;
+    const auj = jourParis();
+    const an = parseInt(auj.slice(0, 4), 10);
+    const tAuj = Date.UTC(an, parseInt(auj.slice(5, 7), 10) - 1, parseInt(auj.slice(8, 10), 10));
+    const date = function(y){ return Date.UTC(y, p.m - 1, (p.m === 2 && p.j === 29 && !bissextile(y)) ? 28 : p.j); };
+    let fenetre = null;
+    [an, an - 1].forEach(function(y){
+      const e = Math.round((tAuj - date(y)) / JOUR);
+      if(!fenetre && e >= 0 && e < 7) fenetre = { jour: e, annee: y };
+    });
+    let avant = Math.round((date(an) - tAuj) / JOUR);
+    if(avant < 0) avant = Math.round((date(an + 1) - tAuj) / JOUR);
+    return {
+      fenetre: fenetre, avant: avant,
+      offert: !!(fenetre && Number(c.anniv_offert_annee) === fenetre.annee),
+      texte: (p.j === 1 ? "1er" : p.j) + " " + MOIS_L[p.m - 1],
+      court: { j: p.j, m: MOIS_C[p.m - 1] }
+    };
+  }
+  /* à mettre en avant : semaine d'anniversaire, ou dans les 30 prochains jours */
+  function annivProche(c){ const a = infoAnniv(c); return !!(a && (a.fenetre || a.avant <= 30)); }
+
+  /* ---- affichage dans la liste ---- */
+  function pastillesMini(c){
+    const l = Array.isArray(c.pastilles) ? c.pastilles : [];
+    if(!l.length) return "";
+    return '<span class="pp">' + PASTILLES.filter(function(p){ return l.indexOf(p.k) !== -1; })
+      .map(function(p){ return '<i style="background:' + p.c + '" title="' + p.nom + '"></i>'; }).join("") + '</span>';
+  }
+  function chipsClient(c){
+    let h = "";
+    const a = infoAnniv(c);
+    if(a && a.fenetre){
+      h += '<span class="niv anniv"><svg><use href="#ic-cake-l"/></svg>' + (a.fenetre.jour === 0 ? "Aujourd'hui" : (a.offert ? "Offert ✓" : "Cette semaine")) + '</span>';
+    } else if(a && a.avant <= 7){
+      h += '<span class="niv anniv"><svg><use href="#ic-cake-l"/></svg>' + (a.avant === 1 ? "Demain" : "Dans " + a.avant + " j") + '</span>';
+    }
+    const n = niveaux[c.id];
+    if(n && NIVEAUX[n]) h += '<span class="niv ' + n + '">' + NIVEAUX[n].nom + '</span>';
+    return h ? '<div class="tags">' + h + '</div>' : '';
+  }
+
+  /* ---- filtres et tri ---- */
+  function testFiltre(c, f){
+    if(f === "tous") return true;
+    if(f === "anniv") return annivProche(c);
+    if(f.indexOf("p:") === 0) return Array.isArray(c.pastilles) && c.pastilles.indexOf(f.slice(2)) !== -1;
+    return niveaux[c.id] === f;
+  }
+  function listeVisible(){
+    const q = ($("search").value || "").trim().toLowerCase();
+    let l = toutClients.filter(function(c){
+      if(q && !((c.prenom || "") + " " + (c.nom || "") + " " + (c.email || "")).toLowerCase().includes(q)) return false;
+      return testFiltre(c, filtreCourant);
+    });
+    if(filtreCourant === "anniv"){
+      l.sort(function(a, b){
+        const x = infoAnniv(a), y = infoAnniv(b);
+        const kx = x.fenetre ? -10 + x.fenetre.jour : x.avant, ky = y.fenetre ? -10 + y.fenetre.jour : y.avant;
+        return kx - ky;
+      });
+    } else if(triCourant === "fideles" && fidelite){
+      l.sort(cmpFidele);
+    } else if(triCourant === "moins" && fidelite){
+      l.sort(function(a, b){ return cmpFidele(b, a); });
+    }
+    return l;
+  }
+  function rendreFiltres(){
+    const z = $("filtres"); if(!z) return;
+    const compte = function(f){ return toutClients.filter(function(c){ return testFiltre(c, f); }).length; };
+    const items = [{ f:"tous", nom:"Tous", n: toutClients.length }];
+    if(fidelite){
+      ["top", "regulier", "nouveau", "endormi"].forEach(function(k){
+        const n = compte(k); if(n) items.push({ f:k, nom:NIVEAUX[k].filtre, n:n });
+      });
+    }
+    const na = compte("anniv");
+    if(na) items.push({ f:"anniv", nom:"Anniversaires", n:na, ic:true });
+    PASTILLES.forEach(function(p){
+      const n = compte("p:" + p.k); if(n) items.push({ f:"p:" + p.k, nom:p.nom, n:n, c:p.c });
+    });
+    if(!items.some(function(i){ return i.f === filtreCourant; })) filtreCourant = "tous";
+    const defil = z.scrollLeft; // le rendu remet la barre au début : on garde la position
+    z.innerHTML = items.map(function(i){
+      return '<button class="fch' + (i.f === filtreCourant ? ' on' : '') + '" data-f="' + i.f + '">' +
+        (i.c ? '<i style="background:' + i.c + '"></i>' : '') + (i.ic ? '<svg><use href="#ic-cake-l"/></svg>' : '') +
+        esc(i.nom) + ' <small>' + i.n + '</small></button>';
+    }).join("");
+    z.scrollLeft = defil;
+    z.querySelectorAll(".fch").forEach(function(b){
+      b.addEventListener("click", function(){
+        filtreCourant = b.getAttribute("data-f");
+        afficherClients(null, window.__objectif || 10);
+      });
+    });
+    const lg = $("legende");
+    const aide = NIVEAUX[filtreCourant] ? NIVEAUX[filtreCourant].aide
+      : (filtreCourant === "anniv" ? "Anniversaires de la semaine et des 30 prochains jours, du plus proche au plus lointain." : "");
+    lg.textContent = aide;
+    lg.classList.toggle("on", !!aide);
+    $("triSel").disabled = filtreCourant === "anniv";
+  }
+  $("triSel").addEventListener("change", function(){
+    triCourant = this.value;
+    afficherClients(null, window.__objectif || 10);
+  });
+
+  /* ---- fiche : niveau, pastilles, anniversaire ---- */
+  let annivEdition = false;
+  function rendreProfil(c){
+    /* niveau et classement */
+    const st = fidelite ? statF(c) : null;
+    const n = niveaux[c.id];
+    let h = "";
+    if(n && NIVEAUX[n]) h += '<span class="niv ' + n + '">' + NIVEAUX[n].nom + '</span>';
+    if(st){
+      h += '<span><b>' + rangs[c.id] + (rangs[c.id] === 1 ? "er" : "e") + '</b> sur ' + toutClients.length + ' · ' +
+        st.recents + ' passage' + (st.recents > 1 ? 's' : '') + ' ces 3 derniers mois</span>';
+    } else {
+      h += '<span>Classement en cours de calcul…</span>';
+    }
+    $("shNiv").innerHTML = h;
+
+    /* pastilles */
+    const mes = Array.isArray(c.pastilles) ? c.pastilles : [];
+    $("shPastilles").innerHTML = PASTILLES.map(function(p){
+      return '<button class="pst' + (mes.indexOf(p.k) !== -1 ? ' on' : '') + '" data-k="' + p.k + '" style="--c:' + p.c + '"><i style="background:' + p.c + '"></i>' + p.nom + '</button>';
+    }).join("");
+    $("shPastilles").querySelectorAll(".pst").forEach(function(b){
+      b.addEventListener("click", function(){ basculerPastille(c, b.getAttribute("data-k"), b); });
+    });
+
+    rendreAnnivFiche(c);
+  }
+  function basculerPastille(c, k, btn){
+    const avant = Array.isArray(c.pastilles) ? c.pastilles.slice() : [];
+    const apres = avant.indexOf(k) !== -1 ? avant.filter(function(x){ return x !== k; }) : avant.concat([k]);
+    c.pastilles = apres;
+    btn.classList.toggle("on", apres.indexOf(k) !== -1);
+    afficherClients(null, window.__objectif || 10);
+    appelPro({ action:"set_pastilles", carte_id: c.id, pastilles: apres }).then(function(r){
+      if(!r || !r.ok){ c.pastilles = avant; if(carteOuverte === c) rendreProfil(c); afficherClients(null, window.__objectif || 10); msgFiche("Pastille non enregistrée, réessayez.", false); }
+    }).catch(function(){ c.pastilles = avant; if(carteOuverte === c) rendreProfil(c); afficherClients(null, window.__objectif || 10); msgFiche("Connexion impossible.", false); });
+  }
+  function rendreAnnivFiche(c){
+    const z = $("shAnniv");
+    const a = infoAnniv(c);
+    if(annivEdition){
+      const p = partsAnniv(c.anniversaire) || { j: 0, m: 0 };
+      let oj = '<option value="">Jour</option>', om = '<option value="">Mois</option>';
+      for(let d = 1; d <= 31; d++) oj += '<option value="' + d + '"' + (d === p.j ? ' selected' : '') + '>' + d + '</option>';
+      for(let m = 1; m <= 12; m++) om += '<option value="' + m + '"' + (m === p.m ? ' selected' : '') + '>' + MOIS_L[m - 1] + '</option>';
+      z.innerHTML = '<div class="pf-edit"><select id="paJ">' + oj + '</select><select id="paM">' + om + '</select><button class="prog-save" id="paOk">OK</button></div>' +
+        '<div class="pf-edit-bas"><button id="paAnnule">Annuler</button>' + (c.anniversaire ? '<button id="paRetire">Retirer la date</button>' : '') + '</div>';
+      $("paAnnule").addEventListener("click", function(){ annivEdition = false; rendreAnnivFiche(c); });
+      if($("paRetire")) $("paRetire").addEventListener("click", function(){ enregistrerAnniv(c, null); });
+      $("paOk").addEventListener("click", function(){
+        const j = parseInt($("paJ").value, 10), m = parseInt($("paM").value, 10);
+        if(!j || !m || j > [31,29,31,30,31,30,31,31,30,31,30,31][m - 1]){ msgFiche("Choisissez un jour et un mois valides.", false); return; }
+        enregistrerAnniv(c, String(m).padStart(2, "0") + "-" + String(j).padStart(2, "0"));
+      });
+      return;
+    }
+    let h;
+    if(a){
+      const quand = a.fenetre ? (a.fenetre.jour === 0 ? "aujourd'hui !" : "il y a " + a.fenetre.jour + " j")
+        : (a.avant === 1 ? "demain" : "dans " + a.avant + " jours");
+      h = '<span><b>' + a.texte + '</b> · ' + quand + '</span><button class="pf-lien" id="paModif">Modifier</button>';
+      if(a.fenetre && cadeauAnniv){
+        h += a.offert
+          ? '<div class="pf-cadeau fait"><div class="t"><b>Cadeau offert ✓</b>' + esc(cadeauAnniv) + '</div></div>'
+          : '<div class="pf-cadeau"><div class="t"><b>C\u2019est son anniversaire !</b>Cadeau : ' + esc(cadeauAnniv) + '</div><button class="prog-save" id="paOffert">Offert</button></div>';
+      }
+    } else {
+      h = '<span class="vide">Non renseigné</span><button class="pf-lien" id="paModif">Ajouter</button>';
+    }
+    z.innerHTML = h;
+    $("paModif").addEventListener("click", function(){ annivEdition = true; rendreAnnivFiche(c); });
+    if($("paOffert")) $("paOffert").addEventListener("click", function(){
+      const b = this; b.disabled = true;
+      appelPro({ action:"anniv_offert", carte_id: c.id }).then(function(r){
+        if(r && r.ok){ c.anniv_offert_annee = r.anniv_offert_annee; rendreAnnivFiche(c); afficherClients(null, window.__objectif || 10); rendreAnnivBloc(); }
+        else { b.disabled = false; msgFiche("Impossible pour l'instant.", false); }
+      }).catch(function(){ b.disabled = false; });
+    });
+  }
+  function enregistrerAnniv(c, valeur){
+    appelPro({ action:"set_anniversaire", carte_id: c.id, anniversaire: valeur }).then(function(r){
+      if(r && r.ok){
+        c.anniversaire = r.anniversaire; annivEdition = false;
+        rendreAnnivFiche(c); afficherClients(null, window.__objectif || 10); rendreAnnivBloc();
+      } else msgFiche("Date non enregistrée.", false);
+    }).catch(function(){ msgFiche("Connexion impossible.", false); });
+  }
+
+  /* ---- bloc « Anniversaires » ---- */
+  function rendreAnnivBloc(){
+    const avec = toutClients.filter(function(c){ return partsAnniv(c.anniversaire); });
+    const proches = avec.filter(annivProche).sort(function(a, b){
+      const x = infoAnniv(a), y = infoAnniv(b);
+      return (x.fenetre ? -10 + x.fenetre.jour : x.avant) - (y.fenetre ? -10 + y.fenetre.jour : y.avant);
+    });
+    const aujourdhui = proches.filter(function(c){ const a = infoAnniv(c); return a.fenetre && a.fenetre.jour === 0; });
+    $("annivResume").textContent = aujourdhui.length
+      ? "· " + (aujourdhui.length > 1 ? aujourdhui.length + " aujourd'hui" : (aujourdhui[0].prenom || "1") + " aujourd'hui")
+      : (proches.length ? "· " + proches.length + " à venir" : "");
+    if(!proches.length){
+      $("anListe").innerHTML = '<div class="an-vide">Aucun anniversaire dans les 30 prochains jours.</div>';
+    } else {
+      $("anListe").innerHTML = proches.map(function(c){
+        const a = infoAnniv(c);
+        let etat;
+        if(a.fenetre) etat = (a.fenetre.jour === 0 ? "Aujourd'hui" : "Il y a " + a.fenetre.jour + " j") + (cadeauAnniv ? (a.offert ? " · cadeau offert ✓" : " · cadeau à offrir") : "");
+        else etat = a.avant === 1 ? "Demain" : "Dans " + a.avant + " jours";
+        return '<div class="an-ligne' + (a.fenetre && a.fenetre.jour === 0 ? ' jourj' : '') + '" data-id="' + c.id + '">' +
+          '<div class="an-date"><b>' + a.court.j + '</b><span>' + a.court.m + '</span></div>' +
+          '<div class="an-qui"><div class="n">' + esc((c.prenom || "Client") + (c.nom ? " " + c.nom : "")) + '</div><div class="s">' + etat + '</div></div></div>';
+      }).join("");
+      $("anListe").querySelectorAll(".an-ligne").forEach(function(el){
+        el.addEventListener("click", function(){
+          const c = toutClients.find(function(x){ return x.id === el.getAttribute("data-id"); });
+          if(c) ouvrirFiche(c);
+        });
+      });
+    }
+    $("anInfo").textContent = toutClients.length
+      ? avec.length + " client" + (avec.length > 1 ? "s" : "") + " sur " + toutClients.length + " " + (avec.length > 1 ? "ont" : "a") + " donné leur anniversaire. Ils le choisissent à l'inscription ou sur leur carte, et vous pouvez l'ajouter dans leur fiche."
+      : "";
+  }
+  function majAnnivForm(){
+    $("anCadeauZone").style.display = $("anToggle").checked ? "block" : "none";
+  }
+  $("anToggle").addEventListener("change", majAnnivForm);
+  function chargerAnniv(){
+    rendreAnnivBloc();
+    appelPro({ action:"get_programme" }).then(function(r){
+      if(!r || !r.ok) return;
+      cadeauAnniv = r.cadeau_anniv || "";
+      $("anToggle").checked = !!cadeauAnniv;
+      $("anCadeau").value = cadeauAnniv;
+      majAnnivForm();
+      rendreAnnivBloc();
+      afficherClients(null, window.__objectif || 10);
+    }).catch(function(){});
+  }
+  function msgAnniv(t, err){
+    const m = $("anMsg");
+    m.className = "prog-msg " + (err ? "err" : "on");
+    m.textContent = t;
+    if(!err) setTimeout(function(){ m.className = "prog-msg"; }, 2200);
+  }
+  $("anSave").addEventListener("click", function(){
+    const on = $("anToggle").checked;
+    const texte = ($("anCadeau").value || "").trim();
+    if(on && !texte){ msgAnniv("Indiquez ce que vous offrez.", true); $("anCadeau").focus(); return; }
+    const b = this; b.disabled = true;
+    appelPro({ action:"set_cadeau_anniv", cadeau_anniv: on ? texte : "" }).then(function(r){
+      b.disabled = false;
+      if(r && r.ok){
+        cadeauAnniv = r.cadeau_anniv || "";
+        if(!cadeauAnniv) $("anToggle").checked = false;
+        majAnnivForm(); rendreAnnivBloc();
+        msgAnniv(cadeauAnniv ? "Enregistré ✓ Vos clients le verront le jour J." : "Cadeau désactivé.", false);
+      } else msgAnniv(r && r.raison === "reserve_proprio" ? "Seul le propriétaire peut modifier ce réglage." : "Impossible d'enregistrer.", true);
+    }).catch(function(){ b.disabled = false; msgAnniv("Connexion impossible.", true); });
   });
 
 
@@ -1372,6 +1857,8 @@
     $("shHist").innerHTML = "";
     $("shNbPassages").textContent = "…";
     $("shNbCartes").textContent = "…";
+    annivEdition = false;
+    rendreProfil(carte);
     dessinerJauge(carte.tampons, objectifCourant);
     /* mode points : solde à la place de la jauge, les points se donnent à la caisse */
     const zoneAjust = document.querySelector("#sheet .adjust");
