@@ -7,6 +7,7 @@
    - etat    : lire l'état de la carte
    - tap     : +1 tampon (cooldown 15 s, 3/jour max, vérif NFC SDM)
    - valider : le staff offre la récompense (code), carte repart à 1
+   - anniversaire : le client ajoute sa date (jour + mois), une fois
 
    Variables d'environnement à définir sur Vercel :
    SUPABASE_URL     = https://xxxx.supabase.co
@@ -18,6 +19,7 @@ const { randomUUID } = require("crypto");
 const crypto = require("crypto");
 const http2 = require("http2");
 const { capacites } = require("./plans");
+const { normaliserAnniv, infoAnniv, cadeauAOffrir } = require("./anniv");
 
 function certDepuisEnv(nom) {
   const b64 = (process.env[nom] || "").trim();
@@ -370,6 +372,9 @@ function etat(carte, commerce, extra) {
     points: carte.points || 0,
     recompenses_dispo: carte.recompenses_dispo || 0,
     recompenses_points: modeEffectif(commerce) === "points" ? listeRecompenses(commerce) : [],
+    anniversaire: carte.anniversaire || null,
+    anniv: infoAnniv(carte, commerce),
+    cadeau_anniv: !!(commerce.cadeau_anniv && String(commerce.cadeau_anniv).trim()),
   };
   return Object.assign(base, extra || {});
 }
@@ -482,6 +487,8 @@ async function appliquerAttente(a, carte, commerce) {
   }
   resultat = resultat || { ok: false, raison: "type_inconnu" };
   resultat.prenom = carte.prenom || null;
+  /* c'est son anniversaire : l'équipe le voit tout de suite sur la caisse */
+  if (cadeauAOffrir(carte, commerce)) resultat.anniv = { cadeau: String(commerce.cadeau_anniv).trim() };
   await sb("caisse_attente?id=eq." + a.id, { method: "PATCH", body: { resultat: resultat } });
   return { carte: carteMaj, resultat: resultat };
 }
@@ -576,6 +583,7 @@ module.exports = async (req, res) => {
           nom: nom,
           email: email,
           consentement: consentement,
+          anniversaire: normaliserAnniv(body.anniversaire),
           tampons: TAMPON_DEPART,
           jeton: jeton,
           dernier_tap: new Date().toISOString(),
@@ -683,6 +691,16 @@ module.exports = async (req, res) => {
     /* ----- ETAT ----- */
     if (action === "etat") {
       return res.status(200).json(etat(carte, commerce));
+    }
+
+    /* ----- ANNIVERSAIRE : le client l'ajoute une seule fois
+       (pour le corriger ensuite, il passe par le commerçant) ----- */
+    if (action === "anniversaire") {
+      if (carte.anniversaire) return res.status(200).json(etat(carte, commerce, { ok: false, raison: "anniv_deja" }));
+      const a = normaliserAnniv(body.anniversaire);
+      if (!a) return res.status(200).json(etat(carte, commerce, { ok: false, raison: "anniv_invalide" }));
+      const majA = await sb("cartes?id=eq." + carte.id, { method: "PATCH", body: { anniversaire: a } });
+      return res.status(200).json(etat(majA[0], commerce, { anniv_ajoute: true }));
     }
 
     /* ----- TAP : +1 tampon ----- */
