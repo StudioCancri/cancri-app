@@ -12,6 +12,7 @@
 
 const http2 = require("http2");
 const { capacites } = require("./plans");
+const { jourParis, FENETRE_JOURS } = require("./anniv");
 
 function nettoyerUrl(u) {
   return (u || "").trim().replace(/\/+$/, "").replace(/\/rest\/v1$/, "").replace(/\/+$/, "");
@@ -103,6 +104,56 @@ async function purgerDonnees() {
   return bilan;
 }
 
+/* ============================================================
+   ANNIVERSAIRES : le jour J, notif Wallet aux clients des
+   commerces qui offrent un cadeau ; 7 jours après, on retire
+   le message du dos de la carte.
+   ============================================================ */
+const DEBUT_MSG_ANNIV = "Joyeux anniversaire";
+
+function mmjj(decalageJours) {
+  const j = jourParis(new Date(Date.now() - (decalageJours || 0) * 86400000));
+  return j.slice(5);
+}
+function bissextile(a) { return (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0; }
+/* le 28 février d'une année non bissextile compte aussi pour les nés le 29 */
+function joursCibles(decalage) {
+  const d = mmjj(decalage);
+  const an = parseInt(jourParis(new Date(Date.now() - (decalage || 0) * 86400000)).slice(0, 4), 10);
+  return (d === "02-28" && !bissextile(an)) ? ["02-28", "02-29"] : [d];
+}
+
+async function anniversaires() {
+  const bilan = { notifs: 0, nettoyes: 0 };
+  try {
+    const coms = await sb("commerces?cadeau_anniv=not.is.null&select=id,nom,cadeau_anniv");
+    const actifs = (coms || []).filter((c) => (c.cadeau_anniv || "").trim());
+    if (actifs.length) {
+      const ids = actifs.map((c) => c.id).join(",");
+      const cartes = await sb("cartes?commerce_id=in.(" + ids + ")&anniversaire=in.(" + joursCibles(0).join(",") + ")" +
+        "&select=id,jeton,prenom,commerce_id,message_perso");
+      for (const carte of (cartes || [])) {
+        if (carte.message_perso && carte.message_perso.indexOf(DEBUT_MSG_ANNIV) === 0) continue; // déjà fait aujourd'hui
+        const com = actifs.find((c) => c.id === carte.commerce_id);
+        const msg = DEBUT_MSG_ANNIV + (carte.prenom ? " " + carte.prenom : "") + " ! " +
+          com.nom + " t'offre : " + com.cadeau_anniv.trim() + ". Valable " + FENETRE_JOURS + " jours, montre ta carte au comptoir.";
+        await sb("cartes?id=eq." + carte.id, { method: "PATCH", body: { message_perso: msg.slice(0, 240) } });
+        if (await envoyerPush(carte.jeton)) bilan.notifs++;
+      }
+    }
+    /* fin de la semaine d'anniversaire : on retire le message */
+    const fin = joursCibles(FENETRE_JOURS);
+    const vieux = await sb("cartes?anniversaire=in.(" + fin.join(",") + ")" +
+      "&message_perso=like." + encodeURIComponent(DEBUT_MSG_ANNIV) + "*&select=id,jeton");
+    for (const c of (vieux || [])) {
+      await sb("cartes?id=eq." + c.id, { method: "PATCH", body: { message_perso: null } });
+      bilan.nettoyes++;
+      try { await envoyerPush(c.jeton); } catch (e) {}
+    }
+  } catch (e) { console.error("anniversaires:", e.message); }
+  return bilan;
+}
+
 module.exports = async (req, res) => {
   // sécurité : seul Vercel Cron (avec le secret) peut déclencher
   const secret = process.env.CRON_SECRET;
@@ -113,6 +164,7 @@ module.exports = async (req, res) => {
 
   try {
     const purge = await purgerDonnees();
+    const anniv = await anniversaires();
     const maintenant = Date.now();
     const seuilInactif = new Date(maintenant - JOURS_INACTIF * 24 * 3600 * 1000).toISOString();
     const seuilRelance = new Date(maintenant - JOURS_AVANT_NOUVELLE_RELANCE * 24 * 3600 * 1000).toISOString();
@@ -122,7 +174,7 @@ module.exports = async (req, res) => {
     /* seuls les forfaits qui incluent les relances sont traités */
     const commerces = (tous || []).filter((c) => capacites(c).relances === true);
     if (!commerces || !commerces.length) {
-      return res.status(200).json({ ok: true, info: "aucun commerce à relancer", total: 0, purge: purge });
+      return res.status(200).json({ ok: true, info: "aucun commerce à relancer", total: 0, purge: purge, anniv: anniv });
     }
 
     let totalRelances = 0;
@@ -133,12 +185,13 @@ module.exports = async (req, res) => {
       const cartes = await sb(
         "cartes?commerce_id=eq." + commerce.id +
         "&dernier_tap=lt." + encodeURIComponent(seuilInactif) +
-        "&select=id,jeton,derniere_relance,tampons"
+        "&select=id,jeton,derniere_relance,tampons,message_perso"
       );
       if (!cartes || !cartes.length) continue;
 
       const aRelancer = cartes.filter((c) =>
-        !c.derniere_relance || c.derniere_relance < seuilRelance
+        (!c.derniere_relance || c.derniere_relance < seuilRelance) &&
+        !(c.message_perso && c.message_perso.indexOf(DEBUT_MSG_ANNIV) === 0) // on n'écrase pas un message d'anniversaire
       );
 
       const texteRelance = commerce.message_relance || "Ça fait un moment ! Revenez nous voir ☕";
@@ -155,7 +208,7 @@ module.exports = async (req, res) => {
       detail.push({ commerce: commerce.nom, relances: aRelancer.length });
     }
 
-    return res.status(200).json({ ok: true, total: totalRelances, detail: detail, purge: purge });
+    return res.status(200).json({ ok: true, total: totalRelances, detail: detail, purge: purge, anniv: anniv });
   } catch (e) {
     console.error("relances error:", e.message || e);
     return res.status(500).json({ ok: false, raison: "erreur_serveur", message: e.message });
