@@ -243,6 +243,23 @@
   .saved{font-size:12.5px;color:var(--green);margin-left:12px;opacity:0;transition:opacity .2s;}
   .saved.on{opacity:1;}
 
+  /* zone de suppression */
+  .card.danger{border-color:rgba(224,123,109,.35);}
+  .card.danger h3{color:var(--red);}
+  .sup-bilan{font-size:13px;color:var(--text-soft);line-height:1.6;margin:-6px 0 14px;display:none;}
+  .sup-bilan.on{display:block;}
+  .sup-bilan b{color:var(--text);}
+  .sup-ligne{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .sup-ligne input{flex:1;min-width:180px;border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;
+    font-family:'JetBrains Mono',monospace;font-size:13.5px;background:var(--bg-2);color:var(--text);}
+  .sup-ligne input:focus{outline:none;border-color:var(--red);}
+  .btn-sup{border:none;background:var(--red);color:#fff;font:inherit;font-size:13.5px;font-weight:700;border-radius:10px;padding:11px 18px;cursor:pointer;}
+  .btn-sup:disabled{opacity:.35;cursor:default;}
+  .btn-sup-voir{background:none;border:1px solid rgba(224,123,109,.45);color:var(--red);font:inherit;font-size:13px;font-weight:700;
+    border-radius:10px;padding:10px 14px;cursor:pointer;}
+  .sup-msg{font-size:12.5px;margin-top:10px;color:var(--red);display:none;}
+  .sup-msg.on{display:block;}
+
   /* demandes */
   .dem-add{display:flex;gap:9px;margin-bottom:14px;}
   .dem-add input{flex:1;border:1px solid var(--line-2);border-radius:10px;padding:11px 13px;font:inherit;
@@ -627,6 +644,20 @@
       <div class="c-sub">Les 10 passages les plus récents.</div>
       <div id="miniZone"></div>
     </div>
+
+    <div class="card danger">
+      <h3>Supprimer ce commerce</h3>
+      <div class="c-sub">Efface le commerce, toutes ses cartes clients et leur historique, ses coupons, ses caisses, ses puces NFC et l'accès de son équipe au portail. Impossible à annuler. Pour juste le mettre de côté, passe plutôt son statut en « Arrêté ».</div>
+      <div class="sup-bilan" id="supBilan"></div>
+      <div class="sup-ligne" id="supEtape1">
+        <button class="btn-sup-voir" id="supVoir">Voir ce qui sera supprimé</button>
+      </div>
+      <div class="sup-ligne" id="supEtape2" style="display:none">
+        <input id="supSlug" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="">
+        <button class="btn-sup" id="supGo" disabled>Supprimer définitivement</button>
+      </div>
+      <div class="sup-msg" id="supMsg"></div>
+    </div>
   </div>
   </div><!-- /vuePortefeuille -->
 
@@ -885,11 +916,58 @@
     $("kRenouv").value = (k && k.renouvellement_auto === false) ? "non" : "oui";
     $("kConditions").value = k ? (k.conditions||"") : "";
 
+    resetSuppression();
     rendreForfait(r);
     rendreMode(r);
     renderDemandes(r.demandes || []);
     renderMini(cartes.slice(0,10), c.objectif);
   }
+
+  /* ---------- suppression d'un commerce ---------- */
+  function resetSuppression(){
+    $("supBilan").classList.remove("on"); $("supBilan").innerHTML = "";
+    $("supEtape1").style.display = ""; $("supEtape2").style.display = "none";
+    $("supSlug").value = ""; $("supGo").disabled = true;
+    $("supMsg").classList.remove("on");
+    $("supVoir").disabled = false; $("supVoir").textContent = "Voir ce qui sera supprimé";
+  }
+  function pluriel(n, mot, motPluriel){ return "<b>" + n + "</b> " + (n > 1 ? (motPluriel || mot + "s") : mot); }
+  $("supVoir").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    this.disabled = true; this.textContent = "Calcul…";
+    const r = await call({ action:"supprimer_commerce", commerce_id:commerceOuvert.id, simulation:true });
+    if(!r.ok){ this.disabled = false; this.textContent = "Voir ce qui sera supprimé"; $("supMsg").textContent = "Impossible de calculer, réessaie."; $("supMsg").classList.add("on"); return; }
+    const b = r.bilan;
+    $("supBilan").innerHTML = "Seront effacés : " + pluriel(b.cartes, "carte client", "cartes clients") + ", " + pluriel(b.passages, "passage") + ", " +
+      pluriel(b.coupons, "coupon") + ", " + pluriel(b.caisses, "caisse") + ", " + pluriel(b.puces, "puce NFC") + " et " +
+      pluriel(b.comptes, "accès", "accès") + " au portail.<br>Les comptes de connexion restent dans Supabase (Authentication) : supprime-les là-bas si besoin. Les logos dans <b>pass-assets/" + commerceOuvert.slug + "</b> sur GitHub aussi.<br>Pour confirmer, tape <b>" + commerceOuvert.slug + "</b> :";
+    $("supBilan").classList.add("on");
+    $("supEtape1").style.display = "none";
+    $("supEtape2").style.display = "";
+    $("supSlug").placeholder = commerceOuvert.slug;
+    $("supSlug").focus();
+  });
+  $("supSlug").addEventListener("input", function(){
+    $("supGo").disabled = !commerceOuvert || this.value.trim() !== commerceOuvert.slug;
+  });
+  $("supGo").addEventListener("click", async function(){
+    if(!commerceOuvert) return;
+    const nom = commerceOuvert.nom;
+    if(!confirm("Dernière vérification : supprimer « " + nom + " » et toutes ses données ?")) return;
+    this.disabled = true; this.textContent = "Suppression…";
+    const r = await call({ action:"supprimer_commerce", commerce_id:commerceOuvert.id, confirmation:$("supSlug").value.trim() });
+    if(r.ok){
+      fermerFiche();
+      const rr = await call({ action:"vue_ensemble" });
+      render(rr);
+      alert("« " + nom + " » a été supprimé.");
+      return;
+    }
+    this.disabled = false; this.textContent = "Supprimer définitivement";
+    $("supMsg").textContent = r.raison === "confirmation" ? "Le slug tapé ne correspond pas."
+      : "La suppression s'est arrêtée en route : " + (r.detail || r.raison || "erreur") + ". Envoie-moi ce message.";
+    $("supMsg").classList.add("on");
+  });
 
   function fermerFiche(){
     $("detailView").classList.remove("on");
