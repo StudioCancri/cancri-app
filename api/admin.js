@@ -6,7 +6,7 @@
 
    Actions : vue_ensemble, detail_commerce, creer_commerce,
    maj_commerce, maj_statut, contrats (get/save),
-   demandes (list/add/maj)
+   demandes (list/add/maj), supprimer_commerce
    ============================================================ */
 
 const { PLANS, capacites, abonnement } = require("./plans");
@@ -44,6 +44,62 @@ async function userDepuisToken(token) {
 async function estAdmin(userId) {
   const rows = await sb("admins?user_id=eq." + encodeURIComponent(userId) + "&select=user_id");
   return rows && rows.length > 0;
+}
+
+/* nombre de lignes d'une table, sans les télécharger */
+async function compter(chemin) {
+  const r = await fetch(SUPABASE_URL + "/rest/v1/" + chemin + (chemin.indexOf("?") === -1 ? "?" : "&") + "select=*", {
+    method: "HEAD",
+    headers: { apikey: SECRET, Authorization: "Bearer " + SECRET, Prefer: "count=exact", Range: "0-0" },
+  });
+  const cr = r.headers.get("content-range") || "";
+  const n = parseInt(cr.split("/")[1], 10);
+  return isFinite(n) ? n : 0;
+}
+
+/* efface tout ce qui appartient à un commerce, puis le commerce lui-même.
+   simulation = true : on compte seulement, rien n'est effacé */
+async function supprimerCommerce(c, simulation) {
+  const bilan = { cartes: 0, passages: 0, coupons: 0, caisses: 0, puces: 0, comptes: 0 };
+  const id = c.id;
+  bilan.cartes = await compter("cartes?commerce_id=eq." + id);
+  bilan.coupons = await compter("coupons?commerce_id=eq." + id);
+  bilan.caisses = await compter("appareils_caisse?commerce_id=eq." + id);
+  bilan.puces = await compter("nfc_puces?commerce_id=eq." + id);
+  bilan.comptes = await compter("membres?commerce_id=eq." + id);
+
+  /* les cartes, par paquets : passages, coupons reçus, Wallet, puis la carte */
+  for (let tour = 0; tour < 1000; tour++) {
+    const lot = await sb("cartes?commerce_id=eq." + id + "&select=id,jeton&limit=200" + (simulation ? "&offset=" + (tour * 200) : ""));
+    if (!lot || !lot.length) break;
+    const ids = lot.map(function (x) { return x.id; }).join(",");
+    bilan.passages += await compter("taps?carte_id=in.(" + ids + ")");
+    if (!simulation) {
+      const jetons = lot.filter(function (x) { return x.jeton; }).map(function (x) { return '"' + x.jeton + '"'; }).join(",");
+      await sb("taps?carte_id=in.(" + ids + ")", { method: "DELETE" });
+      await sb("coupons_cartes?carte_id=in.(" + ids + ")", { method: "DELETE" });
+      if (jetons) await sb("appareils?jeton=in.(" + encodeURIComponent(jetons) + ")", { method: "DELETE" });
+      await sb("cartes?id=in.(" + ids + ")", { method: "DELETE" });
+    }
+    if (lot.length < 200) break;
+  }
+  if (simulation) return bilan;
+
+  /* coupons restants (et leurs liens) */
+  const cps = await sb("coupons?commerce_id=eq." + id + "&select=id");
+  if (cps && cps.length) {
+    await sb("coupons_cartes?coupon_id=in.(" + cps.map(function (x) { return x.id; }).join(",") + ")", { method: "DELETE" });
+  }
+  /* puces NFC : on oublie aussi leurs compteurs, pour pouvoir les réutiliser ailleurs */
+  const puces = await sb("nfc_puces?commerce_id=eq." + id + "&select=uid");
+  if (puces && puces.length) {
+    await sb("nfc_taps?uid=in.(" + encodeURIComponent(puces.map(function (x) { return '"' + x.uid + '"'; }).join(",")) + ")", { method: "DELETE" });
+  }
+  for (const t of ["coupons", "campagnes", "caisse_attente", "appareils_caisse", "nfc_puces", "contrats", "demandes", "membres"]) {
+    await sb(t + "?commerce_id=eq." + id, { method: "DELETE" });
+  }
+  await sb("commerces?id=eq." + id, { method: "DELETE" });
+  return bilan;
 }
 
 function slugify(txt) {
@@ -126,6 +182,28 @@ module.exports = async (req, res) => {
         abonnement: abonnement(c[0]),
         conso: { messages_ce_mois: camp ? camp.length : 0, cartes: (cartes || []).length },
       });
+    }
+
+    /* ---- SUPPRIMER UN COMMERCE (définitif) ----
+       simulation : renvoie ce qui sera effacé ; sinon il faut retaper le slug */
+    if (action === "supprimer_commerce") {
+      const cs = await sb("commerces?id=eq." + encodeURIComponent(body.commerce_id || "") + "&select=id,slug,nom");
+      const c = cs && cs[0];
+      if (!c) return res.status(200).json({ ok: false, raison: "introuvable" });
+      if (body.simulation === true) {
+        return res.status(200).json({ ok: true, simulation: true, bilan: await supprimerCommerce(c, true) });
+      }
+      if ((body.confirmation || "").toString().trim() !== c.slug) {
+        return res.status(200).json({ ok: false, raison: "confirmation" });
+      }
+      try {
+        const bilan = await supprimerCommerce(c, false);
+        console.log("[admin] commerce supprimé", c.slug, JSON.stringify(bilan));
+        return res.status(200).json({ ok: true, bilan: bilan });
+      } catch (e) {
+        console.error("[admin] suppression", c.slug, e.message);
+        return res.status(200).json({ ok: false, raison: "erreur_suppression", detail: e.message });
+      }
     }
 
     /* ---- CRÉER UN COMMERCE (prospect) ---- */
