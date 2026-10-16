@@ -215,9 +215,23 @@
   .w-legal{font-size:11px;line-height:1.45;color:var(--ink-soft);margin-top:12px;text-align:center;}
   .w-legal a{color:inherit;}
   /* récupération de carte par code email */
-  .w-recup{display:none;}
-  .welcome.recup #wForm{display:none;}
+  .w-recup,.w-retrouver{display:none;}
+  .welcome.recup #wForm,.welcome.retrouver #wForm{display:none;}
   .welcome.recup .w-recup{display:block;}
+  .welcome.retrouver:not(.recup) .w-retrouver{display:block;}
+  /* « Déjà client ? » : bien visible en haut du formulaire */
+  .w-deja{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 16px;
+    border:1.5px solid var(--espresso);background:transparent;color:var(--espresso);border-radius:12px;padding:13px;
+    font:inherit;font-size:14.5px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .w-deja:active{transform:scale(.98);}
+  .w-deja svg{width:18px;height:18px;flex:none;}
+  .w-ou{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--ink-soft);margin:0 0 14px;}
+  .w-ou::before,.w-ou::after{content:"";flex:1;height:1px;background:var(--line);}
+  /* rappel des spams, au moment où on attend le code */
+  .w-spam{display:flex;gap:10px;align-items:flex-start;text-align:left;background:rgba(224,165,38,.13);
+    border:1px solid rgba(224,165,38,.45);border-radius:12px;padding:11px 12px;margin:-6px 0 16px;font-size:12.5px;line-height:1.45;color:var(--ink);}
+  .w-spam svg{width:18px;height:18px;flex:none;margin-top:1px;color:#9A6A08;}
+  .w-spam b{font-weight:700;}
   .w-code{text-align:center;letter-spacing:8px;font-size:22px;font-weight:700;}
   .w-links{display:flex;justify-content:space-between;margin-top:12px;}
   .w-link{background:none;border:none;font:inherit;font-size:12.5px;color:var(--ink-soft);
@@ -309,7 +323,9 @@
     <div class="logo">✦</div>
     <div id="wForm">
       <div class="w-title" id="wTitle">Bienvenue ☕</div>
-      <div class="w-sub">Ta carte de fidélité se crée en quelques secondes, avec un tampon de bienvenue offert. Déjà inscrit ? Mets le même email, on retrouve ta carte.</div>
+      <button class="w-deja" id="wDeja" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg> Déjà client ? Retrouver ma carte</button>
+      <div class="w-ou">ou nouvelle carte</div>
+      <div class="w-sub">Ta carte de fidélité se crée en quelques secondes, avec un tampon de bienvenue offert.</div>
       <input class="w-input" id="wName" type="text" maxlength="20" placeholder="Prénom" autocomplete="given-name">
       <input class="w-input" id="wNom" type="text" maxlength="30" placeholder="Nom" autocomplete="family-name">
       <input class="w-input" id="wMail" type="email" maxlength="80" placeholder="Email" autocomplete="email">
@@ -324,9 +340,19 @@
       <button class="w-btn" id="wGo">Créer ma carte</button>
       <div class="w-legal">En créant ta carte, ce commerce enregistre tes passages (et le montant de tes achats si sa carte fonctionne aux points) pour gérer ta fidélité. Ton anniversaire, si tu le donnes, sert uniquement à te souhaiter ce jour-là. <a href="/confidentialite.html" target="_blank" rel="noopener">Tes données</a></div>
     </div>
+    <div class="w-retrouver" id="wRetrouver">
+      <div class="w-title">Retrouver ma carte</div>
+      <div class="w-sub">Mets l'email que tu as donné à ton inscription. On t'envoie un code pour retrouver ta carte et tes tampons.</div>
+      <input class="w-input" id="wMailRecup" type="email" maxlength="80" placeholder="Email" autocomplete="email" inputmode="email">
+      <button class="w-btn" id="wEnvoyerCode">Recevoir mon code</button>
+      <div class="w-links">
+        <button class="w-link" id="wNouvelle">Je n'ai pas de carte</button>
+      </div>
+    </div>
     <div class="w-recup" id="wRecup">
       <div class="w-title">Te revoilà ☕</div>
       <div class="w-sub" id="wRecupTxt">Tu as déjà une carte ici. On vient de t'envoyer un code par email.</div>
+      <div class="w-spam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 6.5 12 13l8.5-6.5"/></svg><div>Pas de mail ? Regarde dans tes <b>spams</b> (ou « courrier indésirable »). Il arrive de <b>bonjour@lunat.fr</b> et peut mettre une minute.</div></div>
       <input class="w-input w-code" id="wCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······">
       <button class="w-btn" id="wRecupGo">Retrouver ma carte</button>
       <div class="w-links">
@@ -872,9 +898,10 @@
   /* ----- récupération : l'email a déjà une carte ici ----- */
   function montrerRecup(r, mail){
     emailRecup = mail;
+    if(wMailRecup && !wMailRecup.value) wMailRecup.value = mail;
     els.wRecupTxt.textContent = (r.envoye === false)
       ? "Tu as déjà une carte ici, mais l'email n'a pas pu partir. Touche « Renvoyer le code »."
-      : "Tu as déjà une carte chez " + (r.commerce || "ce commerce") + ". On vient d'envoyer un code à " + (r.email_masque || "ton email") + ".";
+      : (r.commerce ? "Tu as déjà une carte chez " + r.commerce + ". " : "") + "On vient d'envoyer un code à 6 chiffres à " + (r.email_masque || "ton email") + ".";
     els.wCode.value = "";
     els.welcome.classList.add("recup");
     setTimeout(function(){ try { els.wCode.focus(); } catch(e){} }, 250);
@@ -916,6 +943,35 @@
   document.getElementById("wRetour").addEventListener("click", function(){
     els.welcome.classList.remove("recup");
   });
+
+  /* ----- « Déjà client ? Retrouver ma carte » ----- */
+  var wMailRecup = document.getElementById("wMailRecup");
+  var wEnvoyerCode = document.getElementById("wEnvoyerCode");
+  document.getElementById("wDeja").addEventListener("click", function(){
+    if(!wMailRecup.value && els.wMail.value) wMailRecup.value = els.wMail.value;
+    els.welcome.classList.add("retrouver");
+    setTimeout(function(){ try { wMailRecup.focus(); } catch(e){} }, 250);
+  });
+  document.getElementById("wNouvelle").addEventListener("click", function(){
+    els.welcome.classList.remove("retrouver", "recup");
+  });
+  function demanderCode(){
+    var mail = (wMailRecup.value || "").trim().toLowerCase();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail)){ banner("Mets un email valide"); wMailRecup.focus(); return; }
+    wEnvoyerCode.disabled = true; wEnvoyerCode.textContent = "Envoi…";
+    api({ action: "envoyer_code", commerce: SLUG, email: mail }).then(function(r){
+      wEnvoyerCode.disabled = false; wEnvoyerCode.textContent = "Recevoir mon code";
+      if(r.ok){ montrerRecup({ envoye: true, email_masque: r.email_masque, commerce: etatCourant ? etatCourant.commerce : null }, mail); return; }
+      if(r.raison === "recup_introuvable") banner("Aucune carte avec cet email ici. Vérifie l'email, ou crée ta carte.");
+      else if(r.raison === "envoi_impossible") banner("L'email n'a pas pu partir, réessaie dans une minute");
+      else banner("Petit souci, réessaie");
+    }).catch(function(){
+      wEnvoyerCode.disabled = false; wEnvoyerCode.textContent = "Recevoir mon code";
+      banner("Connexion impossible, réessaie");
+    });
+  }
+  wEnvoyerCode.addEventListener("click", demanderCode);
+  wMailRecup.addEventListener("keydown", function(e){ if(e.key === "Enter") demanderCode(); });
 
   /* ----- démarrage -----
      même sans jeton sur ce téléphone, on demande d'abord au serveur :
