@@ -26,11 +26,11 @@ function nettoyerUrl(u) {
 const SUPABASE_URL = nettoyerUrl(process.env.SUPABASE_URL);
 const SECRET = (process.env.SUPABASE_SECRET || "").trim();
 
-/* une saisie attend le client 2 minutes (le temps d'une inscription) */
-const ATTENTE_S = 120;
+/* une saisie attend le client 5 minutes (le temps d'une inscription, ou d'un client qui cherche son téléphone) */
+const ATTENTE_S = 300;
 /* garde-fous anti-triche employé */
 const MONTANT_MAX_CENTS = 30000; // 300 € par saisie
-const TAMPONS_MAX = 5;           // 5 tampons par saisie
+const TAMPONS_MAX = 12;          // 12 tampons par saisie
 
 async function sb(chemin, options) {
   options = options || {};
