@@ -1172,6 +1172,7 @@
   let objectifCourant = 10;
   let uniteCourante = "TAMPONS";
   let sessionToken = null;
+  let commerceCourantId = null; // toutes les actions visent le commerce affiché
 
   /* ---------- LOGIN ---------- */
   async function envoyerLien(){
@@ -1279,12 +1280,13 @@
     $("appView").classList.add("on");
 
     // le commerce du membre connecté (la RLS ne renvoie que le sien)
-    const { data: commerces, error: ec } = await sb.from("commerces").select("*");
+    const { data: commerces, error: ec } = await sb.from("commerces").select("*").order("nom");
     if(ec || !commerces || !commerces.length){
       $("clientsZone").innerHTML = '<div class="empty"><div class="big">Aucun commerce lié</div>Votre compte n\'est rattaché à aucun commerce. Contactez Studio Cancri.</div>';
       return;
     }
     const commerce = commerces[0];
+    commerceCourantId = commerce.id;
     appliquerTheme(commerce);
     objectifCourant = commerce.objectif;
     uniteCourante = commerce.unite;
@@ -1842,6 +1844,7 @@
     });
   }
   async function appelPro(payload){
+    if(commerceCourantId && !payload.commerce_id) payload.commerce_id = commerceCourantId;
     let r = await envoiPro(payload, await jetonFrais(false));
     if(r.status === 401){
       r = await envoiPro(payload, await jetonFrais(true));
