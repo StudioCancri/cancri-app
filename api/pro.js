@@ -103,6 +103,16 @@ async function userDepuisToken(token) {
   return u && u.id ? u.id : null;
 }
 
+/* les commerces de l'utilisateur ; celui affiché dans le portail (body.commerce_id) passe en premier,
+   sinon un compte lié à plusieurs commerces agissait parfois sur le mauvais */
+async function mesMembres(userId, body, champs) {
+  const sel = champs.indexOf("commerce_id") === -1 ? "commerce_id," + champs : champs;
+  const rows = (await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=" + sel + "&order=commerce_id.asc")) || [];
+  const voulu = body && body.commerce_id;
+  if (voulu) rows.sort(function (a, b) { return (a.commerce_id === voulu ? 0 : 1) - (b.commerce_id === voulu ? 0 : 1); });
+  return rows;
+}
+
 /* Vérifie que l'user est membre du commerce de cette carte.
    Renvoie { carte, commerce } si OK, sinon null. */
 async function verifierAcces(userId, carteId) {
@@ -181,7 +191,7 @@ module.exports = async (req, res) => {
        MES CAISSES : connecter une tablette / un téléphone de comptoir
        ============================================================ */
     if (action === "caisse_code" || action === "caisse_liste" || action === "caisse_couper" || action === "caisse_ouvrir") {
-      const mbs = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const mbs = await mesMembres(userId, body, "commerce_id,role");
       if (!mbs || !mbs.length) return res.status(403).json({ ok: false, raison: "acces_refuse" });
       const mb = (body.commerce_id && mbs.find(function (x) { return x.commerce_id === body.commerce_id; })) || mbs[0];
       const commerceId = mb.commerce_id;
@@ -246,7 +256,7 @@ module.exports = async (req, res) => {
     /* ---- ENVOYER UNE CAMPAGNE (notif à tous les clients) ---- */
     if (action === "envoyer_campagne") {
       // vérifier le membre + récupérer le commerce depuis le membre (pas via une carte)
-      const membre2 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const membre2 = await mesMembres(userId, body, "commerce_id,role");
       if (!membre2 || !membre2.length) return res.status(403).json({ ok: false, raison: "acces_refuse" });
       const commerceId = membre2[0].commerce_id;
 
@@ -316,7 +326,7 @@ module.exports = async (req, res) => {
 
     /* ---- QUOTA RESTANT (pour afficher dans l'app) ---- */
     if (action === "quota_campagne") {
-      const membre3 = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const membre3 = await mesMembres(userId, body, "commerce_id");
       if (!membre3 || !membre3.length) return res.status(403).json({ ok: false });
       const commerceId = membre3[0].commerce_id;
       const comQ = await sb("commerces?id=eq." + commerceId + "&select=*");
@@ -332,7 +342,7 @@ module.exports = async (req, res) => {
 
     /* ---- SEGMENTS : combien de clients dans chaque catégorie ---- */
     if (action === "segments") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const com = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
       const cap = capacites(com[0]);
@@ -348,7 +358,7 @@ module.exports = async (req, res) => {
 
     /* ---- RACCOURCIS DE MESSAGES (jusqu'à 5, éditables par le gérant) ---- */
     if (action === "get_raccourcis") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=raccourcis_messages");
       let liste = c[0].raccourcis_messages;
@@ -358,7 +368,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === "set_raccourcis") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       if (m[0].role !== "proprio") return res.status(200).json({ ok: false, raison: "reserve_proprio" });
       let liste = Array.isArray(body.raccourcis) ? body.raccourcis : [];
@@ -378,7 +388,7 @@ module.exports = async (req, res) => {
 
     /* créer + envoyer un coupon */
     if (action === "creer_coupon") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false, raison: "acces_refuse" });
       const commerceId = m[0].commerce_id;
 
@@ -443,7 +453,7 @@ module.exports = async (req, res) => {
 
     /* diffuser un coupon : écrit l'offre au dos des cartes + notifie (déclenché par le commerçant) */
     if (action === "envoyer_coupon") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const co = await sb("coupons?id=eq." + encodeURIComponent(body.coupon_id) + "&select=*");
       if (!co || !co[0] || co[0].commerce_id !== m[0].commerce_id) return res.status(200).json({ ok: false });
@@ -467,7 +477,7 @@ module.exports = async (req, res) => {
 
     /* liste des coupons du commerce (avec compteurs) */
     if (action === "liste_coupons") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const coupons = await sb("coupons?commerce_id=eq." + m[0].commerce_id +
         "&order=cree_le.desc&select=*");
@@ -483,7 +493,7 @@ module.exports = async (req, res) => {
 
     /* détail : qui a le coupon, qui l'a utilisé (pour valider au comptoir) */
     if (action === "detail_coupon") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const co = await sb("coupons?id=eq." + encodeURIComponent(body.coupon_id) + "&select=*");
       if (!co || !co[0] || co[0].commerce_id !== m[0].commerce_id) return res.status(200).json({ ok: false });
@@ -499,7 +509,7 @@ module.exports = async (req, res) => {
 
     /* cocher "utilisé" pour un porteur */
     if (action === "valider_coupon") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       /* on vérifie que le lien appartient bien à un coupon de ce commerce */
       const lien = await sb("coupons_cartes?id=eq." + encodeURIComponent(body.lien_id) + "&select=id,coupon_id,utilise");
@@ -521,7 +531,7 @@ module.exports = async (req, res) => {
 
     /* supprimer un coupon (et ses liens) */
     if (action === "supprimer_coupon") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const co = await sb("coupons?id=eq." + encodeURIComponent(body.coupon_id) + "&select=id,commerce_id");
       if (!co || !co[0] || co[0].commerce_id !== m[0].commerce_id) return res.status(200).json({ ok: false });
@@ -539,7 +549,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === "mon_forfait") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
       const cap = capacites(c[0]);
@@ -548,13 +558,13 @@ module.exports = async (req, res) => {
 
     /* ---- RÉGLAGES DE RELANCE ---- */
     if (action === "get_relances") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=message_relance,relances_actives");
       return res.status(200).json({ ok: true, message: c[0].message_relance || "", actives: c[0].relances_actives !== false });
     }
     if (action === "set_relances") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const comR = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
       if (!capacites(comR[0]).relances) return res.status(200).json({ ok: false, raison: "hors_forfait" });
@@ -568,7 +578,7 @@ module.exports = async (req, res) => {
 
     /* ---- PROGRAMME DE FIDÉLITÉ (objectif + récompense) ---- */
     if (action === "get_programme") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const c = await sb("commerces?id=eq." + m[0].commerce_id + "&select=*");
       const com = c[0];
@@ -583,7 +593,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === "set_programme") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       if (m[0].role !== "proprio") return res.status(200).json({ ok: false, raison: "reserve_proprio" });
       const commerceId = m[0].commerce_id;
@@ -644,7 +654,7 @@ module.exports = async (req, res) => {
 
     /* ---- CADEAU D'ANNIVERSAIRE (vide = désactivé) ---- */
     if (action === "set_cadeau_anniv") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id,role");
+      const m = await mesMembres(userId, body, "commerce_id,role");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       if (m[0].role !== "proprio") return res.status(200).json({ ok: false, raison: "reserve_proprio" });
       const cadeau = (body.cadeau_anniv || "").toString().replace(/\s+/g, " ").trim().slice(0, 60);
@@ -654,7 +664,7 @@ module.exports = async (req, res) => {
 
     /* ---- FIDÉLITÉ : nombre de passages par client (total + 90 derniers jours) ---- */
     if (action === "fidelite") {
-      const m = await sb("membres?user_id=eq." + encodeURIComponent(userId) + "&select=commerce_id");
+      const m = await mesMembres(userId, body, "commerce_id");
       if (!m || !m.length) return res.status(403).json({ ok: false });
       const mb = (body.commerce_id && m.find(function (x) { return x.commerce_id === body.commerce_id; })) || m[0];
       const cartesF = await sb("cartes?commerce_id=eq." + mb.commerce_id + "&select=id");
