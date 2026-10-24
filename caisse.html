@@ -381,7 +381,7 @@
 
   /* tampons */
   function majTampons(n){
-    nbTampons = Math.max(1, Math.min(5, n));
+    nbTampons = Math.max(1, Math.min(12, n));
     $("rapides").querySelectorAll("button").forEach(function(b){ b.classList.toggle("on", +b.getAttribute("data-n") === nbTampons); });
     majEcran();
   }
@@ -453,7 +453,7 @@
         resultatTexte("refus", "Pas envoyé", "Réessayez dans un instant");
         return;
       }
-      attente = { id: r.id, fin: Date.now() + (r.attente_s || 120) * 1000, grand: grand, resume: resume };
+      attente = { id: r.id, fin: Date.now() + (r.attente_s || 300) * 1000, grand: grand, resume: resume };
       vueAttente();
     }).catch(function(){
       $("bValider").disabled = false;
