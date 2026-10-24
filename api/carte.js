@@ -408,11 +408,15 @@ function modeEffectif(commerce) {
 
 /* la saisie en attente : celle de la caisse liée à la puce, sinon la plus récente du commerce */
 async function attenteDuCommerce(commerce, appareilId) {
-  let q = "caisse_attente?commerce_id=eq." + commerce.id +
+  const q = "caisse_attente?commerce_id=eq." + commerce.id +
     "&statut=eq.en_attente&expire_le=gt." + encodeURIComponent(new Date().toISOString());
-  if (appareilId) q += "&appareil_id=eq." + appareilId;
-  const rows = await sb(q + "&select=*&order=cree_le.desc&limit=1");
-  return rows && rows[0] ? rows[0] : null;
+  let rows = null;
+  if (appareilId) rows = await sb(q + "&appareil_id=eq." + appareilId + "&select=*&order=cree_le.desc&limit=1");
+  /* rien sur la caisse liée à la puce : on prend la saisie la plus récente du commerce */
+  if (!rows || !rows.length) rows = await sb(q + "&select=*&order=cree_le.desc&limit=1");
+  const a = rows && rows[0] ? rows[0] : null;
+  console.log("[caisse] " + commerce.slug + " : " + (a ? "saisie trouvée (" + a.type + " " + (a.valeur || "") + ")" : "aucune saisie en attente"));
+  return a;
 }
 
 /* applique la saisie à la carte du client → { carte, resultat } (null si déjà prise) */
@@ -734,6 +738,7 @@ module.exports = async (req, res) => {
         return res.status(200).json(etat(carte, commerce, { solde: true }));
       }
       /* 3. ancien fonctionnement : +1 automatique */
+      console.log("[tap] " + commerce.slug + " : pas de saisie caisse, +1 automatique (tap_auto)");
       return res.status(200).json(await appliquerTap(carte, commerce));
     }
 
