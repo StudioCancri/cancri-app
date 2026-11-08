@@ -556,6 +556,32 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, capacites: cap, abonnement: abonnement(c[0]), role: m[0].role });
     }
 
+    /* ---- MESSAGES DE LUNAT (envoyés depuis le cockpit) ---- */
+    if (action === "annonces") {
+      const m = await mesMembres(userId, body, "commerce_id");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const cid = m[0].commerce_id;
+      const liste = await sb("annonces?or=(cible.is.null,cible.cs.%7B" + cid + "%7D)&select=id,titre,message,cree_le&order=cree_le.desc&limit=20");
+      const ids = (liste || []).map(function (x) { return x.id; });
+      const lues = ids.length ? await sb("annonces_lues?commerce_id=eq." + cid + "&annonce_id=in.(" + ids.join(",") + ")&select=annonce_id") : [];
+      const dejaLu = {};
+      (lues || []).forEach(function (l) { dejaLu[l.annonce_id] = true; });
+      (liste || []).forEach(function (x) { x.lu = !!dejaLu[x.id]; });
+      return res.status(200).json({ ok: true, annonces: liste || [] });
+    }
+    if (action === "annonce_lue") {
+      const m = await mesMembres(userId, body, "commerce_id");
+      if (!m || !m.length) return res.status(403).json({ ok: false });
+      const ids = (Array.isArray(body.ids) ? body.ids : [body.id]).filter(function (x) { return /^[0-9a-f-]{36}$/i.test(String(x || "")); });
+      if (!ids.length) return res.status(200).json({ ok: false });
+      const r = await fetch(SUPABASE_URL + "/rest/v1/annonces_lues", {
+        method: "POST",
+        headers: { apikey: SECRET, Authorization: "Bearer " + SECRET, "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates" },
+        body: JSON.stringify(ids.map(function (id) { return { annonce_id: id, commerce_id: m[0].commerce_id }; })),
+      });
+      return res.status(200).json({ ok: r.ok });
+    }
+
     /* ---- RÉGLAGES DE RELANCE ---- */
     if (action === "get_relances") {
       const m = await mesMembres(userId, body, "commerce_id");
