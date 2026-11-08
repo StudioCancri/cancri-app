@@ -6,7 +6,8 @@
 
    Actions : vue_ensemble, detail_commerce, creer_commerce,
    maj_commerce, maj_statut, contrats (get/save),
-   demandes (list/add/maj), supprimer_commerce
+   demandes (list/add/maj), supprimer_commerce,
+   annonces_liste / annonce_envoyer / annonce_supprimer (messages aux commerçants)
    ============================================================ */
 
 const { PLANS, capacites, abonnement } = require("./plans");
@@ -44,6 +45,49 @@ async function userDepuisToken(token) {
 async function estAdmin(userId) {
   const rows = await sb("admins?user_id=eq." + encodeURIComponent(userId) + "&select=user_id");
   return rows && rows.length > 0;
+}
+
+/* ---------- messages aux commerçants : email en plus (facultatif) ---------- */
+const RESEND_KEY = (process.env.RESEND_API_KEY || "").trim();
+const EXPEDITEUR = process.env.MAIL_EXPEDITEUR || "Lunat <bonjour@lunat.fr>";
+
+async function emailDeUser(userId) {
+  try {
+    const r = await fetch(SUPABASE_URL + "/auth/v1/admin/users/" + userId, {
+      headers: { apikey: SECRET, Authorization: "Bearer " + SECRET },
+    });
+    if (!r.ok) return null;
+    const u = await r.json();
+    return u && u.email ? u.email : null;
+  } catch (e) { return null; }
+}
+
+function echapperHtml(t) {
+  return String(t == null ? "" : t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; });
+}
+
+function gabaritAnnonce(nomCommerce, titre, message) {
+  return '' +
+  '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#F2F2F0;padding:32px 16px">' +
+    '<div style="max-width:480px;margin:0 auto;background:#fff;border-radius:20px;padding:32px 28px;border:1px solid #E7E7E4">' +
+      '<div style="font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#E8890A">Message de Lunat · ' + echapperHtml(nomCommerce) + '</div>' +
+      '<h1 style="font-size:22px;margin:8px 0 16px;color:#1B2027;letter-spacing:-.02em">' + echapperHtml(titre) + '</h1>' +
+      '<div style="font-size:15px;line-height:1.55;color:#1B2027;white-space:pre-line">' + echapperHtml(message) + '</div>' +
+      '<a href="https://lunat.fr/pro.html" style="display:block;text-align:center;margin-top:24px;background:#FCA321;color:#1B2027;text-decoration:none;font-weight:700;padding:14px;border-radius:12px;font-size:15px">Ouvrir mon espace</a>' +
+      '<p style="margin-top:22px;font-size:11.5px;color:#9aa0a6;text-align:center">Une question ? Répondez simplement à ce mail.</p>' +
+    '</div>' +
+  '</div>';
+}
+
+async function envoyerMailAnnonce(to, sujet, html) {
+  if (!RESEND_KEY) return false;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + RESEND_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: EXPEDITEUR, to: [to], reply_to: "contact@lunat.fr", subject: sujet, html: html }),
+  });
+  if (!r.ok) { console.log("[annonce] resend", r.status, await r.text()); return false; }
+  return true;
 }
 
 /* nombre de lignes d'une table, sans les télécharger */
@@ -182,6 +226,53 @@ module.exports = async (req, res) => {
         abonnement: abonnement(c[0]),
         conso: { messages_ce_mois: camp ? camp.length : 0, cartes: (cartes || []).length },
       });
+    }
+
+    /* ---- MESSAGES AUX COMMERÇANTS ---- */
+    if (action === "annonces_liste") {
+      const annonces = await sb("annonces?select=*&order=cree_le.desc&limit=50");
+      const ids = (annonces || []).map(function (a) { return a.id; });
+      const lues = ids.length ? await sb("annonces_lues?annonce_id=in.(" + ids.join(",") + ")&select=annonce_id,commerce_id") : [];
+      const nbCommerces = await compter("commerces");
+      (annonces || []).forEach(function (a) {
+        a.destinataires = Array.isArray(a.cible) && a.cible.length ? a.cible.length : nbCommerces;
+        a.lues = (lues || []).filter(function (l) { return l.annonce_id === a.id; }).length;
+      });
+      return res.status(200).json({ ok: true, annonces: annonces || [] });
+    }
+
+    if (action === "annonce_envoyer") {
+      const titre = (body.titre || "").toString().trim().slice(0, 80);
+      const message = (body.message || "").toString().trim().slice(0, 800);
+      if (!titre || !message) return res.status(200).json({ ok: false, raison: "vide" });
+      const cible = Array.isArray(body.cible) && body.cible.length
+        ? body.cible.filter(function (x) { return /^[0-9a-f-]{36}$/i.test(String(x)); })
+        : null;
+      if (Array.isArray(body.cible) && body.cible.length && (!cible || !cible.length)) {
+        return res.status(200).json({ ok: false, raison: "cible_invalide" });
+      }
+      const ins = await sb("annonces", { method: "POST", body: { titre: titre, message: message, cible: cible, envoyer_email: body.email === true } });
+      const annonce = ins && ins[0];
+
+      /* email aux propriétaires, si demandé */
+      let emails = 0;
+      if (body.email === true) {
+        const coms = await sb("commerces?select=id,nom" + (cible ? "&id=in.(" + cible.join(",") + ")" : ""));
+        for (const c of (coms || [])) {
+          const props = await sb("membres?commerce_id=eq." + c.id + "&role=eq.proprio&select=user_id");
+          for (const m of (props || [])) {
+            const mail = await emailDeUser(m.user_id);
+            if (mail && await envoyerMailAnnonce(mail, titre, gabaritAnnonce(c.nom, titre, message))) emails++;
+          }
+        }
+      }
+      console.log("[admin] annonce envoyée", titre, "| cible:", cible ? cible.length : "tous", "| emails:", emails);
+      return res.status(200).json({ ok: true, annonce: annonce, emails: emails });
+    }
+
+    if (action === "annonce_supprimer") {
+      await sb("annonces?id=eq." + encodeURIComponent(body.id || ""), { method: "DELETE" });
+      return res.status(200).json({ ok: true });
     }
 
     /* ---- SUPPRIMER UN COMMERCE (définitif) ----
