@@ -243,6 +243,28 @@
   .saved{font-size:12.5px;color:var(--green);margin-left:12px;opacity:0;transition:opacity .2s;}
   .saved.on{opacity:1;}
 
+  /* messages aux commerçants */
+  .msg-lab{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px;}
+  .msg-dest{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;}
+  .msg-dest label{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);border-radius:99px;padding:7px 12px;
+    font-size:13px;font-weight:600;color:var(--text-soft);cursor:pointer;user-select:none;}
+  .msg-dest input{accent-color:var(--gold);}
+  .msg-dest label.on{border-color:var(--gold);color:var(--text);background:rgba(224,169,109,.08);}
+  .msg-opt{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--text-soft);margin:14px 0 4px;cursor:pointer;}
+  .msg-opt input{accent-color:var(--gold);width:16px;height:16px;}
+  .msg-bas{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;flex-wrap:wrap;}
+  .msg-info{font-size:12.5px;color:var(--text-faint);}
+  .msg-info.ok{color:#8FCB9B;}
+  .msg-info.err{color:var(--red);}
+  .msg-item{border-top:1px solid var(--line);padding:14px 0;}
+  .msg-item:first-child{border-top:none;padding-top:0;}
+  .msg-item .mi-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;}
+  .msg-item .mi-t{font-weight:700;font-size:14.5px;}
+  .msg-item .mi-d{font-size:12px;color:var(--text-faint);white-space:nowrap;}
+  .msg-item .mi-m{font-size:13px;color:var(--text-soft);margin:4px 0 8px;white-space:pre-line;line-height:1.45;}
+  .msg-item .mi-s{font-size:12px;color:var(--text-faint);display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .msg-item .mi-x{background:none;border:none;color:var(--red);font:inherit;font-size:12px;cursor:pointer;padding:0;margin-left:auto;}
+
   /* zone de suppression */
   .card.danger{border-color:rgba(224,123,109,.35);}
   .card.danger h3{color:var(--red);}
@@ -417,6 +439,7 @@
   <div class="cockpit-tabs" id="cockpitTabs">
     <button class="ctab on" data-vue="portefeuille">Portefeuille</button>
     <button class="ctab" data-vue="prospection">Prospection</button>
+    <button class="ctab" data-vue="messages">Messages</button>
   </div>
 
   <div id="vuePortefeuille">
@@ -662,6 +685,28 @@
   </div><!-- /vuePortefeuille -->
 
   <!-- ---------- VUE PROSPECTION ---------- -->
+  <div id="vueMessages" style="display:none">
+    <div class="card">
+      <h3>Envoyer un message aux commerçants</h3>
+      <div class="c-sub">Il s'affiche en haut de leur espace commerçant jusqu'à ce qu'ils appuient sur « Compris ». Tu peux aussi l'envoyer par email aux propriétaires.</div>
+      <div class="fld"><label>Titre</label><input id="msgTitre" maxlength="80" placeholder="Ex : Nouveau : les anniversaires de vos clients"></div>
+      <div class="fld" style="margin-top:12px"><label>Message</label><textarea id="msgTexte" rows="5" maxlength="800" placeholder="Ce que tu veux leur dire…"></textarea></div>
+      <div style="margin-top:12px"><div class="msg-lab">Destinataires</div>
+        <div class="msg-dest" id="msgDest"></div>
+      </div>
+      <label class="msg-opt"><input type="checkbox" id="msgEmail"> Envoyer aussi par email aux propriétaires</label>
+      <div class="msg-bas">
+        <span class="msg-info" id="msgInfo"></span>
+        <button class="addbtn" id="msgEnvoyer">Envoyer</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Messages envoyés</h3>
+      <div class="c-sub">« Lu » = le commerçant a appuyé sur « Compris ».</div>
+      <div id="msgListe"><div class="loading" style="padding:20px">Chargement…</div></div>
+    </div>
+  </div>
+
   <div id="vueProspection" style="display:none">
     <div class="prosp-stats" id="prospStats">
       <div class="pstat on" data-f="tous"><div class="pn" id="pc-tous">0</div><div class="pl">Tous</div></div>
@@ -817,6 +862,7 @@
   }
 
   function render(r){
+    window.__commerces = r.commerces || [];
     const s = r.stats;
     $("kMrr").textContent = s.mrr + " €";
     $("kTotal").textContent = s.total;
@@ -1414,9 +1460,71 @@
       var vue = tab.getAttribute("data-vue");
       $("vuePortefeuille").style.display = (vue==="portefeuille") ? "block" : "none";
       $("vueProspection").style.display = (vue==="prospection") ? "block" : "none";
+      $("vueMessages").style.display = (vue==="messages") ? "block" : "none";
+      if(vue==="messages"){ rendreDestinataires(); chargerMessages(); }
       if(vue==="prospection" && !window.__prospChargee){ chargerProspects(); window.__prospChargee = true; }
     });
   });
+
+  /* ============================================================
+     MESSAGES AUX COMMERÇANTS
+     ============================================================ */
+  var msgTous = true, msgChoisis = {};
+  function escM(t){ return String(t == null ? "" : t).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+  function rendreDestinataires(){
+    var coms = window.__commerces || [];
+    var h = '<label class="' + (msgTous ? 'on' : '') + '"><input type="checkbox" data-tous="1"' + (msgTous ? ' checked' : '') + '> Tous les commerces</label>';
+    h += coms.map(function(c){
+      var on = !msgTous && msgChoisis[c.id];
+      return '<label class="' + (on ? 'on' : '') + '"><input type="checkbox" data-id="' + c.id + '"' + (on ? ' checked' : '') + '> ' + escM(c.nom) + '</label>';
+    }).join("");
+    $("msgDest").innerHTML = h;
+    $("msgDest").querySelectorAll("input").forEach(function(i){
+      i.addEventListener("change", function(){
+        if(i.getAttribute("data-tous")){ msgTous = i.checked; if(msgTous) msgChoisis = {}; }
+        else { msgChoisis[i.getAttribute("data-id")] = i.checked; if(!msgChoisis[i.getAttribute("data-id")]) delete msgChoisis[i.getAttribute("data-id")]; msgTous = Object.keys(msgChoisis).length === 0; }
+        rendreDestinataires();
+      });
+    });
+  }
+  function infoMsg(t, cls){ var m = $("msgInfo"); m.className = "msg-info " + (cls || ""); m.textContent = t; }
+  $("msgEnvoyer").addEventListener("click", async function(){
+    var titre = $("msgTitre").value.trim(), texte = $("msgTexte").value.trim();
+    if(!titre || !texte){ infoMsg("Mets un titre et un message.", "err"); return; }
+    var cible = msgTous ? null : Object.keys(msgChoisis);
+    var qui = msgTous ? "tous les commerces" : cible.length + " commerce" + (cible.length > 1 ? "s" : "");
+    if(!confirm("Envoyer « " + titre + " » à " + qui + ($("msgEmail").checked ? " (avec email)" : "") + " ?")) return;
+    var b = this; b.disabled = true; infoMsg("Envoi…");
+    var r = await call({ action:"annonce_envoyer", titre: titre, message: texte, cible: cible, email: $("msgEmail").checked });
+    b.disabled = false;
+    if(r.ok){
+      infoMsg("Envoyé ✓" + ($("msgEmail").checked ? " · " + r.emails + " email" + (r.emails > 1 ? "s" : "") : ""), "ok");
+      $("msgTitre").value = ""; $("msgTexte").value = ""; $("msgEmail").checked = false;
+      chargerMessages();
+    } else infoMsg("Pas envoyé : " + (r.raison || r.erreur || "erreur"), "err");
+  });
+  async function chargerMessages(){
+    var r = await call({ action:"annonces_liste" });
+    if(!r.ok){ $("msgListe").innerHTML = '<div class="msg-info err">Impossible de charger (as-tu lancé le SQL des messages ?)</div>'; return; }
+    var noms = {}; (window.__commerces || []).forEach(function(c){ noms[c.id] = c.nom; });
+    if(!r.annonces.length){ $("msgListe").innerHTML = '<div class="msg-info">Aucun message envoyé pour l\'instant.</div>'; return; }
+    $("msgListe").innerHTML = r.annonces.map(function(a){
+      var d = new Date(a.cree_le);
+      var dest = Array.isArray(a.cible) && a.cible.length ? a.cible.map(function(id){ return noms[id] || "?"; }).join(", ") : "Tous les commerces";
+      return '<div class="msg-item"><div class="mi-h"><span class="mi-t">' + escM(a.titre) + '</span><span class="mi-d">' +
+        d.toLocaleDateString("fr-FR", { day:"numeric", month:"short" }) + ' · ' + d.toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" }) + '</span></div>' +
+        '<div class="mi-m">' + escM(a.message) + '</div>' +
+        '<div class="mi-s"><span>' + escM(dest) + '</span><span>Lu : ' + a.lues + '/' + a.destinataires + '</span>' + (a.envoyer_email ? '<span>+ email</span>' : '') +
+        '<button class="mi-x" data-id="' + a.id + '">Retirer</button></div></div>';
+    }).join("");
+    $("msgListe").querySelectorAll(".mi-x").forEach(function(x){
+      x.addEventListener("click", async function(){
+        if(!confirm("Retirer ce message des espaces commerçants ?")) return;
+        await call({ action:"annonce_supprimer", id: x.getAttribute("data-id") });
+        chargerMessages();
+      });
+    });
+  }
 
   /* ============================================================
      PROSPECTION (CRM démarchage) — groupé par ville
